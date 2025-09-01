@@ -10,6 +10,9 @@ set(FFMPEG_LIB_DIR ${FFMPEG_DIR}/lib)
 set(FFMPEG_BIN_DIR ${FFMPEG_DIR}/bin)
 
 find_package(Qt6 6.4 REQUIRED COMPONENTS Quick)
+find_package(Qt6 REQUIRED COMPONENTS Gui)
+find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Multimedia)
 
 qt_standard_project_setup()
 
@@ -23,6 +26,8 @@ qt_add_qml_module(appAZPlayer
     QML_FILES
         Main.qml
         SOURCES
+        SOURCES
+        SOURCES audioplayer.h audioplayer.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -51,6 +56,9 @@ target_link_directories(appAZPlayer
 target_link_libraries(appAZPlayer
     PRIVATE
         Qt6::Quick
+        Qt6::Gui
+        Qt6::Core
+        Qt6::Multimedia
         avcodec
         avformat
         avutil
