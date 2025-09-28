@@ -42,6 +42,7 @@ bool VideoPlayer::write(AVFrmItem *item) {
         tmpPtr->mutex.lock();
     }
     tmpPtr->updateFormat(item);
+    double pts = tmpPtr->pts;
     tmpPtr->mutex.unlock();
 
     // 当前帧持续时间（还未渲染）
@@ -93,6 +94,11 @@ bool VideoPlayer::write(AVFrmItem *item) {
         renderData = tmpPtr;
         QMetaObject::invokeMethod(m_videoWindow, "updateRenderData", Qt::QueuedConnection, Q_ARG(RenderData *, renderData));
     }
+
+    // 更新视频时钟
+    // qDebug() << "v:" << pts << GlobalClock::instance().videoPts();
+    GlobalClock::instance().setVideoClk(pts);
+    GlobalClock::instance().syncExternalClk(GlobalClock::instance().videoClk());
 
     return true;
 }

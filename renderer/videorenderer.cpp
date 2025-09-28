@@ -176,14 +176,8 @@ void VideoRenderer::render() {
     }
 
     // 绘制结束
-    double pts = m_renderData->pts;
     m_renderData->renderedTime = getRelativeSeconds();
     m_renderData->mutex.unlock();
-
-    // 更新视频时钟
-    // qDebug() << "v:" << pts << GlobalClock::instance().videoPts();
-    GlobalClock::instance().setVideoClk(pts);
-    GlobalClock::instance().syncExternalClk(GlobalClock::instance().videoClk());
 }
 
 void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
