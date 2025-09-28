@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(AZPlayer VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTORCC ON)
 # 设置 FFmpeg 路径
 set(FFMPEG_DIR D:/ffmpeg-8.0-full_build-shared)
 set(FFMPEG_INCLUDE_DIR ${FFMPEG_DIR}/include)
@@ -13,6 +14,8 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS Quick)
 find_package(Qt6 REQUIRED COMPONENTS Gui)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Multimedia)
+
+add_compile_options(-Wall -Wextra -Wpedantic)
 
 qt_standard_project_setup()
 
@@ -25,9 +28,18 @@ qt_add_qml_module(appAZPlayer
     VERSION 1.0
     QML_FILES
         Main.qml
-        SOURCES
-        SOURCES
-        SOURCES audioplayer.h audioplayer.cpp
+        SOURCES demux/demux.h demux/demux.cpp
+        SOURCES decode/decodebase.h decode/decodebase.cpp
+        SOURCES decode/decodeaudio.h decode/decodeaudio.cpp
+        SOURCES renderer/audioplayer.h renderer/audioplayer.cpp
+        SOURCES spscqueue.h
+        SOURCES utils.h
+        RESOURCES resource.qrc
+        SOURCES renderer/videorenderer.h renderer/videorenderer.cpp
+        SOURCES clock/globalclock.h clock/globalclock.cpp
+        SOURCES renderer/videoplayer.h renderer/videoplayer.cpp
+        SOURCES decode/decodevideo.h decode/decodevideo.cpp
+        SOURCES renderer/renderdata.h renderer/renderdata.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

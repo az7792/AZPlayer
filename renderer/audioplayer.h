@@ -1,6 +1,8 @@
 #ifndef AUDIOPLAYER_H
 #define AUDIOPLAYER_H
 
+#include "clock/globalclock.h"
+#include "utils.h"
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <QAudioSink>
@@ -21,24 +23,41 @@ extern "C" {
 
 class AudioPlayer : public QObject {
     Q_OBJECT
+
 public:
     explicit AudioPlayer(QObject *parent = nullptr);
     ~AudioPlayer();
 
     // 初始化
-    bool init(const AVCodecParameters *codecParams);
+    bool init(const AVCodecParameters *codecParams, sharedFrmQueue frmBuf);
     // 回到未初始化状态
     void uninit();
-    /**
-     * 写入一帧数据
-     * @warning 方法会阻塞线程
-     */
-    qint64 write(AVFrame *frm);
+
+    //  开始播放
+    bool play();
+
+    // 暂停播放
+    bool pause();
+
+    // 获取当前音频时钟(微秒)
+    qint64 audioClock();
+
+public:
+    sharedFrmQueue m_frmBuf;
 public slots:
+    void startPlay();
 
 signals:
-
+    void finished(); // 音频播放线程退出信号
 private:
+    /**
+     * 主要用于在seek时清零QAudioSink::processedUSecs()计数器
+     * 因为不方便真正清零QAudioSink::processedUSecs()计时器，因此采用补偿的方式清零，
+     * QAudioSink::processedUSecs() - m_offsetTime 即为seek后处理的数据量(微秒)
+     */
+    qint64 m_offsetTime = 0;
+    qint64 m_totalTime = 0; // 表示从0播放到seek节点的音频帧所花费的时间(微秒)，seek时会设置该值
+
     QAudioSink *m_audioSink = nullptr;     // 向音频输出设备发送音频数据的接口
     QAudioDevice *m_audioDevice = nullptr; // 用于播放音频的设备
     QIODevice *m_audioIO = nullptr;        // 音频数据来源
@@ -49,14 +68,19 @@ private:
     uint8_t **m_swrBuffer = nullptr;
     int m_swrBufferSize = 0;
 
-    // 原始音频参数
-    int m_sampleRate = 0;                               // 采样率
-    int m_nbChannels = 0;                               // 通道数
-    AVSampleFormat m_sampleFormat = AV_SAMPLE_FMT_NONE; // 采样格式
+    AudioPar m_oldPar; // 原始音频参数
+    AudioPar m_swrPar; // 重采样音频参数，未进行重采样时与m_oldPar一致
 
     bool m_initialized = false; // 是否已经初始化
+    std::atomic<bool> m_stop{true};
 
 private:
+    /**
+     * 写入一帧数据
+     * @warning 方法会阻塞线程
+     */
+    qint64 write(AVFrmItem *item);
+
     /**
      * FFmpeg通道布局 -> Qt通道格式
      * @param maskIsEqual 只要在使用mask匹配，且maske是超集但不相等时回传false
