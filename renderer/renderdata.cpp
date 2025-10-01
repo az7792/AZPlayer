@@ -192,6 +192,14 @@ void RenderData::updateFormat(AVFrmItem *newItem) {
     updateGLParaArr(pixFormat);
 }
 
+void RenderData::reset() {
+    mutex.lock();
+    if (frm)
+        av_frame_free(&frm);
+    pts = renderedTime = std::numeric_limits<double>::quiet_NaN();
+    mutex.unlock();
+}
+
 void RenderData::updateGLParaArr(PixFormat fmt) {
     if (pixFormat == RenderData::Y || pixFormat == RenderData::YA) {
         GLParaArr[0] = bitSize2GLPara(componentBitSize[0]); // Y

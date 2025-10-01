@@ -1,10 +1,24 @@
 #include "videoplayer.h"
+#include "clock/globalclock.h"
 #include <QDateTime>
 #include <QDebug>
 #include <QThread>
 
-VideoPlayer::VideoPlayer(sharedFrmQueue frmBuf, VideoWindow *videoWindow, QObject *parent)
-    : m_frmBuf(frmBuf), renderTime(std::numeric_limits<double>::quiet_NaN()), m_videoWindow(videoWindow) {
+namespace {
+    double getDuration(AVFrame *lastFrm, double lastPts, double nowPts) {
+        if (!lastFrm) {
+            return 0.0;
+        }
+        double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
+        double duration = nowPts - lastPts;
+        if (std::isnan(duration) || duration <= 0 || duration > maxFrameDuration)
+            duration = lastFrm->duration;
+        return duration;
+    }
+}
+
+VideoPlayer::VideoPlayer(sharedFrmQueue frmBuf, QObject *parent)
+    : m_frmBuf(frmBuf), renderTime(std::numeric_limits<double>::quiet_NaN()) {
     renderData = &renderData1;
 }
 
@@ -12,9 +26,15 @@ VideoPlayer::~VideoPlayer() {
 }
 
 void VideoPlayer::startPlay() {
+    // 确保音视频设备都完成了基本初始化
+    while (!DeviceStatus::instance().initialized()) {
+        QThread::msleep(5);
+    }
+
     m_stop.store(false, std::memory_order_relaxed);
     AVFrmItem frmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
+        double st = getRelativeSeconds();
         // 读frm
         while (!m_frmBuf->pop(frmItem)) {
             while (m_stop.load(std::memory_order_relaxed)) {
@@ -24,6 +44,12 @@ void VideoPlayer::startPlay() {
         }
         // 写如入设备
         write(&frmItem);
+
+        static int ct = 0;
+        if ((int)st != ct) {
+            qDebug() << "视频调用间隔" << getRelativeSeconds() - st;
+            ct = st;
+        }
     }
 end:
     emit finished();
@@ -36,40 +62,37 @@ bool VideoPlayer::write(AVFrmItem *item) {
 
     // 在渲染之前准备好数据
     RenderData *tmpPtr = renderData == &renderData1 ? &renderData2 : &renderData1;
-    // QMetaObject::invokeMethod会使用事件队列，可能导致渲染线程使用的renderData与tmpPtr是同一个
+    // Qt信号会使用事件队列，可能导致渲染线程使用的renderData与tmpPtr是同一个
     if (!tmpPtr->mutex.try_lock_for(std::chrono::milliseconds(1))) {
         std::swap(tmpPtr, renderData);
         tmpPtr->mutex.lock();
     }
     tmpPtr->updateFormat(item);
-    double pts = tmpPtr->pts;
     tmpPtr->mutex.unlock();
 
-    // 当前帧持续时间（还未渲染）
-    double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
-    double duration = tmpPtr->pts - renderData->pts;
-    if (std::isnan(duration) || duration <= 0 || duration > maxFrameDuration)
-        duration = tmpPtr->frm->duration;
+    // 上一帧持续时间
+    double delay = getDuration(renderData->frm, renderData->pts, item->pts);
 
+    static int lessCt = 0, moreCt = 0;
     // 同步主时钟
+    double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
     double diff = GlobalClock::instance().videoPts() - GlobalClock::instance().getMainPts();
-    // qDebug() << "AVdiff0" << diff;
-    //[0.004 - 1/fps -  0.01]与主时钟差距保证在范围外需要同步 //NOTE： ffplay用的[0.04-0.1]
-    double syncThreshold = std::max(0.004, std::min(0.01, duration));
+    // //[0.004 - 1/fps -  0.01]与主时钟差距保证在范围外需要同步 //NOTE： ffplay用的[0.04-0.1]
+    double syncThreshold = std::max(0.004, std::min(0.01, delay));
     if (!std::isnan(diff) && std::abs(diff) < maxFrameDuration) {
-        if (diff < -syncThreshold) { // 落后太多，直接播放
-            duration = 0;
-            qDebug() << "----------------------shao";
-        } else if (diff > syncThreshold) { // 领先太多
-            duration += diff;
-            qDebug() << "----------------------duo";
+        if (diff <= -syncThreshold) { // 落后太多，尝试直接播放
+            lessCt++;
+            delay = std::max(0.0, delay + diff);
+        } else if (diff >= syncThreshold) { // 领先太多
+            moreCt++;
+            delay = delay + (delay > 0.1 ? diff : delay);
         }
     }
 
-    if (duration <= 0 || std::isnan(renderTime)) {
+    if (std::isnan(renderTime)) {
         renderTime = getRelativeSeconds();
     } else {
-        renderTime = renderTime + duration;
+        renderTime += delay;
     }
 
     double nowTime = getRelativeSeconds();
@@ -78,27 +101,24 @@ bool VideoPlayer::write(AVFrmItem *item) {
     }
 
     static int ct = 0;
-    static auto st = getRelativeSeconds();
-    auto nQT = getRelativeSeconds();
-    double tmt = GlobalClock::instance().audioPts() * 1000;
-    double ext = GlobalClock::instance().externalPts() * 1000;
-    double vid = GlobalClock::instance().videoPts() * 1000;
-    if ((int)nQT != ct) {
-        // qDebug() << tmt << vid << ext << nQT - st << tmt - nQT + st << vid - nQT + st << ext - nQT + st;
-        ct = (int)nQT;
+    if ((int)nowTime != ct) {
+        ct = (int)nowTime;
         qDebug() << "sleep:" << (renderTime - nowTime) * 1000;
+        qDebug() << "lessCt:" << lessCt << "moreCt:" << moreCt;
         qDebug() << "AVdiff1" << GlobalClock::instance().videoPts() - GlobalClock::instance().getMainPts();
     }
 
-    if (m_videoWindow) {
-        renderData = tmpPtr;
-        QMetaObject::invokeMethod(m_videoWindow, "updateRenderData", Qt::QueuedConnection, Q_ARG(RenderData *, renderData));
+    AVFrmItem tmpItem;
+    bool peekOk = m_frmBuf->peekFirst(tmpItem);
+    renderData = tmpPtr;
+    nowTime = getRelativeSeconds();
+    if (!peekOk || nowTime <= renderTime + getDuration(item->frm, item->pts, tmpItem.pts)) {
+        emit renderDataReady(renderData);
     }
 
     // 更新视频时钟
     // qDebug() << "v:" << pts << GlobalClock::instance().videoPts();
-    GlobalClock::instance().setVideoClk(pts);
+    GlobalClock::instance().setVideoClk(item->pts);
     GlobalClock::instance().syncExternalClk(GlobalClock::instance().videoClk());
-
     return true;
 }

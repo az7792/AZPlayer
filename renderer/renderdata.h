@@ -98,10 +98,11 @@ struct RenderData {
 
     // 根据frm重新更新格式
     void updateFormat(AVFrmItem *newItem);
+    void reset();
 
     void updateGLParaArr(RenderData::PixFormat fmt);
 
-    RenderData() : mutex(), pts(std::numeric_limits<double>::quiet_NaN()), renderedTime(pts) {}
+    RenderData() : mutex() { reset(); }
     ~RenderData() {
         if (!frm) {
             av_frame_free(&frm);

@@ -1,10 +1,8 @@
 #ifndef VIDEOPLAYER_H
 #define VIDEOPLAYER_H
 
-#include "clock/globalclock.h"
 #include "renderdata.h"
 #include "utils.h"
-#include "videorenderer.h"
 #include <QObject>
 #include <atomic>
 
@@ -22,7 +20,7 @@ extern "C" {
 class VideoPlayer : public QObject {
     Q_OBJECT
 public:
-    explicit VideoPlayer(sharedFrmQueue frmBuf, VideoWindow *videoWindow, QObject *parent = nullptr);
+    explicit VideoPlayer(sharedFrmQueue frmBuf, QObject *parent = nullptr);
     ~VideoPlayer();
 
 public:
@@ -32,6 +30,7 @@ public slots:
 
 signals:
     void finished(); // 视频播放线程退出信号
+    void renderDataReady(RenderData *data);
 
 private:
     // 双缓冲
@@ -41,7 +40,6 @@ private:
     double renderTime;               // 实际渲染指令被发出的时间(相对现实时间，秒)
 
     std::atomic<bool> m_stop{true};
-    VideoWindow *m_videoWindow = nullptr;
     /**
      * 写入一帧数据
      * @warning 方法会阻塞线程

@@ -32,7 +32,7 @@ qt_add_qml_module(appAZPlayer
         SOURCES decode/decodebase.h decode/decodebase.cpp
         SOURCES decode/decodeaudio.h decode/decodeaudio.cpp
         SOURCES renderer/audioplayer.h renderer/audioplayer.cpp
-        SOURCES spscqueue.h
+        SOURCES
         SOURCES utils.h
         RESOURCES resource.qrc
         SOURCES renderer/videorenderer.h renderer/videorenderer.cpp

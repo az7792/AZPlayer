@@ -1,7 +1,6 @@
 #ifndef VIDEORENDERER_H
 #define VIDEORENDERER_H
 
-#include "clock/globalclock.h"
 #include "renderdata.h"
 #include <QOpenGLFunctions_3_3_Core>
 #include <QOpenGLShaderProgram>

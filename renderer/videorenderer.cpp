@@ -1,9 +1,60 @@
 #include "videorenderer.h"
-#include <QDateTime>
+#include "clock/globalclock.h"
 #include <QOpenGLFramebufferObjectFormat>
 
 VideoRenderer::VideoRenderer() {
     initializeOpenGLFunctions();
+    const QString vSrcPath = ":/shaderSource/shader.vert";
+    const QString fSrcPath = ":/shaderSource/shader.frag";
+    if (!m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, vSrcPath) ||
+        !m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, fSrcPath) ||
+        !m_program.link()) {
+        qDebug() << "着色器程序编译失败";
+        return;
+    }
+    qDebug() << "着色器程序编译成功";
+    float vertices[] = {
+        // 位置      // 纹理
+        -1.f, 1.f, 0.f, 1.f,  // 左上
+        -1.f, -1.f, 0.f, 0.f, // 左下
+        1.f, -1.f, 1.f, 0.f,  // 右下
+        1.f, 1.f, 1.f, 1.f    // 右上
+    };
+
+    unsigned int indices[] = {
+        0, 1, 2, // 第一个三角形
+        0, 2, 3  // 第二个三角形
+    };
+
+    // VAO
+    glGenVertexArrays(1, &m_vao);
+    glBindVertexArray(m_vao);
+
+    // 绑定 VBO （顶点缓冲）
+    glGenBuffers(1, &m_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // 绑定 EBO（索引缓冲）
+    glGenBuffers(1, &m_ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    // 位置
+    // layout(location = 0) in vec2 aPos; // 顶点坐标
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+
+    // 纹理坐标
+    // layout(location = 1) in vec2 aTexCoord; // 纹理坐标
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    // 解绑
+    glBindVertexArray(0);             // 解绑VAO
+    glBindBuffer(GL_ARRAY_BUFFER, 0); // 解绑VBO
+    // 不要解绑EBO
+    DeviceStatus::instance().setVideoInitialized(true);
 }
 
 VideoRenderer::~VideoRenderer() {
@@ -17,64 +68,8 @@ VideoRenderer::~VideoRenderer() {
 }
 
 void VideoRenderer::init(RenderData *renderData) {
-    if (!m_program.isLinked()) {
-        const QString vSrcPath = ":/shaderSource/shader.vert";
-        const QString fSrcPath = ":/shaderSource/shader.frag";
-        if (!m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, vSrcPath) ||
-            !m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, fSrcPath) ||
-            !m_program.link()) {
-            qDebug() << "着色器程序编译失败";
-            return;
-        }
-        qDebug() << "着色器程序编译成功";
-        float vertices[] = {
-            // 位置      // 纹理
-            -1.f, 1.f, 0.f, 1.f,  // 左上
-            -1.f, -1.f, 0.f, 0.f, // 左下
-            1.f, -1.f, 1.f, 0.f,  // 右下
-            1.f, 1.f, 1.f, 1.f    // 右上
-        };
-
-        unsigned int indices[] = {
-            0, 1, 2, // 第一个三角形
-            0, 2, 3  // 第二个三角形
-        };
-
-        // VAO
-        glGenVertexArrays(1, &m_vao);
-        glBindVertexArray(m_vao);
-
-        // 绑定 VBO （顶点缓冲）
-        glGenBuffers(1, &m_vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-        // 绑定 EBO（索引缓冲）
-        glGenBuffers(1, &m_ebo);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-        // 位置
-        // layout(location = 0) in vec2 aPos; // 顶点坐标
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-        glEnableVertexAttribArray(0);
-
-        // 纹理坐标
-        // layout(location = 1) in vec2 aTexCoord; // 纹理坐标
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-
-        // 解绑
-        glBindVertexArray(0);             // 解绑VAO
-        glBindBuffer(GL_ARRAY_BUFFER, 0); // 解绑VBO
-        // 不要解绑EBO
-    }
-
     AVFrame *frm = renderData->frm;
     if (m_needInitTex && frm) {
-        static int cct = 0;
-        cct++;
-        qDebug() << "cct:" << cct;
         // 初始化像素格式与上传方式
         m_width = frm->width, m_height = frm->height;
         m_AVPixelFormat = (AVPixelFormat)frm->format;
@@ -82,7 +77,6 @@ void VideoRenderer::init(RenderData *renderData) {
         m_program.bind();
         int loc = m_program.uniformLocation("pixFormat");
         m_program.setUniformValue(loc, (int)renderData->pixFormat);
-        qDebug() << (int)renderData->pixFormat;
         loc = m_program.uniformLocation("yTex");
         m_program.setUniformValue(loc, 0);
         loc = m_program.uniformLocation("uTex");

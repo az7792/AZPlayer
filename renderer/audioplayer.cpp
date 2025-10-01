@@ -353,7 +353,13 @@ void AudioPlayer::startPlay() {
             }
         } });
     // m_audioSink->setBufferSize(m_format.bytesForDuration(1000 * 1000)); // 预留 1s 的空间
-    m_audioIO = m_audioSink->start();
+    m_audioIO = m_audioSink->start(); ///@note m_audioSink->start()启动非常慢
+    DeviceStatus::instance().setAudioInitialized(true);
+
+    // 确保音视频设备都完成了基本初始化
+    while (!DeviceStatus::instance().initialized()) {
+        QThread::msleep(5);
+    }
 
     m_stop.store(false, std::memory_order_relaxed);
     AVFrmItem frmItem;
