@@ -1,13 +1,19 @@
 #include "decodebase.h"
 #include <QDebug>
 
-DecodeBase::DecodeBase() {}
+DecodeBase::DecodeBase(QObject *parent)
+    : QObject{parent} {}
 
 DecodeBase::~DecodeBase() {
+    uninit();
 }
 
-bool DecodeBase::init(AVCodecID id, const AVCodecParameters *par, AVRational time_base, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
-    m_codec = avcodec_find_decoder(id);
+bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
+    if (m_initialized) {
+        uninit();
+    }
+
+    m_codec = avcodec_find_decoder(stream->codecpar->codec_id);
     if (!m_codec) {
         qDebug() << "无合适的解码器";
         return false;
@@ -19,7 +25,7 @@ bool DecodeBase::init(AVCodecID id, const AVCodecParameters *par, AVRational tim
         return false;
     }
 
-    int ret = avcodec_parameters_to_context(m_codecCtx, par);
+    int ret = avcodec_parameters_to_context(m_codecCtx, stream->codecpar);
     if (ret < 0) {
         av_strerror(ret, errBuf, sizeof(errBuf));
         qDebug() << "解码器参数设置失败:" << errBuf;
@@ -46,14 +52,39 @@ bool DecodeBase::init(AVCodecID id, const AVCodecParameters *par, AVRational tim
 
     m_pktBuf = pktBuf;
     m_frmBuf = frmBuf;
-    m_time_base = time_base;
+    m_time_base = stream->time_base;
     return true;
+}
+
+bool DecodeBase::uninit() {
+    stop();
+    if (m_codecCtx) {
+        avcodec_free_context(&m_codecCtx);
+    }
+    m_initialized = false;
+    m_pktBuf.reset();
+    m_frmBuf.reset();
+    return true;
+}
+
+void DecodeBase::start() {
+    if (m_thread.joinable()) {
+        return; // 已经在运行了
+    }
+    m_stop.store(false, std::memory_order_relaxed);
+    m_thread = std::thread([this]() {
+        decodingLoop();
+    });
+}
+
+void DecodeBase::stop() {
+    if (!m_thread.joinable()) {
+        return; // 已经退出
+    }
+    m_stop.store(true, std::memory_order_relaxed);
+    m_thread.join();
 }
 
 bool DecodeBase::initialized() {
     return m_initialized;
-}
-
-void DecodeBase::stopDecoding() {
-    m_stop.store(true, std::memory_order_relaxed);
 }

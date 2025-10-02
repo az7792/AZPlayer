@@ -1,7 +1,7 @@
 #include "audioplayer.h"
+#include "clock/globalclock.h"
 #include <QDebug>
 #include <QMediaDevices>
-#include <QThread>
 
 namespace {
     inline bool maskHasAll(uint64_t mask, uint64_t bits) {
@@ -36,7 +36,9 @@ AudioPlayer::~AudioPlayer() {
 }
 
 bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmBuf) { // TODO ： initial_padding trailing_padding是否要做处理
-    uninit();
+    if (m_initialized) {
+        uninit();
+    }
 
     m_frmBuf = frmBuf;
 
@@ -159,13 +161,15 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
     return true;
 }
 
-void AudioPlayer::uninit() {
-
-    if (m_audioSink) {
-        m_audioSink->stop();
-        delete m_audioSink;
-        m_audioSink = nullptr;
-    }
+bool AudioPlayer::uninit() {
+    stop();
+    // 需要在工作线程中销毁
+    //  if (m_audioSink) {
+    //      m_audioSink->stop();
+    //      delete m_audioSink;
+    //      m_audioSink = nullptr;
+    //  }
+    Q_ASSERT(!m_audioSink);
 
     if (m_audioDevice) {
         delete m_audioDevice;
@@ -196,10 +200,31 @@ void AudioPlayer::uninit() {
     }
 
     m_swrBufferSize = 0;
-
-    m_stop.store(true, std::memory_order_relaxed);
-
     m_frmBuf.reset();
+
+    return true;
+}
+
+void AudioPlayer::start() {
+    if (m_thread && m_thread->isRunning()) {
+        return; // 已经在运行
+    }
+    m_stop.store(false, std::memory_order_relaxed);
+    m_thread = QThread::create([this] {
+        playerLoop();
+    });
+    m_thread->start();
+}
+
+void AudioPlayer::stop() {
+    if (!m_thread) {
+        return; // 已经退出
+    }
+    m_stop.store(true, std::memory_order_relaxed);
+    m_thread->quit();
+    m_thread->wait();
+    delete m_thread;
+    m_thread = nullptr;
 }
 
 qint64 AudioPlayer::write(AVFrmItem *item) {
@@ -272,24 +297,12 @@ qint64 AudioPlayer::write(AVFrmItem *item) {
 
         writeCnt += written;
     }
-    // static double lat = 0;
-    // double tmpT = getRelativeSeconds() * 1000;
-    // qDebug() << tmpT - lat;
-    // lat = tmpT;
     // 更新音频时钟
-    double nextPts = item->pts + 1.0 * nb_samples / m_format.sampleRate();                                              // 当前帧全部播完的结束时间
-    double offsetPts = (m_audioSink->bufferSize() - m_audioSink->bytesFree()) / (double)m_format.bytesForDuration(1e6); // 未播的时间
-                                                                                                                        // qDebug() << "a:" << item->pts << GlobalClock::instance().audioPts() << nextPts << nextPts - offsetPts << audioClock() / 1000000.0 << m_audioSink->processedUSecs() / 1000000.0;
-                                                                                                                        // static int ct = 0;
-                                                                                                                        // ct++;
-                                                                                                                        // if (ct == 300)
-                                                                                                                        //     QThread::msleep(500);
-                                                                                                                        // qDebug() << "a:" << item->pts << GlobalClock::instance().audioPts() << nextPts << nextPts - offsetPts << audioClock() / 1000000.0 << m_audioSink->processedUSecs() / 1000000.0;
-                                                                                                                        // int t = 1;
-                                                                                                                        // qDebug() << "a:" << item->pts << GlobalClock::instance().audioPts();
+    double nextPts = item->pts + 1.0 * nb_samples / m_format.sampleRate(); // 当前帧全部播完的结束时间
+    // 未播的时间
+    double offsetPts = (m_audioSink->bufferSize() - m_audioSink->bytesFree()) / (double)m_format.bytesForDuration(1e6);
+
     GlobalClock::instance().setAudioClk(nextPts - offsetPts);
-    // qDebug() << "a:" << item->pts << GlobalClock::instance().audioPts() << nextPts << nextPts - offsetPts << audioClock() / 1000000.0 << m_audioSink->processedUSecs() / 1000000.0;
-    // qDebug() << "";
     GlobalClock::instance().syncExternalClk(GlobalClock::instance().audioClk());
 
     return writeCnt;
@@ -325,34 +338,23 @@ bool AudioPlayer::pause() {
     return true;
 }
 
-qint64 AudioPlayer::audioClock() {
-    if (!m_audioSink)
-        return 0;
-    // seek后已经写入缓冲区的数据量(微秒)
-    qint64 t = m_audioSink->processedUSecs() - m_offsetTime;
-    // 减去缓冲区里未被设备读取的数据量,由于播放设备本身还有缓冲区，因此得到的值会与实际真正播放完的数据量存在误差
-    t -= m_format.durationForBytes(m_audioSink->bufferSize() - m_audioSink->bytesFree());
-    return t + m_totalTime;
-}
+// qint64 AudioPlayer::audioClock() {
+//     if (!m_audioSink)
+//         return 0;
+//     // seek后已经写入缓冲区的数据量(微秒)
+//     qint64 t = m_audioSink->processedUSecs() - m_offsetTime;
+//     // 减去缓冲区里未被设备读取的数据量,由于播放设备本身还有缓冲区，因此得到的值会与实际真正播放完的数据量存在误差
+//     t -= m_format.durationForBytes(m_audioSink->bufferSize() - m_audioSink->bytesFree());
+//     return t + m_totalTime;
+// }
 
-void AudioPlayer::startPlay() {
+void AudioPlayer::playerLoop() {
     if (!m_initialized) {
-        emit finished();
         return;
     }
 
     // 创建音频输出
     m_audioSink = new QAudioSink(*m_audioDevice, m_format);
-    connect(m_audioSink, &QAudioSink::stateChanged, this, [this](QAudio::State state) {
-        if (state == QAudio::IdleState && m_audioSink->bytesFree() > 0) {
-            // 音频播放完成
-        } else if (state == QAudio::StoppedState) {
-            // 音频停止，检查错误
-            if (m_audioSink->error() != QAudio::NoError) {
-                qDebug() << "AudioPlayer error: " + QString::number(m_audioSink->error());
-            }
-        } });
-    // m_audioSink->setBufferSize(m_format.bytesForDuration(1000 * 1000)); // 预留 1s 的空间
     m_audioIO = m_audioSink->start(); ///@note m_audioSink->start()启动非常慢
     DeviceStatus::instance().setAudioInitialized(true);
 
@@ -361,7 +363,6 @@ void AudioPlayer::startPlay() {
         QThread::msleep(5);
     }
 
-    m_stop.store(false, std::memory_order_relaxed);
     AVFrmItem frmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
         // 读frm
@@ -377,7 +378,13 @@ void AudioPlayer::startPlay() {
     }
 
 end:
-    emit finished();
+    if (m_audioSink) { // 不能在其他线程销毁
+        m_audioSink->stop();
+        delete m_audioSink;
+        m_audioSink = nullptr;
+    }
+    DeviceStatus::instance().setAudioInitialized(false);
+    return;
 }
 
 QAudioFormat::ChannelConfig AudioPlayer::FFmpegToQtChannelConfig(const AVChannelLayout &ch_layout, bool *maskIsEqual) {

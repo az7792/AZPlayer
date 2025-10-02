@@ -2,7 +2,6 @@
 #include "clock/globalclock.h"
 #include <QDateTime>
 #include <QDebug>
-#include <QThread>
 
 namespace {
     double getDuration(AVFrame *lastFrm, double lastPts, double nowPts) {
@@ -17,18 +16,53 @@ namespace {
     }
 }
 
-VideoPlayer::VideoPlayer(sharedFrmQueue frmBuf, QObject *parent)
-    : m_frmBuf(frmBuf), renderTime(std::numeric_limits<double>::quiet_NaN()) {
-    renderData = &renderData1;
-}
+VideoPlayer::VideoPlayer(QObject *parent)
+    : QObject{parent} {}
 
 VideoPlayer::~VideoPlayer() {
+    uninit();
 }
 
-void VideoPlayer::startPlay() {
+bool VideoPlayer::init(sharedFrmQueue frmBuf) {
+    if (m_initialized) {
+        uninit();
+    }
+
+    m_frmBuf = frmBuf;
+    renderTime = std::numeric_limits<double>::quiet_NaN();
+    renderData = &renderData1;
+    return true;
+}
+
+bool VideoPlayer::uninit() {
+    stop();
+
+    m_frmBuf.reset();
+    return true;
+}
+
+void VideoPlayer::start() {
+    if (m_thread.joinable()) {
+        return; // 已经在运行了
+    }
+    m_stop.store(false, std::memory_order_relaxed);
+    m_thread = std::thread([this]() {
+        playerLoop();
+    });
+}
+
+void VideoPlayer::stop() {
+    if (!m_thread.joinable()) {
+        return; // 已经退出
+    }
+    m_stop.store(true, std::memory_order_relaxed);
+    m_thread.join();
+}
+
+void VideoPlayer::playerLoop() {
     // 确保音视频设备都完成了基本初始化
     while (!DeviceStatus::instance().initialized()) {
-        QThread::msleep(5);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
     m_stop.store(false, std::memory_order_relaxed);
@@ -40,7 +74,7 @@ void VideoPlayer::startPlay() {
             while (m_stop.load(std::memory_order_relaxed)) {
                 goto end;
             }
-            QThread::msleep(5);
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
         // 写如入设备
         write(&frmItem);
@@ -52,7 +86,7 @@ void VideoPlayer::startPlay() {
         }
     }
 end:
-    emit finished();
+    return;
 }
 
 bool VideoPlayer::write(AVFrmItem *item) {
@@ -96,8 +130,13 @@ bool VideoPlayer::write(AVFrmItem *item) {
     }
 
     double nowTime = getRelativeSeconds();
-    if (nowTime < renderTime) {
-        QThread::msleep((renderTime - nowTime) * 1000);
+    double dt = renderTime - nowTime;
+    // if (dt > 0 && !m_stop.load(std::memory_order_relaxed)) {
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    //     dt -= 0.001;
+    // }
+    if (dt > 0) { // TODO: 小步sleep,避免长时间阻塞，或者其他方法处理sleep
+        std::this_thread::sleep_for(std::chrono::duration<double>(dt));
     }
 
     static int ct = 0;

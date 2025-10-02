@@ -1,14 +1,13 @@
 #include "decodeaudio.h"
 #include <QDebug>
-#include <QThread>
 
-DecodeAudio::DecodeAudio() {}
-
-bool DecodeAudio::init(AVCodecID id, const AVCodecParameters *par, AVRational time_base, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
-    bool intok = DecodeBase::init(id, par, time_base, pktBuf, frmBuf);
+bool DecodeAudio::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
+    bool intok = DecodeBase::init(stream, pktBuf, frmBuf);
     if (!intok) {
         return false;
     }
+
+    auto par = stream->codecpar;
 
     m_oldPar.sampleFormat = static_cast<AVSampleFormat>(par->format);
     m_oldPar.sampleRate = par->sample_rate;
@@ -20,13 +19,10 @@ bool DecodeAudio::init(AVCodecID id, const AVCodecParameters *par, AVRational ti
     return true;
 }
 
-void DecodeAudio::startDecoding() {
+void DecodeAudio::decodingLoop() {
     if (!m_initialized) {
-        emit finished();
         return;
     }
-
-    m_stop.store(false, std::memory_order_relaxed);
 
     AVPktItem pktItem;
     AVFrmItem frmItem;
@@ -37,7 +33,7 @@ void DecodeAudio::startDecoding() {
             if (m_stop.load(std::memory_order_relaxed)) {
                 goto end;
             }
-            QThread::msleep(5);
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
 
         int ret = avcodec_send_packet(m_codecCtx, pktItem.pkt);
@@ -75,7 +71,7 @@ void DecodeAudio::startDecoding() {
                     if (m_stop.load(std::memory_order_relaxed)) {
                         goto end;
                     }
-                    QThread::msleep(5);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
                 }
                 frmItem.frm = nullptr;
             } else {
@@ -88,5 +84,4 @@ void DecodeAudio::startDecoding() {
 end:
     av_packet_free(&pktItem.pkt);
     av_frame_free(&frmItem.frm);
-    emit finished();
 }

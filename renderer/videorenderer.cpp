@@ -124,7 +124,7 @@ QOpenGLFramebufferObject *VideoRenderer::createFramebufferObject(const QSize &si
 
 void VideoRenderer::render() {
     if (!m_renderData) {
-        glClearColor(0.0392f, 0.0392f, 0.0392f, 1.0f);
+        glClearColor(0.0627f, 0.0627f, 0.0627f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         return;
     }
@@ -145,7 +145,7 @@ void VideoRenderer::render() {
     // 上传纹理
     if (updateTex(m_renderData->pixFormat)) {
         // 纯色背景
-        glClearColor(0.0392f, 0.0392f, 0.0392f, 1.0f);
+        glClearColor(0.0627f, 0.0627f, 0.0627f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         m_program.bind();
         // 调整画面比例

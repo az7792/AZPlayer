@@ -5,6 +5,7 @@
 #include "utils.h"
 #include <QObject>
 #include <atomic>
+#include <thread>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,16 +21,23 @@ extern "C" {
 class VideoPlayer : public QObject {
     Q_OBJECT
 public:
-    explicit VideoPlayer(sharedFrmQueue frmBuf, QObject *parent = nullptr);
+    explicit VideoPlayer(QObject *parent = nullptr);
     ~VideoPlayer();
+
+    bool init(sharedFrmQueue frmBuf);
+    bool uninit();
+
+    // 开启解复用线程
+    void start();
+    // 退出解复用线程
+    void stop();
 
 public:
     sharedFrmQueue m_frmBuf;
 public slots:
-    void startPlay();
+    void playerLoop();
 
 signals:
-    void finished(); // 视频播放线程退出信号
     void renderDataReady(RenderData *data);
 
 private:
@@ -40,6 +48,8 @@ private:
     double renderTime;               // 实际渲染指令被发出的时间(相对现实时间，秒)
 
     std::atomic<bool> m_stop{true};
+    std::thread m_thread;
+    bool m_initialized = false; // 是否已经初始化
     /**
      * 写入一帧数据
      * @warning 方法会阻塞线程

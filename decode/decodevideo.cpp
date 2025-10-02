@@ -1,11 +1,8 @@
 #include "decodevideo.h"
 #include <QDebug>
-#include <QThread>
 
-DecodeVideo::DecodeVideo() {}
-
-bool DecodeVideo::init(AVCodecID id, const AVCodecParameters *par, AVRational time_base, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
-    bool initok = DecodeBase::init(id, par, time_base, pktBuf, frmBuf);
+bool DecodeVideo::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
+    bool initok = DecodeBase::init(stream, pktBuf, frmBuf);
     if (!initok) {
         return false;
     }
@@ -14,13 +11,10 @@ bool DecodeVideo::init(AVCodecID id, const AVCodecParameters *par, AVRational ti
     return true;
 }
 
-void DecodeVideo::startDecoding() {
+void DecodeVideo::decodingLoop() {
     if (!m_initialized) {
-        emit finished();
         return;
     }
-
-    m_stop.store(false, std::memory_order_relaxed);
 
     AVPktItem pktItem;
     AVFrmItem frmItem;
@@ -31,7 +25,7 @@ void DecodeVideo::startDecoding() {
             if (m_stop.load(std::memory_order_relaxed)) {
                 goto end;
             }
-            QThread::msleep(5);
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
 
         int ret = avcodec_send_packet(m_codecCtx, pktItem.pkt);
@@ -68,7 +62,7 @@ void DecodeVideo::startDecoding() {
                     if (m_stop.load(std::memory_order_relaxed)) {
                         goto end;
                     }
-                    QThread::msleep(5);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
                 }
                 frmItem.frm = nullptr;
             } else {
@@ -81,5 +75,4 @@ void DecodeVideo::startDecoding() {
 end:
     av_packet_free(&pktItem.pkt);
     av_frame_free(&frmItem.frm);
-    emit finished();
 }

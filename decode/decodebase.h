@@ -4,6 +4,7 @@
 #include "utils.h"
 #include <QObject>
 #include <atomic>
+#include <thread>
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,34 +18,36 @@ extern "C" {
 class DecodeBase : public QObject {
     Q_OBJECT
 public:
-    explicit DecodeBase();
+    explicit DecodeBase(QObject *parent = nullptr);
     ~DecodeBase();
-    bool init(enum AVCodecID id,
-              const struct AVCodecParameters *par,
-              AVRational time_base,
+    bool init(AVStream *stream,
               sharedPktQueue pktBuf,
               sharedFrmQueue frmBuf);
 
+    // 反初始化，恢复到未初始化之前的状态
+    bool uninit();
+
+    // 开启解复用线程
+    void start();
+    // 退出解复用线程
+    void stop();
+
     bool initialized();
 
-public:
+protected:
     sharedPktQueue m_pktBuf;
     sharedFrmQueue m_frmBuf;
 
-public slots:
-    virtual void startDecoding() { emit finished(); }
-    void stopDecoding();
-
-signals:
-    void finished(); // 解码线程退出信号
-
-protected:
     const AVCodec *m_codec = nullptr; // FFmpeg内部管理，不用释放
     AVCodecContext *m_codecCtx;
     char errBuf[512] = {0};
     std::atomic<bool> m_stop{true};
+    std::thread m_thread;
     bool m_initialized = false;
     AVRational m_time_base;
+
+protected:
+    virtual void decodingLoop(){};
 };
 
 #endif // DECODEBASE_H

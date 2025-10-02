@@ -1,6 +1,6 @@
 #include "demux.h"
+#include "clock/globalclock.h"
 #include <QDebug>
-#include <QThread>
 
 Demux::Demux(QObject *parent)
     : QObject{parent} {}
@@ -10,8 +10,9 @@ Demux::~Demux() {
 }
 
 bool Demux::init(const std::string URL, sharedPktQueue audioQ, sharedPktQueue videoQ, sharedPktQueue subtitleQ) {
-    if (m_initialized)
+    if (m_initialized) {
         uninit();
+    }
 
     m_audioPktBuf = audioQ;
     m_videoPktBuf = videoQ;
@@ -58,8 +59,7 @@ bool Demux::init(const std::string URL, sharedPktQueue audioQ, sharedPktQueue vi
 }
 
 bool Demux::uninit() {
-    m_stop.store(true, std::memory_order_relaxed);
-
+    stop();
     if (m_formatCtx) {
         avformat_close_input(&m_formatCtx);
     }
@@ -80,40 +80,22 @@ bool Demux::uninit() {
     return true;
 }
 
-AVCodecID Demux::getVideoCodecID() {
-    if (m_usedVIdx == -1)
-        return AV_CODEC_ID_NONE;
-    return m_formatCtx->streams[m_usedVIdx]->codecpar->codec_id;
+void Demux::start() {
+    if (m_thread.joinable()) {
+        return; // 已经在运行了
+    }
+    m_stop.store(false, std::memory_order_relaxed);
+    m_thread = std::thread([this]() {
+        demuxLoop();
+    });
 }
 
-AVCodecID Demux::getAudioCodecID() {
-    if (m_usedAIdx == -1)
-        return AV_CODEC_ID_NONE;
-    return m_formatCtx->streams[m_usedAIdx]->codecpar->codec_id;
-}
-
-AVCodecID Demux::getSubtitleID() {
-    if (m_usedSIdx == -1)
-        return AV_CODEC_ID_NONE;
-    return m_formatCtx->streams[m_usedSIdx]->codecpar->codec_id;
-}
-
-AVCodecParameters *Demux::getVideoCodecpar() {
-    if (m_usedVIdx == -1)
-        return nullptr;
-    return m_formatCtx->streams[m_usedVIdx]->codecpar;
-}
-
-AVCodecParameters *Demux::getAudioCodecpar() {
-    if (m_usedAIdx == -1)
-        return nullptr;
-    return m_formatCtx->streams[m_usedAIdx]->codecpar;
-}
-
-AVCodecParameters *Demux::getSubtitleCodecpar() {
-    if (m_usedSIdx == -1)
-        return nullptr;
-    return m_formatCtx->streams[m_usedSIdx]->codecpar;
+void Demux::stop() {
+    if (!m_thread.joinable()) {
+        return; // 已经退出
+    }
+    m_stop.store(true, std::memory_order_relaxed);
+    m_thread.join();
 }
 
 AVStream *Demux::getVideoStream() {
@@ -138,14 +120,10 @@ AVFormatContext *Demux::formatCtx() {
     return m_formatCtx;
 }
 
-void Demux::startDemux() {
+void Demux::demuxLoop() {
     if (!m_initialized) {
-        emit finished();
         return;
     }
-
-    m_stop.store(false, std::memory_order_relaxed);
-
     AVPacket *pkt = nullptr;
     while (!m_stop.load(std::memory_order_relaxed)) {
         pkt = av_packet_alloc();
@@ -169,13 +147,13 @@ void Demux::startDemux() {
         } else {
             av_packet_free(&pkt);
         }
+        pkt = nullptr;
     }
 
 end:
     if (pkt) {
         av_packet_free(&pkt);
     }
-    emit finished();
 }
 
 void Demux::pushVideoPkt(AVPacket *pkt) {
@@ -200,6 +178,6 @@ void Demux::pushPkt(sharedPktQueue q, AVPacket *pkt) {
             av_packet_free(&pkt);
             return;
         }
-        QThread::msleep(5);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }

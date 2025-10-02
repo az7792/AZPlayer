@@ -1,13 +1,13 @@
 #ifndef AUDIOPLAYER_H
 #define AUDIOPLAYER_H
 
-#include "clock/globalclock.h"
 #include "utils.h"
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <QAudioSink>
 #include <QIODevice>
 #include <QObject>
+#include <QThread>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,7 +31,12 @@ public:
     // 初始化
     bool init(const AVCodecParameters *codecParams, sharedFrmQueue frmBuf);
     // 回到未初始化状态
-    void uninit();
+    bool uninit();
+
+    // 开启解复用线程
+    void start();
+    // 退出解复用线程
+    void stop();
 
     //  开始播放
     bool play();
@@ -39,17 +44,8 @@ public:
     // 暂停播放
     bool pause();
 
-    // 获取当前音频时钟(微秒)
-    qint64 audioClock();
-
-public:
-    sharedFrmQueue m_frmBuf;
-public slots:
-    void startPlay();
-
-signals:
-    void finished(); // 音频播放线程退出信号
 private:
+    sharedFrmQueue m_frmBuf;
     /**
      * 主要用于在seek时清零QAudioSink::processedUSecs()计数器
      * 因为不方便真正清零QAudioSink::processedUSecs()计时器，因此采用补偿的方式清零，
@@ -71,10 +67,12 @@ private:
     AudioPar m_oldPar; // 原始音频参数
     AudioPar m_swrPar; // 重采样音频参数，未进行重采样时与m_oldPar一致
 
-    bool m_initialized = false; // 是否已经初始化
+    bool m_initialized = false;  // 是否已经初始化
+    QThread *m_thread = nullptr; // AudioSink需要使用QTimer，这而不能用std::thread
     std::atomic<bool> m_stop{true};
 
 private:
+    void playerLoop();
     /**
      * 写入一帧数据
      * @warning 方法会阻塞线程
