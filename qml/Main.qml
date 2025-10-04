@@ -1,9 +1,7 @@
 import QtQuick
 import QtQuick.Controls
-//import Qt.labs.platform
 import QtQuick.Dialogs
 import VideoWindow 1.0
-import QtQuick.Layouts
 Window {
     id: mainWin
     width: 640
@@ -16,11 +14,14 @@ Window {
            Qt.WindowMaximizeButtonHint | Qt.WindowMinimizeButtonHint
 
     property int resizeMargin: 8
+    property bool forceShowBottomBar: false
+    property bool forceShowTopBar: false
 
     //用于显示提示信息
     AZTooltip {
         id: tooltip
         targetWindow: mainWin
+        z:999
     }
 
     //用于调整窗口大小
@@ -29,144 +30,234 @@ Window {
         hoverEnabled: true
         propagateComposedEvents:true
 
-
-        onPositionChanged:function(mouse) {
+        //切换调整窗口大小时的鼠标样式
+        function toggleCursorShape(x,y){
             // 改变鼠标样式
-            if (mouse.x <= resizeMargin && mouse.y <= resizeMargin)
+            if(mainWin.visibility !== Window.Windowed){
+                cursorShape = Qt.ArrowCursor
+                return
+            }
+
+            if (x <= resizeMargin && y <= resizeMargin)
                 cursorShape = Qt.SizeFDiagCursor   // 左上角
-            else if (mouse.x >= parent.width - resizeMargin && mouse.y <= resizeMargin)
+            else if (x >= parent.width - resizeMargin && y <= resizeMargin)
                 cursorShape = Qt.SizeBDiagCursor   // 右上角
-            else if (mouse.x <= resizeMargin && mouse.y >= parent.height - resizeMargin)
+            else if (x <= resizeMargin && y >= parent.height - resizeMargin)
                 cursorShape = Qt.SizeBDiagCursor   // 左下角
-            else if (mouse.x >= parent.width - resizeMargin && mouse.y >= parent.height - resizeMargin)
+            else if (x >= parent.width - resizeMargin && y >= parent.height - resizeMargin)
                 cursorShape = Qt.SizeFDiagCursor   // 右下角
-            else if (mouse.x <= resizeMargin || mouse.x >= parent.width - resizeMargin)
+            else if (x <= resizeMargin || x >= parent.width - resizeMargin)
                 cursorShape = Qt.SizeHorCursor     // 左右边
-            else if (mouse.y <= resizeMargin || mouse.y >= parent.height - resizeMargin)
+            else if (y <= resizeMargin || y >= parent.height - resizeMargin)
                 cursorShape = Qt.SizeVerCursor     // 上下边
             else
                 cursorShape = Qt.ArrowCursor
         }
 
-        onPressed: function(mouse) {
+        //调整窗口大小
+        function toggleSystemResize(x,y){
+            if(mainWin.visibility !== Window.Windowed){
+                return
+            }
+
             let edge = 0
-            if (mouse.x <= resizeMargin && mouse.y <= resizeMargin)
+            if (x <= resizeMargin && y <= resizeMargin)
                 edge = Qt.LeftEdge | Qt.TopEdge          // 左上角
-            else if (mouse.x >= parent.width - resizeMargin && mouse.y <= resizeMargin)
+            else if (x >= parent.width - resizeMargin && y <= resizeMargin)
                 edge = Qt.RightEdge | Qt.TopEdge         // 右上角
-            else if (mouse.x <= resizeMargin && mouse.y >= parent.height - resizeMargin)
+            else if (x <= resizeMargin && y >= parent.height - resizeMargin)
                 edge = Qt.LeftEdge | Qt.BottomEdge       // 左下角
-            else if (mouse.x >= parent.width - resizeMargin && mouse.y >= parent.height - resizeMargin)
+            else if (x >= parent.width - resizeMargin && y >= parent.height - resizeMargin)
                 edge = Qt.RightEdge | Qt.BottomEdge      // 右下角
-            else if (mouse.x <= resizeMargin)
+            else if (x <= resizeMargin)
                 edge = Qt.LeftEdge                        // 左边
-            else if (mouse.x >= parent.width - resizeMargin)
+            else if (x >= parent.width - resizeMargin)
                 edge = Qt.RightEdge                       // 右边
-            else if (mouse.y <= resizeMargin)
+            else if (y <= resizeMargin)
                 edge = Qt.TopEdge                         // 上边
-            else if (mouse.y >= parent.height - resizeMargin)
+            else if (y >= parent.height - resizeMargin)
                 edge = Qt.BottomEdge                      // 下边
 
             if (edge !== 0) {
                 mainWin.startSystemResize(edge)
             }
         }
+
+        //全屏时呼出topBar和bottomBar
+        function toggleBarVisible(x,y){
+            if(mainWin.visibility !== Window.FullScreen){
+                forceShowTopBar = forceShowBottomBar = false
+                return
+            }
+            forceShowTopBar = (y <= topBar.height)
+            forceShowBottomBar = (y >= mainWin.height - bottomBar.height)
+        }
+
+        onPositionChanged:function(mouse) {
+            toggleCursorShape(mouse.x,mouse.y)
+            toggleBarVisible(mouse.x,mouse.y)
+        }
+
+        onPressed: function(mouse) {
+            toggleSystemResize(mouse.x,mouse.y)
+        }
     }
 
-    ColumnLayout{
-        anchors.fill: parent
-        anchors.margins: 3
-        spacing: 1
-        RowLayout{
-            spacing: 1
-            Layout.fillWidth: true
-            Layout.minimumHeight: 32
-            Layout.maximumHeight: 32
+    Rectangle{
+        id: topBar
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.topMargin: mainWin.visibility === Window.Windowed ? resizeMargin / 2 : 0
+        anchors.leftMargin: mainWin.visibility === Window.Windowed ? resizeMargin / 2 : 0
+        anchors.rightMargin: mainWin.visibility === Window.Windowed ? resizeMargin / 2 : 0
+        visible: mainWin.visibility !== Window.FullScreen || forceShowTopBar
+        height: 32
+        color: "black"
+        z:1
 
-            AZButton{
-                Layout.fillHeight: true
-                Layout.minimumWidth: 80
-                Layout.maximumWidth: 80
-                defaultColor: "#1c1c1c"
-                hoverColor: "#252525"
-                pressedColor:"#161616"
-                text: "AZPlayer"
-                tooltipText: "测试"
-                iconHeight: 16
-                iconWidth: 16
-                onClicked: console.log("按下")
-                onLeftClicked: console.log("L按下")
-                onRightClicked: console.log("R按下")
-                onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
-                onHideTip: tooltip.hide()
-            }
-
-            Rectangle{
-                id: textWrapper
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                color: "#1d1d1d"
-                clip: true
-                property alias text: titleText.text
-                MouseArea {
-                    anchors.fill: parent
-                    onPressed: mainWin.startSystemMove()
-                    onDoubleClicked: mainWin.visibility = mainWin.visibility == Window.Windowed ? Window.Maximized : Window.Windowed
-                }
-                Text {
-                    id: titleText
-                    color: "white"
-                    font.pixelSize: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.leftMargin: 5
-                    anchors.rightMargin: 5
-                    wrapMode: Text.NoWrap
-                    elide: Text.ElideRight
-                }
-            }
-
-            AZWindowControls{
-                targetWindow: mainWin
-                targetToolTip: tooltip
-                Layout.fillHeight: true
-                Layout.minimumWidth: 120
-                Layout.maximumWidth: 120
-            }
+        AZButton{
+            id:menuBtn
+            height: parent.height
+            width: 2.5 * height
+            anchors.left: parent.left
+            defaultColor: "#1c1c1c"
+            hoverColor: "#252525"
+            pressedColor:"#161616"
+            text: "AZPlayer"
+            tooltipText: "测试"
+            iconHeight: 16
+            iconWidth: 16
+            onClicked: console.log("按下")
+            onLeftClicked: console.log("L按下")
+            onRightClicked: console.log("R按下")
+            onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
+            onHideTip: tooltip.hide()
         }
 
-        //视频显示区域
         Rectangle{
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            color: "#101010"
-            VideoWindow{
+            id: textWrapper
+            height: parent.height
+            anchors.left: menuBtn.right
+            anchors.right: windowControls.left
+            anchors.leftMargin: 1
+            anchors.rightMargin: 1
+            color: "#1d1d1d"
+            clip: true
+            property alias text: titleText.text
+            MouseArea {
                 anchors.fill: parent
-                id:videoWindow
-                objectName: "videoWindow"
-                Component.onCompleted:{
-                    MediaCtrl.setVideoWindow(videoWindow)
-                }
+                onPressed: mainWin.startSystemMove()
+                onDoubleClicked: mainWin.visibility = mainWin.visibility == Window.Windowed ? Window.Maximized : Window.Windowed
+            }
+            Text {
+                id: titleText
+                color: "white"
+                font.pixelSize: 12
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 5
+                anchors.rightMargin: 5
+                wrapMode: Text.NoWrap
+                elide: Text.ElideRight
             }
         }
 
+        AZWindowControls{
+            id:windowControls
+            targetWindow: mainWin
+            targetToolTip: tooltip
+            height: parent.height
+            anchors.right: parent.right
+            width: 120
+        }
+    }
+
+    //视频显示区域
+    Item{
+        id: videoArea
+        anchors.top:topBar.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: bottomBar.top
+        anchors.topMargin: 1
+        anchors.bottomMargin: 1
+        anchors.leftMargin: resizeMargin / 2
+        anchors.rightMargin: resizeMargin / 2
+        z:0
+
+        states: [
+            State {
+                name: "fullscreen"
+                when: mainWin.visibility === Window.FullScreen
+                PropertyChanges { target: videoArea;
+                    anchors.topMargin: 0; anchors.bottomMargin: 0; anchors.leftMargin: 0; anchors.rightMargin: 0;
+                    anchors.top:mainWin.contentItem.top ; anchors.bottom: mainWin.contentItem.bottom;}
+            },
+            State {
+                name: "Maximized"
+                when: mainWin.visibility === Window.Maximized
+                PropertyChanges { target: videoArea;
+                    anchors.top: topBar.bottom; anchors.bottom: bottomBar.top;
+                    anchors.topMargin: 1; anchors.bottomMargin: 1; anchors.leftMargin: 0; anchors.rightMargin: 0 }
+            },
+            State {
+                name: "windowed"
+                when: mainWin.visibility === Window.Windowed
+                PropertyChanges { target: videoArea;
+                    anchors.top: topBar.bottom; anchors.bottom: bottomBar.top;
+                    anchors.topMargin: 1; anchors.bottomMargin: 1; anchors.leftMargin: resizeMargin / 2; anchors.rightMargin: resizeMargin / 2 }
+            }
+        ]
+
+        VideoWindow{
+            anchors.fill: parent
+            id:videoWindow
+            objectName: "videoWindow"
+            Component.onCompleted:{
+                MediaCtrl.setVideoWindow(videoWindow)
+            }
+        }
+    }
+
+    Rectangle{
+        id:bottomBar
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: mainWin.visibility === Window.Windowed ? resizeMargin / 2 : 0
+        anchors.leftMargin: mainWin.visibility === Window.Windowed ? resizeMargin / 2 : 0
+        anchors.rightMargin: mainWin.visibility === Window.Windowed ? resizeMargin / 2 : 0
+        visible: mainWin.visibility !== Window.FullScreen || forceShowBottomBar
+        height: progressBar.height + playerCtrlBar.height + 1
+        z:1
+        color: "black"
+
         Rectangle{
-            Layout.fillWidth: true;
-            Layout.minimumHeight: 20
-            Layout.maximumHeight: 20
+            id:progressBar
+            height: 20
+            z:1
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
             color: "#1d1d1d"
         }
 
-        RowLayout{
-            spacing: 1
-            Layout.fillWidth: true;
-            Layout.minimumHeight: 40
-            Layout.maximumHeight: 40
+        Item{
+            id:playerCtrlBar
+            z:1
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: progressBar.bottom
+            anchors.topMargin: 1
+            height: 40
 
             AZButton{
-                Layout.fillHeight: true
-                Layout.preferredWidth: height
+                id:playBtn
+                height: parent.height
+                width: height
+                anchors.left: parent.left
                 iconWidth: 16
                 iconHeight: 16
                 iconSource: "qrc:/icon/play.png"
@@ -176,19 +267,28 @@ Window {
                 onHideTip: tooltip.hide()
             }
             AZButton{
-                Layout.fillHeight: true
-                Layout.preferredWidth: height
+                id:stopBtn
+                height: parent.height
+                width: height
+                anchors.left: playBtn.right
+                anchors.leftMargin: 1
                 iconWidth: 16
                 iconHeight: 16
                 iconSource: "qrc:/icon/stop.png"
                 tooltipText: "停止"
-                onLeftClicked: MediaCtrl.close()
+                onLeftClicked: {
+                    MediaCtrl.close()
+                    textWrapper.text = ""
+                }
                 onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
                 onHideTip: tooltip.hide()
             }
             AZButton{
-                Layout.fillHeight: true
-                Layout.preferredWidth: height
+                id:skipPrevBtn
+                height: parent.height
+                width: height
+                anchors.left:stopBtn.right
+                anchors.leftMargin: 1
                 iconWidth: 16
                 iconHeight: 16
                 iconSource: "qrc:/icon/skip_previous.png"
@@ -199,8 +299,11 @@ Window {
                 onHideTip: tooltip.hide()
             }
             AZButton{
-                Layout.fillHeight: true
-                Layout.preferredWidth: height
+                id:skipNextBtn
+                height: parent.height
+                width: height
+                anchors.left:skipPrevBtn.right
+                anchors.leftMargin: 1
                 iconWidth: 16
                 iconHeight: 16
                 iconSource: "qrc:/icon/skip_next.png"
@@ -211,8 +314,11 @@ Window {
                 onHideTip: tooltip.hide()
             }
             AZButton{
-                Layout.fillHeight: true
-                Layout.preferredWidth: height
+                id:openFileBtn
+                height: parent.height
+                width: height
+                anchors.left:skipNextBtn.right
+                anchors.leftMargin: 1
                 iconWidth: 16
                 iconHeight: 16
                 iconSource: "qrc:/icon/open.png"
@@ -223,118 +329,23 @@ Window {
             }
 
             Rectangle{
-                Layout.fillWidth: true;
-                Layout.fillHeight: true
+                height: parent.height
+                anchors.left: openFileBtn.right
+                anchors.right: fileListBtn.left
+                anchors.leftMargin: 1
+                anchors.rightMargin: 1
                 color: "#1c1c1c"
             }
 
             AZButton{
-                Layout.fillHeight: true
-                Layout.preferredWidth: height
+                id:fileListBtn
+                height: parent.height
+                width: height
+                anchors.right: parent.right
                 text:"列表"
             }
         }
     }
-
-
-
-    // // 全屏状态属性
-    // property bool isFullScreen: false
-
-    // // 快捷键处理
-    // Shortcut {
-    //     sequence: "F11"
-    //     onActivated: {
-    //         toggleFullScreen()
-    //     }
-    // }
-
-    // Shortcut {
-    //     sequence: "Esc"
-    //     onActivated: {
-    //         if (isFullScreen) {
-    //             toggleFullScreen()
-    //         } else {
-    //             mainWin.close()
-    //         }
-    //     }
-    // }
-
-    // // 全屏切换
-    // function toggleFullScreen() {
-    //     if (isFullScreen) {
-    //         mainWin.showNormal()
-    //         isFullScreen = false
-    //     } else {
-    //         mainWin.showFullScreen()
-    //         isFullScreen = true
-    //     }
-    // }
-
-    // ColumnLayout{
-    //     anchors.fill: parent
-    //     spacing: 0 //子项之间的间隙
-    //     Rectangle{
-    //         color: "#eef4f9"
-    //         Layout.fillWidth: true
-    //         Layout.preferredHeight: 32
-    //         Layout.maximumHeight: 32
-    //         Layout.minimumHeight: 32
-
-    //         ComboBox{
-    //             displayText: "AZPlayer"
-    //             height: parent.height
-    //             anchors.left: parent.left
-    //             width: 80
-    //             model: ["打开文件", "选项二", "选项三"]
-    //             onActivated: function(idx) {
-    //                 if (idx === 0) fileDialog.open()
-    //             }
-    //         }
-    //     }
-
-    //     Rectangle{
-    //         color: "#171717"
-    //         Layout.fillWidth: true
-    //         Layout.preferredHeight: 2
-    //     }
-
-    //     // 视频显示区域
-    //     Rectangle{
-    //         Layout.fillWidth: true
-    //         Layout.fillHeight: true
-    //         color: "#101010"
-    //         VideoWindow{
-    //             anchors.fill: parent
-    //             id:videoWindow
-    //             objectName: "videoWindow"
-    //             Component.onCompleted:{
-    //                 MediaCtrl.setVideoWindow(videoWindow)
-    //             }
-    //         }
-    //     }
-
-    //     Rectangle{
-    //         color: "#eef4f9"
-    //         Layout.fillWidth: true
-    //         Layout.preferredHeight: 32
-    //         Layout.maximumHeight: 32
-    //         Layout.minimumHeight: 32
-
-    //         ComboBox{
-    //             displayText: "AZPlayer"
-    //             height: parent.height
-    //             anchors.left: parent.left
-    //             width: 80
-    //             model: ["打开文件", "选项二", "选项三"]
-    //             onActivated: function(idx) {
-    //                 if (idx === 0) fileDialog.open()
-    //             }
-    //         }
-    //     }
-    // }
-
-
 
     FileDialog {
         id: fileDialog
