@@ -3,5 +3,24 @@
         <file alias="shader.frag">resource/shaderSource/shader.frag</file>
         <file alias="shader.vert">resource/shaderSource/shader.vert</file>
     </qresource>
-    <qresource prefix="/image"/>
+    <qresource prefix="/icon">
+        <file alias="open.png">resource/icon/open.png</file>
+        <file alias="pause.png">resource/icon/pause.png</file>
+        <file alias="play.png">resource/icon/play.png</file>
+        <file alias="skip_next.png">resource/icon/skip_next.png</file>
+        <file alias="skip_previous.png">resource/icon/skip_previous.png</file>
+        <file alias="stop.png">resource/icon/stop.png</file>
+        <file alias="close.png">resource/icon/close.png</file>
+        <file alias="fullscreen.png">resource/icon/fullscreen.png</file>
+        <file alias="fullscreen_exit.png">resource/icon/fullscreen_exit.png</file>
+        <file alias="minimize.png">resource/icon/minimize.png</file>
+        <file alias="maximize.png">resource/icon/maximize.png</file>
+        <file alias="restore.png">resource/icon/restore.png</file>
+    </qresource>
+    <qresource prefix="/">
+        <file>qml/AZButton.qml</file>
+        <file>qml/Main.qml</file>
+        <file>qml/AZTooltip.qml</file>
+        <file>qml/AZWindowControls.qml</file>
+    </qresource>
 </RCC>

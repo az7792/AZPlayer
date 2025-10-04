@@ -11,6 +11,7 @@ set(FFMPEG_LIB_DIR ${FFMPEG_DIR}/lib)
 set(FFMPEG_BIN_DIR ${FFMPEG_DIR}/bin)
 
 find_package(Qt6 6.4 REQUIRED COMPONENTS Quick)
+find_package(Qt6 REQUIRED COMPONENTS QuickControls2)
 find_package(Qt6 REQUIRED COMPONENTS Gui)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Multimedia)
@@ -27,12 +28,10 @@ qt_add_qml_module(appAZPlayer
     URI AZPlayer
     VERSION 1.0
     QML_FILES
-        Main.qml
         SOURCES demux/demux.h demux/demux.cpp
         SOURCES decode/decodebase.h decode/decodebase.cpp
         SOURCES decode/decodeaudio.h decode/decodeaudio.cpp
         SOURCES renderer/audioplayer.h renderer/audioplayer.cpp
-        SOURCES
         SOURCES utils.h
         RESOURCES resource.qrc
         SOURCES renderer/videorenderer.h renderer/videorenderer.cpp
@@ -68,6 +67,7 @@ target_link_directories(appAZPlayer
 
 target_link_libraries(appAZPlayer
     PRIVATE
+        Qt6::QuickControls2
         Qt6::Quick
         Qt6::Gui
         Qt6::Core

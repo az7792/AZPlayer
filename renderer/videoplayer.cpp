@@ -38,6 +38,7 @@ bool VideoPlayer::uninit() {
     stop();
 
     m_frmBuf.reset();
+    emit renderDataReady(nullptr);
     return true;
 }
 
