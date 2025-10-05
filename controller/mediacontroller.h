@@ -15,6 +15,9 @@ class MediaController : public QObject {
 public:
     explicit MediaController(QObject *parent = nullptr);
 
+    bool paused() const;
+    void setPaused(bool newPaused);
+
 public slots:
     // 设置用于显示画面的QML元素
     bool setVideoWindow(QObject *videoWindow);
@@ -22,7 +25,10 @@ public slots:
     bool open(const QUrl &URL);
     bool close();
 
+    void togglePaused();
+
 signals:
+    void pausedChanged();
 
 private:
     QUrl m_URL{};
@@ -43,6 +49,8 @@ private:
     VideoPlayer *m_videoPlayer = nullptr;
 
     bool m_opened = false;
+    bool m_paused = true;
+    Q_PROPERTY(bool paused READ paused WRITE setPaused NOTIFY pausedChanged FINAL)
 };
 
 #endif // MEDIACONTROLLER_H

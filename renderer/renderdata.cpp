@@ -55,10 +55,11 @@ void RenderData::splitFrameComponentsToPlanes(const AVPixFmtDescriptor *desc) {
 }
 
 void RenderData::splitComponentToPlane(int c, const AVPixFmtDescriptor *desc) {
-    if (!desc || !frm) {
+    if (!desc || !frmItem.frm) {
         return;
     }
 
+    AVFrame *frm = frmItem.frm;
     int width = frm->width;
     int height = frm->height;
 
@@ -108,14 +109,14 @@ void RenderData::splitComponentToPlane(int c, const AVPixFmtDescriptor *desc) {
 }
 
 // TODO ： 只在类型不一样时重新初始化参数，否则只初始化必要参数
-void RenderData::updateFormat(AVFrmItem *newItem) {
-    if (!newItem || !newItem->frm)
+void RenderData::updateFormat(const AVFrmItem &newItem) {
+    if (!newItem.frm)
         return;
-    if (frm != nullptr)
-        av_frame_free(&frm);
+    if (frmItem.frm != nullptr)
+        av_frame_free(&frmItem.frm);
 
-    frm = newItem->frm;
-    pts = newItem->pts;
+    frmItem = newItem;
+    AVFrame *frm = newItem.frm;
 
     AVPixelFormat avFmt = (AVPixelFormat)frm->format;
     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(avFmt);
@@ -194,23 +195,24 @@ void RenderData::updateFormat(AVFrmItem *newItem) {
 
 void RenderData::reset() {
     mutex.lock();
-    if (frm)
-        av_frame_free(&frm);
-    pts = renderedTime = std::numeric_limits<double>::quiet_NaN();
+    if (frmItem.frm)
+        av_frame_free(&frmItem.frm);
+    frmItem.pts = renderedTime = std::numeric_limits<double>::quiet_NaN();
+    frmItem.duration = renderedTime = std::numeric_limits<double>::quiet_NaN();
     mutex.unlock();
 }
 
 void RenderData::updateGLParaArr(PixFormat fmt) {
-    if (pixFormat == RenderData::Y || pixFormat == RenderData::YA) {
+    if (fmt == RenderData::Y || fmt == RenderData::YA) {
         GLParaArr[0] = bitSize2GLPara(componentBitSize[0]); // Y
-        if (pixFormat == RenderData::YA) {
+        if (fmt == RenderData::YA) {
             GLParaArr[1] = bitSize2GLPara(componentBitSize[1]); // A
         }
     } else {
         for (int i = 0; i < 3; ++i) {
             GLParaArr[i] = bitSize2GLPara(componentBitSize[i]); // RGB | YUV
         }
-        if (pixFormat == RenderData::RGBA_PLANAR || pixFormat == RenderData::YUVA) {
+        if (fmt == RenderData::RGBA_PLANAR || fmt == RenderData::YUVA) {
             GLParaArr[3] = bitSize2GLPara(componentBitSize[3]); // A
         }
     }

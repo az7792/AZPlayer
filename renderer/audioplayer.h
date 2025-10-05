@@ -38,11 +38,7 @@ public:
     // 退出解复用线程
     void stop();
 
-    //  开始播放
-    bool play();
-
-    // 暂停播放
-    bool pause();
+    void togglePaused();
 
 private:
     sharedFrmQueue m_frmBuf;
@@ -70,6 +66,7 @@ private:
     bool m_initialized = false;  // 是否已经初始化
     QThread *m_thread = nullptr; // AudioSink需要使用QTimer，这而不能用std::thread
     std::atomic<bool> m_stop{true};
+    std::atomic<bool> m_paused{false};
 
 private:
     void playerLoop();

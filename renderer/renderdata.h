@@ -69,9 +69,8 @@ struct RenderData {
 
     QMutex mutex; // 锁
 
-    AVFrame *frm = nullptr; // 原始数据
-    double pts;             // 理论显示时间(秒)
-    double renderedTime;    // 实际渲染到FBO的时间(相对现实时间，秒)
+    AVFrmItem frmItem;
+    double renderedTime; // 实际渲染到FBO的时间(相对现实时间，秒)
 
     PixFormat pixFormat = PixFormat::NONE;
 
@@ -97,15 +96,15 @@ struct RenderData {
     void splitComponentToPlane(int c, const AVPixFmtDescriptor *desc);
 
     // 根据frm重新更新格式
-    void updateFormat(AVFrmItem *newItem);
+    void updateFormat(const AVFrmItem &newItem);
     void reset();
 
     void updateGLParaArr(RenderData::PixFormat fmt);
 
     RenderData() : mutex() { reset(); }
     ~RenderData() {
-        if (!frm) {
-            av_frame_free(&frm);
+        if (!frmItem.frm) {
+            av_frame_free(&frmItem.frm);
         }
     }
 };

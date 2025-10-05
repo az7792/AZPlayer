@@ -59,9 +59,22 @@ void Clock::syncToClock(Clock &clk) {
     }
 }
 
+void Clock::togglePaused() {
+    setClock(getPts());
+    m_paused = !m_paused;
+}
+
 GlobalClock::GlobalClock()
     : m_audioClk(ClockType::AUDIO), m_videoClk(ClockType::VIDEO),
       m_externalClk(ClockType::EXTERNAL), m_maxFrameDuration(10.0) {
+}
+
+void GlobalClock::reset() {
+    m_videoClk.setClock(INVALID_DOUBLE);
+    m_audioClk.setClock(INVALID_DOUBLE);
+    m_externalClk.setClock(INVALID_DOUBLE);
+    m_videoClk.m_speed = m_audioClk.m_speed = m_externalClk.m_speed = 1.0;
+    m_videoClk.m_paused = m_audioClk.m_paused = m_externalClk.m_paused = false;
 }
 
 GlobalClock &GlobalClock::instance() {
@@ -96,6 +109,12 @@ Clock &GlobalClock::videoClk() {
 
 Clock &GlobalClock::externalClk() {
     return m_externalClk;
+}
+
+void GlobalClock::togglePaused() {
+    m_videoClk.togglePaused();
+    m_audioClk.togglePaused();
+    m_externalClk.togglePaused();
 }
 
 double GlobalClock::audioPts() {

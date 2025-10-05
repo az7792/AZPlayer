@@ -260,9 +260,9 @@ Window {
                 anchors.left: parent.left
                 iconWidth: 16
                 iconHeight: 16
-                iconSource: "qrc:/icon/play.png"
-                tooltipText: "播放"
-                onLeftClicked: ;
+                iconSource: MediaCtrl.paused ? "qrc:/icon/play.png" : "qrc:/icon/pause.png"
+                tooltipText: MediaCtrl.paused ? "播放" : "暂停"
+                onLeftClicked: MediaCtrl.togglePaused();
                 onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
                 onHideTip: tooltip.hide()
             }

@@ -1,4 +1,5 @@
 #include "mediacontroller.h"
+#include "clock/globalclock.h"
 #include "renderer/videorenderer.h"
 #include <QFileInfo>
 #include <QTimer>
@@ -79,6 +80,8 @@ bool MediaController::open(const QUrl &URL) {
         return false;
     }
 
+    GlobalClock::instance().reset();
+
     m_demux->start();
     m_decodeAudio->start();
     m_decodeVideo->start();
@@ -86,6 +89,8 @@ bool MediaController::open(const QUrl &URL) {
     m_videoPlayer->start();
 
     m_opened = true;
+    setPaused(false);
+    qDebug() << "打开成功";
     return true;
 }
 
@@ -104,5 +109,28 @@ bool MediaController::close() {
     clearFrmQ(m_frmAudioBuf);
     clearFrmQ(m_frmVideoBuf);
     m_opened = false;
+    setPaused(true);
+    qDebug() << "关闭";
     return ok;
+}
+
+void MediaController::togglePaused() {
+    if (!m_opened) {
+        return;
+    }
+    m_videoPlayer->togglePaused();
+    m_audioPlayer->togglePaused();
+    GlobalClock::instance().togglePaused();
+    setPaused(!m_paused);
+}
+
+bool MediaController::paused() const {
+    return m_paused;
+}
+
+void MediaController::setPaused(bool newPaused) {
+    if (m_paused == newPaused)
+        return;
+    m_paused = newPaused;
+    emit pausedChanged();
 }

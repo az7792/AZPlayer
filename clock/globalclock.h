@@ -11,6 +11,8 @@ enum class ClockType {
     EXTERNAL,
 };
 
+class GlobalClock;
+
 class Clock {
 public:
     Clock(ClockType type = ClockType::NONE);
@@ -35,18 +37,23 @@ public:
     // 同步时间到其他时钟
     void syncToClock(Clock &clk);
 
+    void togglePaused();
+
 private:
     double m_updatePts;    // 更新时钟时的pts(秒)
     double m_updateTime;   // 更新时钟时的现实时间/系统时间(秒)
     bool m_paused = false; // 是否暂停
     double m_speed = 1.0;  // 现实流逝时间*m_speed = 当前时钟流逝的时间,从时钟更新起点 到 当前时间点都是以这个速度运行的
     ClockType m_type;
+    friend GlobalClock;
 };
 
 class GlobalClock {
 public:
     GlobalClock(const GlobalClock &) = delete;
     GlobalClock &operator=(const GlobalClock &) = delete;
+
+    void reset();
 
     static GlobalClock &instance();
     double getMainPts();
@@ -55,6 +62,8 @@ public:
     Clock &audioClk();
     Clock &videoClk();
     Clock &externalClk();
+
+    void togglePaused();
 
     double audioPts();
     double videoPts();

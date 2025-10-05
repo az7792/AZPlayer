@@ -32,10 +32,10 @@ public:
     // 退出解复用线程
     void stop();
 
+    void togglePaused();
+
 public:
     sharedFrmQueue m_frmBuf;
-public slots:
-    void playerLoop();
 
 signals:
     void renderDataReady(RenderData *data);
@@ -48,13 +48,16 @@ private:
     double renderTime;               // 实际渲染指令被发出的时间(相对现实时间，秒)
 
     std::atomic<bool> m_stop{true};
+    std::atomic<bool> m_paused{false};
     std::thread m_thread;
     bool m_initialized = false; // 是否已经初始化
     /**
      * 写入一帧数据
      * @warning 方法会阻塞线程
      */
-    bool write(AVFrmItem *item);
+    bool write(const AVFrmItem &item);
+
+    void playerLoop();
 };
 
 #endif // VIDEOPLAYER_H

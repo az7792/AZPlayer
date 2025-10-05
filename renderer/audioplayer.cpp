@@ -210,6 +210,7 @@ void AudioPlayer::start() {
         return; // 已经在运行
     }
     m_stop.store(false, std::memory_order_relaxed);
+    m_paused.store(false, std::memory_order_relaxed);
     m_thread = QThread::create([this] {
         playerLoop();
     });
@@ -225,6 +226,14 @@ void AudioPlayer::stop() {
     m_thread->wait();
     delete m_thread;
     m_thread = nullptr;
+}
+
+void AudioPlayer::togglePaused() {
+    if (m_stop.load(std::memory_order_relaxed)) {
+        return;
+    }
+    bool paused = m_paused.load(std::memory_order_relaxed);
+    m_paused.store(!paused, std::memory_order_release);
 }
 
 qint64 AudioPlayer::write(AVFrmItem *item) {
@@ -308,36 +317,6 @@ qint64 AudioPlayer::write(AVFrmItem *item) {
     return writeCnt;
 }
 
-bool AudioPlayer::play() {
-    if (!m_audioSink)
-        return false;
-    if (m_audioSink->state() == QAudio::ActiveState || m_audioSink->state() == QAudio::IdleState) {
-        return true;
-    }
-    if (m_audioSink->state() == QAudio::StoppedState) {
-        return false;
-    }
-    if (m_audioSink->state() == QAudio::SuspendedState) {
-        m_audioSink->resume();
-    }
-    return true;
-}
-
-bool AudioPlayer::pause() {
-    if (!m_audioSink)
-        return false;
-    if (m_audioSink->state() == QAudio::StoppedState) {
-        return false;
-    }
-    if (m_audioSink->state() == QAudio::SuspendedState) {
-        return true;
-    }
-    if (m_audioSink->state() == QAudio::ActiveState || m_audioSink->state() == QAudio::IdleState) {
-        m_audioSink->suspend();
-    }
-    return true;
-}
-
 // qint64 AudioPlayer::audioClock() {
 //     if (!m_audioSink)
 //         return 0;
@@ -359,25 +338,33 @@ void AudioPlayer::playerLoop() {
     DeviceStatus::instance().setAudioInitialized(true);
 
     // 确保音视频设备都完成了基本初始化
-    while (!DeviceStatus::instance().initialized()) {
+    while (!DeviceStatus::instance().initialized() && !m_stop.load(std::memory_order_relaxed)) {
         QThread::msleep(5);
     }
 
     AVFrmItem frmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
-        // 读frm
-        while (!m_frmBuf->pop(frmItem)) {
-            while (m_stop.load(std::memory_order_relaxed)) {
-                goto end;
+
+        if (m_paused.load(std::memory_order_relaxed)) {
+            if (m_audioSink->state() == QAudio::ActiveState || m_audioSink->state() == QAudio::IdleState) {
+                m_audioSink->suspend();
             }
             QThread::msleep(5);
+            continue;
+        } else if (m_audioSink->state() == QAudio::SuspendedState) {
+            m_audioSink->resume();
+        }
+
+        // 读frm
+        if (!m_frmBuf->pop(frmItem)) {
+            QThread::msleep(5);
+            continue;
         }
         // 写如入设备
         write(&frmItem);
         av_frame_free(&frmItem.frm);
     }
 
-end:
     if (m_audioSink) { // 不能在其他线程销毁
         m_audioSink->stop();
         delete m_audioSink;

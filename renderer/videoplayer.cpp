@@ -4,14 +4,11 @@
 #include <QDebug>
 
 namespace {
-    double getDuration(AVFrame *lastFrm, double lastPts, double nowPts) {
-        if (!lastFrm) {
-            return 0.0;
-        }
+    double getDuration(const AVFrmItem &last, const AVFrmItem &now) {
         double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
-        double duration = nowPts - lastPts;
+        double duration = now.pts - last.pts;
         if (std::isnan(duration) || duration <= 0 || duration > maxFrameDuration)
-            duration = lastFrm->duration;
+            duration = std::isnan(last.duration) ? 0.0 : last.duration;
         return duration;
     }
 }
@@ -29,6 +26,8 @@ bool VideoPlayer::init(sharedFrmQueue frmBuf) {
     }
 
     m_frmBuf = frmBuf;
+    renderData1.reset();
+    renderData2.reset();
     renderTime = std::numeric_limits<double>::quiet_NaN();
     renderData = &renderData1;
     return true;
@@ -38,6 +37,8 @@ bool VideoPlayer::uninit() {
     stop();
 
     m_frmBuf.reset();
+    renderData1.reset();
+    renderData2.reset();
     emit renderDataReady(nullptr);
     return true;
 }
@@ -47,6 +48,7 @@ void VideoPlayer::start() {
         return; // 已经在运行了
     }
     m_stop.store(false, std::memory_order_relaxed);
+    m_paused.store(false, std::memory_order_relaxed);
     m_thread = std::thread([this]() {
         playerLoop();
     });
@@ -60,25 +62,40 @@ void VideoPlayer::stop() {
     m_thread.join();
 }
 
+void VideoPlayer::togglePaused() {
+    if (m_stop.load(std::memory_order_relaxed)) {
+        return;
+    }
+    bool paused = m_paused.load(std::memory_order_relaxed);
+    if (paused) {
+        renderTime = getRelativeSeconds();
+    }
+    m_paused.store(!paused, std::memory_order_release);
+}
+
 void VideoPlayer::playerLoop() {
     // 确保音视频设备都完成了基本初始化
-    while (!DeviceStatus::instance().initialized()) {
+    while (!DeviceStatus::instance().initialized() && !m_stop.load(std::memory_order_relaxed)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
-    m_stop.store(false, std::memory_order_relaxed);
     AVFrmItem frmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
         double st = getRelativeSeconds();
-        // 读frm
-        while (!m_frmBuf->pop(frmItem)) {
-            while (m_stop.load(std::memory_order_relaxed)) {
-                goto end;
-            }
+
+        if (m_paused.load(std::memory_order_relaxed)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            continue;
         }
+
+        // 读frm
+        if (!m_frmBuf->pop(frmItem)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            continue;
+        }
+
         // 写如入设备
-        write(&frmItem);
+        write(frmItem);
 
         static int ct = 0;
         if ((int)st != ct) {
@@ -86,12 +103,11 @@ void VideoPlayer::playerLoop() {
             ct = st;
         }
     }
-end:
     return;
 }
 
-bool VideoPlayer::write(AVFrmItem *item) {
-    if (!item || !item->frm) {
+bool VideoPlayer::write(const AVFrmItem &item) {
+    if (!item.frm) {
         return false;
     }
 
@@ -106,9 +122,9 @@ bool VideoPlayer::write(AVFrmItem *item) {
     tmpPtr->mutex.unlock();
 
     // 上一帧持续时间
-    double delay = getDuration(renderData->frm, renderData->pts, item->pts);
+    double delay = getDuration(renderData->frmItem, item);
 
-    static int lessCt = 0, moreCt = 0;
+    static int lessCt = 0, moreCt = 0, loseCt = 0;
     // 同步主时钟
     double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
     double diff = GlobalClock::instance().videoPts() - GlobalClock::instance().getMainPts();
@@ -143,8 +159,8 @@ bool VideoPlayer::write(AVFrmItem *item) {
     static int ct = 0;
     if ((int)nowTime != ct) {
         ct = (int)nowTime;
-        qDebug() << "sleep:" << (renderTime - nowTime) * 1000;
-        qDebug() << "lessCt:" << lessCt << "moreCt:" << moreCt;
+        qDebug() << "sleep:" << dt * 1000 << "ms";
+        qDebug() << "lessCt:" << lessCt << "moreCt:" << moreCt << "loseCt:" << loseCt;
         qDebug() << "AVdiff1" << GlobalClock::instance().videoPts() - GlobalClock::instance().getMainPts();
     }
 
@@ -152,13 +168,15 @@ bool VideoPlayer::write(AVFrmItem *item) {
     bool peekOk = m_frmBuf->peekFirst(tmpItem);
     renderData = tmpPtr;
     nowTime = getRelativeSeconds();
-    if (!peekOk || nowTime <= renderTime + getDuration(item->frm, item->pts, tmpItem.pts)) {
+    if (!peekOk || nowTime <= renderTime + getDuration(item, tmpItem)) {
         emit renderDataReady(renderData);
+    } else {
+        loseCt++;
     }
 
     // 更新视频时钟
     // qDebug() << "v:" << pts << GlobalClock::instance().videoPts();
-    GlobalClock::instance().setVideoClk(item->pts);
+    GlobalClock::instance().setVideoClk(item.pts);
     GlobalClock::instance().syncExternalClk(GlobalClock::instance().videoClk());
     return true;
 }

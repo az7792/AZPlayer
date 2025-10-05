@@ -68,7 +68,7 @@ VideoRenderer::~VideoRenderer() {
 }
 
 void VideoRenderer::init(RenderData *renderData) {
-    AVFrame *frm = renderData->frm;
+    AVFrame *frm = renderData->frmItem.frm;
     if (m_needInitTex && frm) {
         // 初始化像素格式与上传方式
         m_width = frm->width, m_height = frm->height;
@@ -123,7 +123,7 @@ QOpenGLFramebufferObject *VideoRenderer::createFramebufferObject(const QSize &si
 }
 
 void VideoRenderer::render() {
-    if (!m_renderData) {
+    if (!m_renderData || !m_renderData->frmItem.frm) {
         glClearColor(0.0627f, 0.0627f, 0.0627f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         return;
@@ -132,7 +132,8 @@ void VideoRenderer::render() {
     m_renderData->mutex.lock();
 
     // // 更新纹理
-    if (m_renderData->frm->width != m_width || m_renderData->frm->height != m_height || m_renderData->frm->format != m_AVPixelFormat) {
+    AVFrame *frm = m_renderData->frmItem.frm;
+    if (frm->width != m_width || frm->height != m_height || frm->format != m_AVPixelFormat) {
         m_needInitTex = true;
         init(m_renderData);
     }

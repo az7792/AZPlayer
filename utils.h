@@ -57,6 +57,7 @@ struct AVFrmItem {
     AVFrame *frm = nullptr;
     int seekCnt = 0;
     double pts = std::numeric_limits<double>::quiet_NaN();
+    double duration = std::numeric_limits<double>::quiet_NaN();
 };
 
 /**
