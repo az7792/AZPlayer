@@ -9,6 +9,9 @@ DecodeBase::~DecodeBase() {
 }
 
 bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
+    if (stream == nullptr) {
+        return false;
+    }
     if (m_initialized) {
         uninit();
     }
@@ -57,6 +60,9 @@ bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue fr
 }
 
 bool DecodeBase::uninit() {
+    if (!m_initialized) {
+        return true;
+    }
     stop();
     if (m_codecCtx) {
         avcodec_free_context(&m_codecCtx);
@@ -68,7 +74,7 @@ bool DecodeBase::uninit() {
 }
 
 void DecodeBase::start() {
-    if (m_thread.joinable()) {
+    if (!m_initialized || m_thread.joinable()) {
         return; // 已经在运行了
     }
     m_stop.store(false, std::memory_order_relaxed);

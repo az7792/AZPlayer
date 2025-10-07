@@ -349,11 +349,11 @@ Window {
 
     FileDialog {
         id: fileDialog
-        title: "选择一个视频文件"
+        title: "选择一个媒体文件"
         acceptLabel:"打开"
         rejectLabel:"取消"
         fileMode: FileDialog.OpenFile
-        nameFilters: ["视频文件 (*.mp4 *.mkv *.avi)", "所有文件 (*)"]
+        nameFilters: ["媒体文件 (*.mp4 *.mkv *.avi *.mp3 *.aac *.mka)", "所有文件 (*)"]
         onAccepted: {
             console.log("选中的文件:", selectedFile)
             var ok = MediaCtrl.open(selectedFile)

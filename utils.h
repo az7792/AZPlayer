@@ -17,22 +17,20 @@ extern "C" {
 class DeviceStatus {
 public:
     bool initialized() {
-        return m_audioInitialized && m_videoInitialized;
+        return (!m_haveAudio || m_audioInitialized) && (!m_haveVideo || m_videoInitialized);
     }
 
-    bool audioInitialized() const {
-        return m_audioInitialized;
-    }
-    void setAudioInitialized(bool newAudioInitialized) {
-        m_audioInitialized = newAudioInitialized;
-    }
+    bool audioInitialized() const { return m_audioInitialized; }
+    void setAudioInitialized(bool newAudioInitialized) { m_audioInitialized = newAudioInitialized; }
 
-    bool videoInitialized() const {
-        return m_videoInitialized;
-    }
-    void setVideoInitialized(bool newVideoInitialized) {
-        m_videoInitialized = newVideoInitialized;
-    }
+    bool videoInitialized() const { return m_videoInitialized; }
+    void setVideoInitialized(bool newVideoInitialized) { m_videoInitialized = newVideoInitialized; }
+
+    bool haveVideo() const { return m_haveVideo; }
+    void setHaveVideo(bool newHaveVideo) { m_haveVideo = newHaveVideo; }
+
+    bool haveAudio() const { return m_haveAudio; }
+    void setHaveAudio(bool newHaveAudio) { m_haveAudio = newHaveAudio; }
 
     static DeviceStatus &instance() {
         static DeviceStatus ds;
@@ -40,7 +38,8 @@ public:
     }
 
 private:
-    bool m_audioInitialized, m_videoInitialized;
+    bool m_audioInitialized{false}, m_videoInitialized{false};
+    bool m_haveVideo{false}, m_haveAudio{false};
 
     DeviceStatus(const DeviceStatus &) = delete;
     DeviceStatus &operator=(const DeviceStatus &) = delete;

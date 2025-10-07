@@ -71,9 +71,28 @@ bool MediaController::open(const QUrl &URL) {
         return false;
     }
 
-    ok &= m_decodeAudio->init(m_demux->getAudioStream(), m_pktAudioBuf, m_frmAudioBuf);
-    ok &= m_decodeVideo->init(m_demux->getVideoStream(), m_pktVideoBuf, m_frmVideoBuf);
-    ok &= m_audioPlayer->init(m_demux->getAudioStream()->codecpar, m_frmAudioBuf);
+    bool haveAudio = false, haveVideo = false;
+    if (m_demux->getAudioStream()) {
+        ok &= m_decodeAudio->init(m_demux->getAudioStream(), m_pktAudioBuf, m_frmAudioBuf);
+        ok &= m_audioPlayer->init(m_demux->getAudioStream()->codecpar, m_frmAudioBuf);
+        haveAudio = true;
+    }
+    if (m_demux->getVideoStream()) {
+        ok &= m_decodeVideo->init(m_demux->getVideoStream(), m_pktVideoBuf, m_frmVideoBuf);
+        haveVideo = true;
+    }
+
+    DeviceStatus::instance().setHaveAudio(haveAudio);
+    DeviceStatus::instance().setHaveVideo(haveVideo);
+
+    if (!haveAudio && !haveVideo) {
+        qDebug() << "文件不包含视频和音频";
+        close();
+        return false;
+    } else if (!haveAudio && haveVideo) {
+        GlobalClock::instance().setMainClockType(ClockType::VIDEO);
+    }
+
     ok &= m_videoPlayer->init(m_frmVideoBuf);
     if (!ok) {
         close();
@@ -108,6 +127,8 @@ bool MediaController::close() {
     clearPktQ(m_pktVideoBuf);
     clearFrmQ(m_frmAudioBuf);
     clearFrmQ(m_frmVideoBuf);
+    DeviceStatus::instance().setHaveAudio(false);
+    DeviceStatus::instance().setHaveVideo(false);
     m_opened = false;
     setPaused(true);
     qDebug() << "关闭";

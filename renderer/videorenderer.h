@@ -49,6 +49,7 @@ private:
     QSize componentSizeArr[4]{};
     uint8_t *dataArr[4]{};
     int linesizeArr[4]{};
+    int alignment = 1;
     /**
      * 是否需要重新初始化纹理
      * @warning 请确保请求初始化前旧纹理已清除

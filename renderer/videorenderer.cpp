@@ -93,6 +93,7 @@ void VideoRenderer::init(RenderData *renderData) {
             dataArr[i] = renderData->dataArr[i];
             linesizeArr[i] = renderData->linesizeArr[i];
             componentSizeArr[i] = renderData->componentSizeArr[i];
+            alignment = renderData->alignment;
         }
 
         if (tmpFmt == RenderData::RGB_PACKED || tmpFmt == RenderData::RGBA_PACKED ||
@@ -141,7 +142,7 @@ void VideoRenderer::render() {
     // 更新参数
     for (int i = 0; i < 4; ++i) {
         dataArr[i] = m_renderData->dataArr[i];
-        linesizeArr[i] = m_renderData->linesizeArr[i];
+        // linesizeArr[i] = m_renderData->linesizeArr[i];
     }
     // 上传纹理
     if (updateTex(m_renderData->pixFormat)) {
@@ -187,7 +188,7 @@ bool VideoRenderer::updateTex(RenderData::PixFormat fmt) {
     auto uploadTexture = [&](int pos, GLenum textureOffset) {
         glActiveTexture(GL_TEXTURE0 + textureOffset);
         glBindTexture(GL_TEXTURE_2D, m_texArr[textureOffset]);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);                 // 对齐为1字节 //TODO : 更具实际情况对齐
+        glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
         glPixelStorei(GL_UNPACK_ROW_LENGTH, linesizeArr[pos]); // 一行存储的像素个数 [用于显示的像素个数] + [用于填充的像素个数(这部分需要丢弃)]
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
                         componentSizeArr[pos].width(), componentSizeArr[pos].height(),

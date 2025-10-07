@@ -21,6 +21,23 @@ namespace {
 
         return desc->nb_components == 1 ? RenderData::Y : RenderData::YUV;
     }
+    /**
+     * @param data 数据首地址
+     * @param originLen 不考虑对齐时的数据长度
+     * @param nowLen 对齐后的数据长度
+     */
+    int getAlignment(const void *data, size_t originLen, size_t nowLen) {
+        // alignment 只能是 1,2,4,8 之一
+        int possibleAlignments[] = {8, 4, 2, 1};
+        unsigned long long dataVal = reinterpret_cast<unsigned long long>(data);
+        for (int align : possibleAlignments) {
+            if (dataVal % align != 0 || nowLen % align != 0)
+                continue;
+            if (originLen + originLen % align == nowLen)
+                return align;
+        }
+        return 1; // fallback
+    }
 }
 
 bool RenderData::isEachComponentInSeparatePlane(const AVPixFmtDescriptor *desc) {
@@ -128,8 +145,13 @@ void RenderData::updateFormat(const AVFrmItem &newItem) {
         GLParaArr[0] = GLParaMap[avFmt];
         componentSizeArr[0] = {frm->width, frm->height};
         dataArr[0] = frm->data[0]; // or frm->data[desc->comp[0|1|2|3].plane]?
+        int bytes_per_pixel = (av_get_padded_bits_per_pixel(desc) / 8);
+        linesizeArr[0] = frm->linesize[0] / bytes_per_pixel;
+        alignment = getAlignment(dataArr[0], linesizeArr[0] * bytes_per_pixel, frm->linesize[0]);
         return;
     }
+
+    alignment = 1; // HACK: 剩下的情况用1也许，会损失一些性能，暂时先这样了
 
     int maxDepth = 0;
     for (int i = 0; i < desc->nb_components; ++i) {

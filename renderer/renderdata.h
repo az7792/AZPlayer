@@ -82,6 +82,7 @@ struct RenderData {
     QSize componentSizeArr[4]{};
     uint8_t *dataArr[4]{};
     int linesizeArr[4]{}; // 每行实际存储的像素数 = [有效 + 填充]
+    int alignment = 1;    // 内存中每个像素行起始处的对齐要求(1,2,4,8)
 
     // 每个分量是否都单独在一个平面上
     bool isEachComponentInSeparatePlane(const AVPixFmtDescriptor *desc);

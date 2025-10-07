@@ -73,6 +73,7 @@ void VideoPlayer::togglePaused() {
     m_paused.store(!paused, std::memory_order_release);
 }
 
+double d0, d1, d2, d3, d4, d5;
 void VideoPlayer::playerLoop() {
     // 确保音视频设备都完成了基本初始化
     while (!DeviceStatus::instance().initialized() && !m_stop.load(std::memory_order_relaxed)) {
@@ -81,7 +82,7 @@ void VideoPlayer::playerLoop() {
 
     AVFrmItem frmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
-        double st = getRelativeSeconds();
+        d0 = getRelativeSeconds();
 
         if (m_paused.load(std::memory_order_relaxed)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -94,14 +95,10 @@ void VideoPlayer::playerLoop() {
             continue;
         }
 
+        d1 = getRelativeSeconds();
+
         // 写如入设备
         write(frmItem);
-
-        static int ct = 0;
-        if ((int)st != ct) {
-            qDebug() << "视频调用间隔" << getRelativeSeconds() - st;
-            ct = st;
-        }
     }
     return;
 }
@@ -120,6 +117,8 @@ bool VideoPlayer::write(const AVFrmItem &item) {
     }
     tmpPtr->updateFormat(item);
     tmpPtr->mutex.unlock();
+
+    d2 = getRelativeSeconds();
 
     // 上一帧持续时间
     double delay = getDuration(renderData->frmItem, item);
@@ -152,17 +151,14 @@ bool VideoPlayer::write(const AVFrmItem &item) {
     //     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     //     dt -= 0.001;
     // }
+
+    d3 = getRelativeSeconds();
+
     if (dt > 0) { // TODO: 小步sleep,避免长时间阻塞，或者其他方法处理sleep
         std::this_thread::sleep_for(std::chrono::duration<double>(dt));
     }
 
-    static int ct = 0;
-    if ((int)nowTime != ct) {
-        ct = (int)nowTime;
-        qDebug() << "sleep:" << dt * 1000 << "ms";
-        qDebug() << "lessCt:" << lessCt << "moreCt:" << moreCt << "loseCt:" << loseCt;
-        qDebug() << "AVdiff1" << GlobalClock::instance().videoPts() - GlobalClock::instance().getMainPts();
-    }
+    d4 = getRelativeSeconds();
 
     AVFrmItem tmpItem;
     bool peekOk = m_frmBuf->peekFirst(tmpItem);
@@ -178,5 +174,18 @@ bool VideoPlayer::write(const AVFrmItem &item) {
     // qDebug() << "v:" << pts << GlobalClock::instance().videoPts();
     GlobalClock::instance().setVideoClk(item.pts);
     GlobalClock::instance().syncExternalClk(GlobalClock::instance().videoClk());
+
+    d5 = getRelativeSeconds();
+
+    static int ct = 0;
+    if ((int)nowTime != ct) {
+        ct = (int)nowTime;
+        qDebug() << "sleep:" << dt
+                 << "delay:" << delay;
+        qDebug() << (d1 - d0) * 1e6 << (d2 - d1) * 1e6 << (d3 - d2) * 1e6 << (d4 - d3) * 1e6 << (d5 - d4) * 1e6;
+        qDebug() << "视频调用间隔" << d5 - d0;
+        qDebug() << "lessCt:" << lessCt << "moreCt:" << moreCt << "loseCt:" << loseCt;
+        qDebug() << "AVdiff1" << GlobalClock::instance().videoPts() - GlobalClock::instance().getMainPts();
+    }
     return true;
 }
