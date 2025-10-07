@@ -40,6 +40,9 @@ public:
 
     void togglePaused();
 
+    double volume() const;
+    void setVolume(double newVolume);
+
 private:
     sharedFrmQueue m_frmBuf;
     /**
@@ -67,6 +70,7 @@ private:
     QThread *m_thread = nullptr; // AudioSink需要使用QTimer，这而不能用std::thread
     std::atomic<bool> m_stop{true};
     std::atomic<bool> m_paused{false};
+    double m_volume = 1.0;
 
 private:
     void playerLoop();

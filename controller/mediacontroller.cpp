@@ -100,6 +100,7 @@ bool MediaController::open(const QUrl &URL) {
     }
 
     GlobalClock::instance().reset();
+    m_audioPlayer->setVolume(m_muted ? 0.0 : m_volume); // start之前设置好
 
     m_demux->start();
     m_decodeAudio->start();
@@ -143,6 +144,40 @@ void MediaController::togglePaused() {
     m_audioPlayer->togglePaused();
     GlobalClock::instance().togglePaused();
     setPaused(!m_paused);
+}
+
+void MediaController::toggleMuted() {
+    // 不需要用setVolume(x);
+    if (m_muted) {
+        m_audioPlayer->setVolume(m_volume);
+    } else {
+        m_audioPlayer->setVolume(0.0);
+    }
+    setMuted(!m_muted);
+}
+
+bool MediaController::muted() const {
+    return m_muted;
+}
+
+void MediaController::setMuted(bool newMuted) {
+    if (m_muted == newMuted)
+        return;
+    m_muted = newMuted;
+    emit mutedChanged();
+}
+
+double MediaController::volume() const {
+    return m_volume;
+}
+
+void MediaController::setVolume(double newVolume) {
+    if (qFuzzyCompare(m_volume, newVolume))
+        return;
+    m_audioPlayer->setVolume(newVolume);
+    m_volume = newVolume;
+    setMuted(false);
+    emit volumeChanged();
 }
 
 bool MediaController::paused() const {

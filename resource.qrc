@@ -16,11 +16,14 @@
         <file alias="minimize.png">resource/icon/minimize.png</file>
         <file alias="maximize.png">resource/icon/maximize.png</file>
         <file alias="restore.png">resource/icon/restore.png</file>
+        <file alias="volume_off.png">resource/icon/volume_off.png</file>
+        <file alias="volume_on.png">resource/icon/volume_on.png</file>
     </qresource>
     <qresource prefix="/">
         <file>qml/AZButton.qml</file>
         <file>qml/Main.qml</file>
         <file>qml/AZTooltip.qml</file>
         <file>qml/AZWindowControls.qml</file>
+        <file>qml/AZSlider.qml</file>
     </qresource>
 </RCC>

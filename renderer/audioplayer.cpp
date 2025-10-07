@@ -236,6 +236,20 @@ void AudioPlayer::togglePaused() {
     m_paused.store(!paused, std::memory_order_release);
 }
 
+double AudioPlayer::volume() const {
+    return m_volume;
+}
+
+void AudioPlayer::setVolume(double newVolume) {
+    if (m_audioSink) {
+        qreal linearVolume = QAudio::convertVolume(newVolume,
+                                                   QAudio::LogarithmicVolumeScale,
+                                                   QAudio::LinearVolumeScale);
+        m_audioSink->setVolume(linearVolume);
+    }
+    m_volume = newVolume;
+}
+
 qint64 AudioPlayer::write(AVFrmItem *item) {
     if (!item || !item->frm || !m_initialized || !m_audioIO)
         return -1;
@@ -335,6 +349,7 @@ void AudioPlayer::playerLoop() {
     // 创建音频输出
     m_audioSink = new QAudioSink(*m_audioDevice, m_format);
     m_audioIO = m_audioSink->start(); ///@note m_audioSink->start()启动非常慢
+    m_audioSink->setVolume(m_volume);
     DeviceStatus::instance().setAudioInitialized(true);
 
     // 确保音视频设备都完成了基本初始化

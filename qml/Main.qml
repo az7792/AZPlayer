@@ -242,6 +242,49 @@ Window {
             anchors.right: parent.right
             anchors.top: parent.top
             color: "#1d1d1d"
+
+            AZSlider{
+                id:vidoeSlider
+                height: parent.height
+                anchors.left: parent.left
+                anchors.right: volumeBtn.left
+                from: 0.0
+                value: 0.5
+                to: 1.0
+                stepSize: 0.01
+                snapMode: Slider.SnapOnRelease
+            }
+
+            AZButton{
+                id:volumeBtn
+                height: parent.height
+                width: height
+                anchors.right: volumSlider.left
+                iconWidth: 16
+                iconHeight: 16
+                iconSource: MediaCtrl.muted ? "qrc:/icon/volume_off.png" : "qrc:/icon/volume_on.png"
+                tooltipText: "静音 开/关"
+                onLeftClicked: {
+                    MediaCtrl.toggleMuted();
+                }
+                onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
+                onHideTip: tooltip.hide()
+            }
+
+            AZSlider{
+                id:volumSlider
+                height: parent.height
+                width: 100
+                anchors.right: parent.right
+                from: 0.0
+                value: MediaCtrl.volume
+                to: 1.0
+                stepSize: 0.01
+                snapMode: Slider.SnapOnRelease
+                onMoved:{
+                    MediaCtrl.setVolume(value);
+                }
+            }
         }
 
         Item{

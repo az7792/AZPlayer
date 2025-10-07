@@ -18,6 +18,11 @@ public:
     bool paused() const;
     void setPaused(bool newPaused);
 
+    double volume() const;
+
+    bool muted() const;
+    void setMuted(bool newMuted);
+
 public slots:
     // 设置用于显示画面的QML元素
     bool setVideoWindow(QObject *videoWindow);
@@ -26,9 +31,13 @@ public slots:
     bool close();
 
     void togglePaused();
+    void toggleMuted();
+    void setVolume(double newVolume);
 
 signals:
     void pausedChanged();
+    void volumeChanged();
+    void mutedChanged();
 
 private:
     QUrl m_URL{};
@@ -50,7 +59,11 @@ private:
 
     bool m_opened = false;
     bool m_paused = true;
+    bool m_muted = false;
+    double m_volume = 1.0; // 表现音量，非静音状态下才等于实际音量
     Q_PROPERTY(bool paused READ paused WRITE setPaused NOTIFY pausedChanged FINAL)
+    Q_PROPERTY(double volume READ volume WRITE setVolume NOTIFY volumeChanged FINAL)
+    Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged FINAL)
 };
 
 #endif // MEDIACONTROLLER_H
