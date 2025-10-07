@@ -98,6 +98,13 @@ void Demux::stop() {
     m_thread.join();
 }
 
+int Demux::getDuration() {
+    if (m_formatCtx) {
+        return m_formatCtx->duration / AV_TIME_BASE;
+    }
+    return 0;
+}
+
 AVStream *Demux::getVideoStream() {
     if (m_usedVIdx == -1)
         return nullptr;

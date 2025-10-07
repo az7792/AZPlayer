@@ -8,6 +8,7 @@
 #include "renderer/videoplayer.h"
 #include "utils.h"
 #include <QObject>
+#include <QTimer>
 #include <QUrl>
 
 class MediaController : public QObject {
@@ -22,6 +23,12 @@ public:
 
     bool muted() const;
     void setMuted(bool newMuted);
+
+    int duration() const;
+    void setDuration(int newDuration);
+
+    int currentTime() const;
+    void setCurrentTime(int newCurrentTime);
 
 public slots:
     // 设置用于显示画面的QML元素
@@ -38,6 +45,10 @@ signals:
     void pausedChanged();
     void volumeChanged();
     void mutedChanged();
+
+    void durationChanged();
+
+    void currentTimeChanged();
 
 private:
     QUrl m_URL{};
@@ -58,12 +69,19 @@ private:
     VideoPlayer *m_videoPlayer = nullptr;
 
     bool m_opened = false;
+
     bool m_paused = true;
     bool m_muted = false;
     double m_volume = 1.0; // 表现音量，非静音状态下才等于实际音量
+    int m_duration = 0;
+    int m_currentTime = 0;
+    QTimer m_timer;
+    void updateCurrentTimeWork();
     Q_PROPERTY(bool paused READ paused WRITE setPaused NOTIFY pausedChanged FINAL)
     Q_PROPERTY(double volume READ volume WRITE setVolume NOTIFY volumeChanged FINAL)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged FINAL)
+    Q_PROPERTY(int duration READ duration WRITE setDuration NOTIFY durationChanged FINAL)
+    Q_PROPERTY(int currentTime READ currentTime WRITE setCurrentTime NOTIFY currentTimeChanged FINAL)
 };
 
 #endif // MEDIACONTROLLER_H

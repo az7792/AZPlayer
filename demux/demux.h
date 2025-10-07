@@ -33,6 +33,8 @@ public:
     // 退出解复用线程
     void stop();
 
+    int getDuration();
+
     AVStream *getVideoStream();
     AVStream *getAudioStream();
     AVStream *getSubtitleStream();

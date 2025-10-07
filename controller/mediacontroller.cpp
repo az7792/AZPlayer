@@ -2,7 +2,6 @@
 #include "clock/globalclock.h"
 #include "renderer/videorenderer.h"
 #include <QFileInfo>
-#include <QTimer>
 
 namespace {
     void clearPktQ(sharedPktQueue pktq) {
@@ -35,9 +34,13 @@ MediaController::MediaController(QObject *parent)
     m_audioPlayer = new AudioPlayer(parent);
     m_videoPlayer = new VideoPlayer(parent);
 
+    QObject::connect(&m_timer, &QTimer::timeout, this, [&]() {
+        updateCurrentTimeWork();
+    });
+
     // DEBUG:start
     static QTimer timer;
-    QObject::connect(&timer, &QTimer::timeout, [&]() {
+    QObject::connect(&timer, &QTimer::timeout, this, [&]() {
         qDebug() << "AudioPkt:" << m_pktAudioBuf->size() << "VideoPkt:" << m_pktVideoBuf->size();
         qDebug() << "AudioFrm:" << m_frmAudioBuf->size() << "VideoFrm:" << m_frmVideoBuf->size() << "\n";
     });
@@ -99,6 +102,7 @@ bool MediaController::open(const QUrl &URL) {
         return false;
     }
 
+    setDuration(m_demux->getDuration());
     GlobalClock::instance().reset();
     m_audioPlayer->setVolume(m_muted ? 0.0 : m_volume); // start之前设置好
 
@@ -107,6 +111,7 @@ bool MediaController::open(const QUrl &URL) {
     m_decodeVideo->start();
     m_audioPlayer->start();
     m_videoPlayer->start();
+    m_timer.start(500);
 
     m_opened = true;
     setPaused(false);
@@ -119,6 +124,7 @@ bool MediaController::close() {
         return true;
     }
     bool ok = true;
+    m_timer.stop();
     ok &= m_demux->uninit();
     ok &= m_decodeAudio->uninit();
     ok &= m_decodeVideo->uninit();
@@ -132,6 +138,8 @@ bool MediaController::close() {
     DeviceStatus::instance().setHaveVideo(false);
     m_opened = false;
     setPaused(true);
+    setDuration(0);
+    setCurrentTime(0);
     qDebug() << "关闭";
     return ok;
 }
@@ -178,6 +186,36 @@ void MediaController::setVolume(double newVolume) {
     m_volume = newVolume;
     setMuted(false);
     emit volumeChanged();
+}
+
+void MediaController::updateCurrentTimeWork() {
+    double t = GlobalClock::instance().getMainPts();
+    if (std::isnan(t))
+        setCurrentTime(0);
+    else
+        setCurrentTime(t);
+}
+
+int MediaController::currentTime() const {
+    return m_currentTime;
+}
+
+void MediaController::setCurrentTime(int newCurrentTime) {
+    if (m_currentTime == newCurrentTime)
+        return;
+    m_currentTime = newCurrentTime;
+    emit currentTimeChanged();
+}
+
+int MediaController::duration() const {
+    return m_duration;
+}
+
+void MediaController::setDuration(int newDuration) {
+    if (m_duration == newDuration)
+        return;
+    m_duration = newDuration;
+    emit durationChanged();
 }
 
 bool MediaController::paused() const {

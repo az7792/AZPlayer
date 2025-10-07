@@ -378,6 +378,42 @@ Window {
                 anchors.leftMargin: 1
                 anchors.rightMargin: 1
                 color: "#1c1c1c"
+
+                function secondsToHMS(seconds) {
+                    var h = Math.floor(seconds / 3600);
+                    var m = Math.floor((seconds % 3600) / 60);
+                    var s = seconds % 60;
+
+                    // 保证两位数字显示
+                    var hh = h < 10 ? "0" + h : "" + h;
+                    var mm = m < 10 ? "0" + m : "" + m;
+                    var ss = s < 10 ? "0" + s : "" + s;
+
+                    return hh + ":" + mm + ":" + ss;
+                }
+
+                Text {
+                    id: mediaDurationText1
+                    color: "#ebebeb"
+                    text: parent.secondsToHMS(MediaCtrl.currentTime)
+                    font.pixelSize: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    wrapMode: Text.NoWrap
+                    elide: Text.ElideNone
+
+                }
+                Text {
+                    id: mediaDurationText2
+                    color: "#747474"
+                    text: "  /  " + parent.secondsToHMS(MediaCtrl.duration)
+                    font.pixelSize: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: mediaDurationText1.right
+                    wrapMode: Text.NoWrap
+                    elide: Text.ElideNone
+                }
             }
 
             AZButton{
