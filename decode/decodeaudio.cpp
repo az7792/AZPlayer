@@ -1,4 +1,5 @@
 #include "decodeaudio.h"
+#include "clock/globalclock.h"
 #include <QDebug>
 
 bool DecodeAudio::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
@@ -26,10 +27,23 @@ void DecodeAudio::decodingLoop() {
 
     AVPktItem pktItem;
     AVFrmItem frmItem;
-    bool sendEAGAIN = false;
     while (!m_stop.load(std::memory_order_relaxed)) {
+        // 进行seek
+        int seekCnt = GlobalClock::instance().seekCnt();
+        AVPktItem refPkt;
+        bool need_flush_buffers = false;
+        while (m_pktBuf->peekFirst(refPkt) && refPkt.seekCnt != seekCnt) {
+            need_flush_buffers = true;
+            m_pktBuf->pop(pktItem);
+            av_packet_free(&pktItem.pkt);
+        }
+        if (need_flush_buffers) {
+            avcodec_flush_buffers(m_codecCtx);
+            need_flush_buffers = false;
+        }
+
         // 从缓冲区取数据
-        while (sendEAGAIN == false && !m_pktBuf->pop(pktItem)) {
+        while (!pktItem.pkt && !m_pktBuf->pop(pktItem)) {
             if (m_stop.load(std::memory_order_relaxed)) {
                 goto end;
             }
@@ -40,15 +54,13 @@ void DecodeAudio::decodingLoop() {
 
         if (ret == 0) {
             av_packet_free(&pktItem.pkt);
-            sendEAGAIN = false;
         } else if (ret == AVERROR_EOF) {
             // TODO : 处理音频时钟
             qDebug() << "pkt EOP";
             av_packet_free(&pktItem.pkt);
-            sendEAGAIN = false;
             continue;
         } else if (ret == AVERROR(EAGAIN)) {
-            sendEAGAIN = true;
+            ;
         } else if (ret < 0) {
             qDebug() << "发送audiopkt错误:" << ret;
             goto end;

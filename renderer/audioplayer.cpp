@@ -156,6 +156,7 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
         *m_swrBuffer = static_cast<uint8_t *>(av_malloc(m_swrBufferSize));
     }
 
+    m_isSeeking = false;
     m_initialized = true;
 
     return true;
@@ -326,7 +327,7 @@ qint64 AudioPlayer::write(AVFrmItem *item) {
     double offsetPts = (m_audioSink->bufferSize() - m_audioSink->bytesFree()) / (double)m_format.bytesForDuration(1e6);
 
     GlobalClock::instance().setAudioClk(nextPts - offsetPts);
-    GlobalClock::instance().syncExternalClk(GlobalClock::instance().audioClk());
+    GlobalClock::instance().syncExternalClk(ClockType::AUDIO);
 
     return writeCnt;
 }
@@ -348,6 +349,7 @@ void AudioPlayer::playerLoop() {
 
     // 创建音频输出
     m_audioSink = new QAudioSink(*m_audioDevice, m_format);
+    m_audioSink->setBufferSize(m_format.bytesForFrames(1));
     m_audioIO = m_audioSink->start(); ///@note m_audioSink->start()启动非常慢
     m_audioSink->setVolume(m_volume);
     DeviceStatus::instance().setAudioInitialized(true);
@@ -359,8 +361,22 @@ void AudioPlayer::playerLoop() {
 
     AVFrmItem frmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
+        // 进行seek
+        AVFrmItem refFrm;
+        if (!m_frmBuf->peekFirst(refFrm)) { // 空的
+            QThread::msleep(5);
+            continue;
+        }
+        int seekCnt = GlobalClock::instance().seekCnt();
+        if (refFrm.seekCnt != seekCnt) {
+            Q_ASSERT(frmItem.frm == nullptr);
+            m_isSeeking = true;
+            m_frmBuf->pop(frmItem);
+            av_frame_free(&frmItem.frm);
+            continue;
+        }
 
-        if (m_paused.load(std::memory_order_relaxed)) {
+        if (!m_isSeeking && m_paused.load(std::memory_order_relaxed)) {
             if (m_audioSink->state() == QAudio::ActiveState || m_audioSink->state() == QAudio::IdleState) {
                 m_audioSink->suspend();
             }
@@ -371,13 +387,16 @@ void AudioPlayer::playerLoop() {
         }
 
         // 读frm
-        if (!m_frmBuf->pop(frmItem)) {
-            QThread::msleep(5);
-            continue;
-        }
+        m_frmBuf->pop(frmItem);
+
         // 写如入设备
         write(&frmItem);
         av_frame_free(&frmItem.frm);
+
+        if (m_isSeeking && GlobalClock::instance().mainClockType() == ClockType::AUDIO) {
+            emit seeked();
+        }
+        m_isSeeking = false;
     }
 
     if (m_audioSink) { // 不能在其他线程销毁

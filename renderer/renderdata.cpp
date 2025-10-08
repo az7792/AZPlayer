@@ -126,14 +126,15 @@ void RenderData::splitComponentToPlane(int c, const AVPixFmtDescriptor *desc) {
 }
 
 // TODO ： 只在类型不一样时重新初始化参数，否则只初始化必要参数
-void RenderData::updateFormat(const AVFrmItem &newItem) {
+void RenderData::updateFormat(AVFrmItem &newItem) {
     if (!newItem.frm)
         return;
     if (frmItem.frm != nullptr)
         av_frame_free(&frmItem.frm);
 
     frmItem = newItem;
-    AVFrame *frm = newItem.frm;
+    newItem.frm = nullptr;
+    AVFrame *frm = frmItem.frm;
 
     AVPixelFormat avFmt = (AVPixelFormat)frm->format;
     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(avFmt);

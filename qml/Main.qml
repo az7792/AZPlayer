@@ -234,6 +234,20 @@ Window {
         z:1
         color: "black"
 
+        Component.onCompleted:{
+            currentTimeTimer.start()
+        }
+
+        property int currentTime: 0
+        Timer {
+            id: currentTimeTimer
+            interval: 500
+            repeat: true
+            onTriggered: {
+                bottomBar.currentTime = MediaCtrl.getCurrentTime()
+            }
+        }
+
         Rectangle{
             id:progressBar
             height: 20
@@ -244,15 +258,41 @@ Window {
             color: "#1d1d1d"
 
             AZSlider{
-                id:vidoeSlider
+                id:videoSlider
+
+                property bool isSeeking: false
+                property real seekTs: 0.0
+
                 height: parent.height
                 anchors.left: parent.left
                 anchors.right: volumeBtn.left
                 from: 0.0
-                value: 0.5
-                to: 1.0
+                value: (pressed || isSeeking) ? value : bottomBar.currentTime
+                to: MediaCtrl.duration
                 stepSize: 0.01
                 snapMode: Slider.SnapOnRelease
+                Timer {
+                    id: seekDelay1//防止短时内频繁seek
+                    interval: 100
+                    repeat: false
+                    onTriggered: {
+                        MediaCtrl.seekBySec(videoSlider.seekTs,0.0)
+                    }
+                }
+                onValueChanged: {
+                    if(pressed){
+                        seekTs = value
+                        videoSlider.isSeeking = true
+                        seekDelay1.restart()
+                    }
+                }
+                Connections {
+                    target: MediaCtrl
+                    function onSeeked() {
+                        bottomBar.currentTime = MediaCtrl.getCurrentTime()//强制更新
+                        videoSlider.isSeeking = false
+                    }
+                }
             }
 
             AZButton{
@@ -336,7 +376,7 @@ Window {
                 iconHeight: 16
                 iconSource: "qrc:/icon/skip_previous.png"
                 tooltipText: "L:快退，R:上一个"
-                onLeftClicked: ;
+                onLeftClicked: MediaCtrl.fastRewind()
                 onRightClicked: ;
                 onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
                 onHideTip: tooltip.hide()
@@ -351,7 +391,7 @@ Window {
                 iconHeight: 16
                 iconSource: "qrc:/icon/skip_next.png"
                 tooltipText: "L:快进，R:下一个"
-                onLeftClicked: ;
+                onLeftClicked: MediaCtrl.fastForward()
                 onRightClicked: ;
                 onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
                 onHideTip: tooltip.hide()
@@ -395,7 +435,7 @@ Window {
                 Text {
                     id: mediaDurationText1
                     color: "#ebebeb"
-                    text: parent.secondsToHMS(MediaCtrl.currentTime)
+                    text: parent.secondsToHMS(bottomBar.currentTime)
                     font.pixelSize: 10
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left

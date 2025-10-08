@@ -59,10 +59,6 @@ public:
     double getMainPts();
     ClockType mainClockType();
 
-    Clock &audioClk();
-    Clock &videoClk();
-    Clock &externalClk();
-
     void togglePaused();
 
     double audioPts();
@@ -83,7 +79,13 @@ public:
     void setMainClockType(ClockType newMainClockType);
 
     // 将外部时钟同步到指定时钟
-    void syncExternalClk(Clock &clk);
+    void syncExternalClk(ClockType type);
+
+    int seekCnt() const;
+    void addSeekCnt();
+
+    double seekTs() const;
+    void setSeekTs(double newSeekTs);
 
 private:
     GlobalClock();
@@ -91,6 +93,8 @@ private:
     ClockType m_mainClockType = ClockType::AUDIO;
     Clock m_audioClk, m_videoClk, m_externalClk;
     double m_maxFrameDuration;
+    int m_seekCnt = 0;
+    double m_seekTs = 0.0;
 };
 
 #endif // GLOBALCLOCK_H

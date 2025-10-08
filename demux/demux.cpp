@@ -98,6 +98,15 @@ void Demux::stop() {
     m_thread.join();
 }
 
+void Demux::seekBySec(double ts, double rel) {
+    if (!m_initialized || m_stop.load(std::memory_order_relaxed)) {
+        return;
+    }
+    GlobalClock::instance().setSeekTs(ts);
+    m_seekRel = rel;
+    m_needSeek.store(true, std::memory_order_release);
+}
+
 int Demux::getDuration() {
     if (m_formatCtx) {
         return m_formatCtx->duration / AV_TIME_BASE;
@@ -133,6 +142,19 @@ void Demux::demuxLoop() {
     }
     AVPacket *pkt = nullptr;
     while (!m_stop.load(std::memory_order_relaxed)) {
+
+        if (m_needSeek.load(std::memory_order_acquire)) {
+            GlobalClock::instance().addSeekCnt();
+            double target = GlobalClock::instance().seekTs() * AV_TIME_BASE;
+            int64_t seekMin = m_seekRel > 0 ? target - m_seekRel * AV_TIME_BASE + 2 : INT64_MIN;
+            int64_t seekMax = m_seekRel < 0 ? target - m_seekRel * AV_TIME_BASE - 2 : INT64_MAX;
+            int ret = avformat_seek_file(m_formatCtx, -1, seekMin, target, seekMax, 0);
+            if (ret < 0) {
+                qDebug() << "seek出错";
+            }
+            m_needSeek.store(false, std::memory_order_release);
+        }
+
         pkt = av_packet_alloc();
         int ret = av_read_frame(m_formatCtx, pkt);
         if (pkt == nullptr || ret > 0) { // error
@@ -180,8 +202,8 @@ void Demux::pushPkt(sharedPktQueue q, AVPacket *pkt) {
         av_packet_free(&pkt);
         return;
     }
-    while (!q->push({pkt, seekCnt})) {
-        if (m_stop.load(std::memory_order_relaxed)) {
+    while (!q->push({pkt, GlobalClock::instance().seekCnt()})) {
+        if (m_needSeek.load(std::memory_order_acquire) || m_stop.load(std::memory_order_relaxed)) {
             av_packet_free(&pkt);
             return;
         }

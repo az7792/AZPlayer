@@ -39,6 +39,7 @@ public:
 
 signals:
     void renderDataReady(RenderData *data);
+    void seeked();
 
 private:
     // 双缓冲
@@ -49,13 +50,14 @@ private:
 
     std::atomic<bool> m_stop{true};
     std::atomic<bool> m_paused{false};
+    bool m_isSeeking{false};
     std::thread m_thread;
     bool m_initialized = false; // 是否已经初始化
     /**
      * 写入一帧数据
      * @warning 方法会阻塞线程
      */
-    bool write(const AVFrmItem &item);
+    bool write(AVFrmItem &item);
 
     void playerLoop();
 };

@@ -1,4 +1,5 @@
 #include "decodevideo.h"
+#include "clock/globalclock.h"
 #include <QDebug>
 
 bool DecodeVideo::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
@@ -18,10 +19,23 @@ void DecodeVideo::decodingLoop() {
 
     AVPktItem pktItem;
     AVFrmItem frmItem;
-    bool sendEAGAIN = false;
     while (!m_stop.load(std::memory_order_relaxed)) {
+        // 进行seek
+        int seekCnt = GlobalClock::instance().seekCnt();
+        AVPktItem refPkt;
+        bool need_flush_buffers = false;
+        while (m_pktBuf->peekFirst(refPkt) && refPkt.seekCnt != seekCnt) {
+            need_flush_buffers = true;
+            m_pktBuf->pop(pktItem);
+            av_packet_free(&pktItem.pkt);
+        }
+        if (need_flush_buffers) {
+            avcodec_flush_buffers(m_codecCtx);
+            need_flush_buffers = false;
+        }
+
         // 从缓冲区取数据
-        while (sendEAGAIN == false && !m_pktBuf->pop(pktItem)) {
+        while (!pktItem.pkt && !m_pktBuf->pop(pktItem)) {
             if (m_stop.load(std::memory_order_relaxed)) {
                 goto end;
             }
@@ -32,14 +46,12 @@ void DecodeVideo::decodingLoop() {
 
         if (ret == 0) {
             av_packet_free(&pktItem.pkt);
-            sendEAGAIN = false;
         } else if (ret == AVERROR_EOF) {
             qDebug() << "pkt EOP";
             av_packet_free(&pktItem.pkt);
-            sendEAGAIN = false;
             continue;
         } else if (ret == AVERROR(EAGAIN)) {
-            sendEAGAIN = true;
+            ;
         } else if (ret < 0) {
             qDebug() << "发送videopkt错误:" << ret;
             goto end;
@@ -59,7 +71,7 @@ void DecodeVideo::decodingLoop() {
             if (ret == 0) {
                 double timeBase = av_q2d(m_time_base);
                 frmItem.pts = (frmItem.frm->best_effort_timestamp == AV_NOPTS_VALUE) ? frmItem.frm->pts * timeBase : frmItem.frm->best_effort_timestamp * timeBase;
-                frmItem.duration *= timeBase;
+                frmItem.duration = frmItem.frm->duration * timeBase;
                 while (!m_frmBuf->push(frmItem)) {
                     if (m_stop.load(std::memory_order_relaxed)) {
                         goto end;

@@ -24,7 +24,7 @@ bool VideoPlayer::init(sharedFrmQueue frmBuf) {
     if (m_initialized) {
         uninit();
     }
-
+    m_isSeeking = false;
     m_frmBuf = frmBuf;
     renderData1.reset();
     renderData2.reset();
@@ -83,27 +83,43 @@ void VideoPlayer::playerLoop() {
     AVFrmItem frmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
         d0 = getRelativeSeconds();
+        // 进行seek
+        AVFrmItem refFrm;
+        if (!m_frmBuf->peekFirst(refFrm)) { // 空的
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            continue;
+        }
+        int seekCnt = GlobalClock::instance().seekCnt();
+        if (refFrm.seekCnt != seekCnt) {
+            Q_ASSERT(frmItem.frm == nullptr);
+            m_isSeeking = true;
+            m_frmBuf->pop(frmItem);
+            av_frame_free(&frmItem.frm);
+            continue;
+        }
 
-        if (m_paused.load(std::memory_order_relaxed)) {
+        if (!m_isSeeking && m_paused.load(std::memory_order_relaxed)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
             continue;
         }
 
         // 读frm
-        if (!m_frmBuf->pop(frmItem)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            continue;
-        }
+        m_frmBuf->pop(frmItem);
 
         d1 = getRelativeSeconds();
 
         // 写如入设备
         write(frmItem);
+
+        if (m_isSeeking && GlobalClock::instance().mainClockType() == ClockType::VIDEO) {
+            emit seeked();
+        }
+        m_isSeeking = false;
     }
     return;
 }
 
-bool VideoPlayer::write(const AVFrmItem &item) {
+bool VideoPlayer::write(AVFrmItem &item) {
     if (!item.frm) {
         return false;
     }
@@ -139,7 +155,7 @@ bool VideoPlayer::write(const AVFrmItem &item) {
         }
     }
 
-    if (std::isnan(renderTime)) {
+    if (std::isnan(renderTime) || m_isSeeking) {
         renderTime = getRelativeSeconds();
     } else {
         renderTime += delay;
@@ -147,14 +163,14 @@ bool VideoPlayer::write(const AVFrmItem &item) {
 
     double nowTime = getRelativeSeconds();
     double dt = renderTime - nowTime;
-    // if (dt > 0 && !m_stop.load(std::memory_order_relaxed)) {
-    //     std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    //     dt -= 0.001;
-    // }
 
     d3 = getRelativeSeconds();
 
-    if (dt > 0) { // TODO: 小步sleep,避免长时间阻塞，或者其他方法处理sleep
+    if (dt > 0) {
+        if (dt > 0.1) {
+            dt = 0.1;
+            renderTime = nowTime + dt;
+        }
         std::this_thread::sleep_for(std::chrono::duration<double>(dt));
     }
 
@@ -173,7 +189,7 @@ bool VideoPlayer::write(const AVFrmItem &item) {
     // 更新视频时钟
     // qDebug() << "v:" << pts << GlobalClock::instance().videoPts();
     GlobalClock::instance().setVideoClk(item.pts);
-    GlobalClock::instance().syncExternalClk(GlobalClock::instance().videoClk());
+    GlobalClock::instance().syncExternalClk(ClockType::VIDEO);
 
     d5 = getRelativeSeconds();
 

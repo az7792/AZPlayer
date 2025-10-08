@@ -97,7 +97,7 @@ struct RenderData {
     void splitComponentToPlane(int c, const AVPixFmtDescriptor *desc);
 
     // 根据frm重新更新格式
-    void updateFormat(const AVFrmItem &newItem);
+    void updateFormat(AVFrmItem &newItem);
     void reset();
 
     void updateGLParaArr(RenderData::PixFormat fmt);

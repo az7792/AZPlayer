@@ -34,9 +34,8 @@ MediaController::MediaController(QObject *parent)
     m_audioPlayer = new AudioPlayer(parent);
     m_videoPlayer = new VideoPlayer(parent);
 
-    QObject::connect(&m_timer, &QTimer::timeout, this, [&]() {
-        updateCurrentTimeWork();
-    });
+    QObject::connect(m_audioPlayer, &AudioPlayer::seeked, this, &MediaController::seeked);
+    QObject::connect(m_videoPlayer, &VideoPlayer::seeked, this, &MediaController::seeked);
 
     // DEBUG:start
     static QTimer timer;
@@ -88,6 +87,11 @@ bool MediaController::open(const QUrl &URL) {
     DeviceStatus::instance().setHaveAudio(haveAudio);
     DeviceStatus::instance().setHaveVideo(haveVideo);
 
+    setDuration(m_demux->getDuration()); // 总时长
+    GlobalClock::instance().reset();
+    GlobalClock::instance().setMainClockType(ClockType::AUDIO); // 默认
+    m_audioPlayer->setVolume(m_muted ? 0.0 : m_volume);         // start之前设置好
+
     if (!haveAudio && !haveVideo) {
         qDebug() << "文件不包含视频和音频";
         close();
@@ -102,16 +106,11 @@ bool MediaController::open(const QUrl &URL) {
         return false;
     }
 
-    setDuration(m_demux->getDuration());
-    GlobalClock::instance().reset();
-    m_audioPlayer->setVolume(m_muted ? 0.0 : m_volume); // start之前设置好
-
     m_demux->start();
     m_decodeAudio->start();
     m_decodeVideo->start();
     m_audioPlayer->start();
     m_videoPlayer->start();
-    m_timer.start(500);
 
     m_opened = true;
     setPaused(false);
@@ -124,7 +123,6 @@ bool MediaController::close() {
         return true;
     }
     bool ok = true;
-    m_timer.stop();
     ok &= m_demux->uninit();
     ok &= m_decodeAudio->uninit();
     ok &= m_decodeVideo->uninit();
@@ -136,10 +134,10 @@ bool MediaController::close() {
     clearFrmQ(m_frmVideoBuf);
     DeviceStatus::instance().setHaveAudio(false);
     DeviceStatus::instance().setHaveVideo(false);
+    GlobalClock::instance().reset();
     m_opened = false;
     setPaused(true);
     setDuration(0);
-    setCurrentTime(0);
     qDebug() << "关闭";
     return ok;
 }
@@ -188,23 +186,23 @@ void MediaController::setVolume(double newVolume) {
     emit volumeChanged();
 }
 
-void MediaController::updateCurrentTimeWork() {
-    double t = GlobalClock::instance().getMainPts();
-    if (std::isnan(t))
-        setCurrentTime(0);
-    else
-        setCurrentTime(t);
-}
-
-int MediaController::currentTime() const {
-    return m_currentTime;
-}
-
-void MediaController::setCurrentTime(int newCurrentTime) {
-    if (m_currentTime == newCurrentTime)
+void MediaController::seekBySec(double ts, double rel) {
+    if (!m_opened)
         return;
-    m_currentTime = newCurrentTime;
-    emit currentTimeChanged();
+    m_demux->seekBySec(ts, rel);
+}
+
+void MediaController::fastForward() {
+    seekBySec(std::min((double)m_duration, getCurrentTime() + 5.0), 5.0);
+}
+
+void MediaController::fastRewind() {
+    seekBySec(std::max(0.0, getCurrentTime() - 5.0), -5.0);
+}
+
+int MediaController::getCurrentTime() const {
+    double ptsSecond = GlobalClock::instance().getMainPts();
+    return std::isnan(ptsSecond) ? 0 : ptsSecond;
 }
 
 int MediaController::duration() const {

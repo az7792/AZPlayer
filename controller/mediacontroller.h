@@ -27,9 +27,7 @@ public:
     int duration() const;
     void setDuration(int newDuration);
 
-    int currentTime() const;
-    void setCurrentTime(int newCurrentTime);
-
+    Q_INVOKABLE int getCurrentTime() const;
 public slots:
     // 设置用于显示画面的QML元素
     bool setVideoWindow(QObject *videoWindow);
@@ -41,14 +39,17 @@ public slots:
     void toggleMuted();
     void setVolume(double newVolume);
 
+    void seekBySec(double ts, double rel); // seek到指定位置(秒)
+    void fastForward();                    // 快进
+    void fastRewind();                     // 快退
+
 signals:
     void pausedChanged();
     void volumeChanged();
     void mutedChanged();
 
     void durationChanged();
-
-    void currentTimeChanged();
+    void seeked(); // 通知前端seek完成，主要用于防止进度条鬼畜
 
 private:
     QUrl m_URL{};
@@ -74,14 +75,10 @@ private:
     bool m_muted = false;
     double m_volume = 1.0; // 表现音量，非静音状态下才等于实际音量
     int m_duration = 0;
-    int m_currentTime = 0;
-    QTimer m_timer;
-    void updateCurrentTimeWork();
     Q_PROPERTY(bool paused READ paused WRITE setPaused NOTIFY pausedChanged FINAL)
     Q_PROPERTY(double volume READ volume WRITE setVolume NOTIFY volumeChanged FINAL)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged FINAL)
     Q_PROPERTY(int duration READ duration WRITE setDuration NOTIFY durationChanged FINAL)
-    Q_PROPERTY(int currentTime READ currentTime WRITE setCurrentTime NOTIFY currentTimeChanged FINAL)
 };
 
 #endif // MEDIACONTROLLER_H

@@ -33,6 +33,9 @@ public:
     // 退出解复用线程
     void stop();
 
+    // seek
+    void seekBySec(double ts, double rel);
+
     int getDuration();
 
     AVStream *getVideoStream();
@@ -57,7 +60,8 @@ private:
     std::thread m_thread;
     bool m_initialized = false;
 
-    int seekCnt = 0;
+    std::atomic<bool> m_needSeek{false};
+    double m_seekRel = 0.0;
 
 private:
     void demuxLoop();
