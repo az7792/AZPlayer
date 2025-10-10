@@ -18,6 +18,7 @@ uniform sampler2D yTex;// Y | R | RGB | RGBA
 uniform sampler2D uTex;// U | G
 uniform sampler2D vTex;// V | B
 uniform sampler2D aTex;// A
+uniform sampler2D subTex;// 字幕RGBA
 
 
 out vec4 FragColor;
@@ -62,4 +63,7 @@ void main()
     else {
         FragColor = vec4(1.0, 0.0, 0.0, 1.0); // 未知格式
     }
+
+    vec4 subColor = texture(subTex, TexCoord);
+    FragColor = mix(FragColor, subColor, subColor.a);
 }

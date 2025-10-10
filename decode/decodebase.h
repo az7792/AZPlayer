@@ -48,6 +48,7 @@ protected:
 
 protected:
     virtual void decodingLoop(){};
+    bool getPkt(AVPktItem &pktItem);
 };
 
 #endif // DECODEBASE_H

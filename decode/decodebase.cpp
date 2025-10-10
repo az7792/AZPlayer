@@ -1,4 +1,5 @@
 #include "decodebase.h"
+#include "clock/globalclock.h"
 #include <QDebug>
 
 DecodeBase::DecodeBase(QObject *parent)
@@ -16,13 +17,7 @@ bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue fr
         uninit();
     }
 
-    m_codec = avcodec_find_decoder(stream->codecpar->codec_id);
-    if (!m_codec) {
-        qDebug() << "无合适的解码器";
-        return false;
-    }
-
-    m_codecCtx = avcodec_alloc_context3(m_codec);
+    m_codecCtx = avcodec_alloc_context3(nullptr);
     if (!m_codecCtx) {
         qDebug() << "解码器上下文分配失败";
         return false;
@@ -35,6 +30,15 @@ bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue fr
         avcodec_free_context(&m_codecCtx);
         return false;
     }
+
+    m_codec = avcodec_find_decoder(stream->codecpar->codec_id);
+    if (!m_codec) {
+        qDebug() << "无合适的解码器";
+        return false;
+    }
+
+    m_codecCtx->pkt_timebase = stream->time_base;
+    m_codecCtx->codec_id = m_codec->id;
 
     ret = avcodec_open2(m_codecCtx, m_codec, nullptr);
     if (ret != 0) {
@@ -93,4 +97,28 @@ void DecodeBase::stop() {
 
 bool DecodeBase::initialized() {
     return m_initialized;
+}
+
+bool DecodeBase::getPkt(AVPktItem &pktItem) {
+    if (pktItem.pkt && pktItem.pkt->data && pktItem.pkt->size != 0) {
+        return true;
+    }
+    // 进行seek
+    int seekCnt = GlobalClock::instance().seekCnt();
+    bool need_flush_buffers = false;
+    while (m_pktBuf->peekFirst(pktItem) && pktItem.seekCnt != seekCnt) {
+        need_flush_buffers = true;
+        m_pktBuf->pop(pktItem);
+        av_packet_free(&pktItem.pkt);
+    }
+    if (need_flush_buffers) {
+        avcodec_flush_buffers(m_codecCtx);
+    }
+
+    // 从缓冲区取数据
+    if (pktItem.pkt && pktItem.pkt->data && pktItem.pkt->size != 0) {
+        m_pktBuf->pop(pktItem);
+        return true;
+    }
+    return false;
 }

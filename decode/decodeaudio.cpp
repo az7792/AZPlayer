@@ -1,5 +1,4 @@
 #include "decodeaudio.h"
-#include "clock/globalclock.h"
 #include <QDebug>
 
 bool DecodeAudio::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
@@ -28,26 +27,9 @@ void DecodeAudio::decodingLoop() {
     AVPktItem pktItem;
     AVFrmItem frmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
-        // 进行seek
-        int seekCnt = GlobalClock::instance().seekCnt();
-        AVPktItem refPkt;
-        bool need_flush_buffers = false;
-        while (m_pktBuf->peekFirst(refPkt) && refPkt.seekCnt != seekCnt) {
-            need_flush_buffers = true;
-            m_pktBuf->pop(pktItem);
-            av_packet_free(&pktItem.pkt);
-        }
-        if (need_flush_buffers) {
-            avcodec_flush_buffers(m_codecCtx);
-            need_flush_buffers = false;
-        }
-
-        // 从缓冲区取数据
-        while (!pktItem.pkt && !m_pktBuf->pop(pktItem)) {
-            if (m_stop.load(std::memory_order_relaxed)) {
-                goto end;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        bool ok = getPkt(pktItem);
+        if (!ok) {
+            continue;
         }
 
         int ret = avcodec_send_packet(m_codecCtx, pktItem.pkt);

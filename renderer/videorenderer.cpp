@@ -1,6 +1,13 @@
 #include "videorenderer.h"
 #include "clock/globalclock.h"
 #include <QOpenGLFramebufferObjectFormat>
+namespace {
+    std::vector<uint8_t> texFill;
+    std::vector<int> lastSubTexX;
+    std::vector<int> lastSubTexY;
+    std::vector<int> lastSubTexW;
+    std::vector<int> lastSubTexH;
+}
 
 VideoRenderer::VideoRenderer() {
     initializeOpenGLFunctions();
@@ -25,6 +32,10 @@ VideoRenderer::VideoRenderer() {
         0, 1, 2, // 第一个三角形
         0, 2, 3  // 第二个三角形
     };
+
+    // 启用混合
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // VAO
     glGenVertexArrays(1, &m_vao);
@@ -61,6 +72,9 @@ VideoRenderer::~VideoRenderer() {
     glDeleteVertexArrays(1, &m_vao);
     glDeleteBuffers(1, &m_vbo);
     glDeleteBuffers(1, &m_ebo);
+    if (m_subTex != 0) {
+        glDeleteTextures(1, &m_subTex);
+    }
     for (auto &v : m_texArr) {
         if (v != 0)
             glDeleteTextures(1, &v);
@@ -85,16 +99,24 @@ void VideoRenderer::init(RenderData *renderData) {
         m_program.setUniformValue(loc, 2);
         loc = m_program.uniformLocation("aTex");
         m_program.setUniformValue(loc, 3);
+        loc = m_program.uniformLocation("subTex");
+        m_program.setUniformValue(loc, 4);
 
         // 拷贝一些参数方便使用
         RenderData::PixFormat tmpFmt = renderData->pixFormat;
         for (int i = 0; i < 4; ++i) {
             GLParaArr[i] = renderData->GLParaArr[i];
-            dataArr[i] = renderData->dataArr[i];
+            // dataArr[i] = renderData->dataArr[i];
             linesizeArr[i] = renderData->linesizeArr[i];
             componentSizeArr[i] = renderData->componentSizeArr[i];
             alignment = renderData->alignment;
         }
+
+        // 字幕纹理
+        if ((int)texFill.size() < m_width * m_height * 4) {
+            texFill.assign(m_width * m_height * 4, 0);
+        }
+        initTex(m_subTex, {m_width, m_height}, {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE}, texFill.data());
 
         if (tmpFmt == RenderData::RGB_PACKED || tmpFmt == RenderData::RGBA_PACKED ||
             tmpFmt == RenderData::Y || tmpFmt == RenderData::YA) {
@@ -142,10 +164,10 @@ void VideoRenderer::render() {
     // 更新参数
     for (int i = 0; i < 4; ++i) {
         dataArr[i] = m_renderData->dataArr[i];
-        // linesizeArr[i] = m_renderData->linesizeArr[i];
     }
     // 上传纹理
-    if (updateTex(m_renderData->pixFormat)) {
+    if (updateTex(m_renderData->pixFormat) && updateSubTex()) {
+        m_renderData->mutex.unlock();
         // 纯色背景
         glClearColor(0.0627f, 0.0627f, 0.0627f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -169,16 +191,18 @@ void VideoRenderer::render() {
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
         m_program.release();
+    } else {
+        m_renderData->mutex.unlock();
     }
 
     // 绘制结束
     m_renderData->renderedTime = getRelativeSeconds();
-    m_renderData->mutex.unlock();
 }
 
 void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
     VideoWindow *videoWindow = static_cast<VideoWindow *>(item);
     m_renderData = videoWindow->m_renderData;
+    m_subRenderData = videoWindow->m_subRenderData;
 }
 
 bool VideoRenderer::updateTex(RenderData::PixFormat fmt) {
@@ -215,7 +239,75 @@ bool VideoRenderer::updateTex(RenderData::PixFormat fmt) {
     return true;
 }
 
-void VideoRenderer::initTex(GLuint &tex, const QSize &size, const std::array<unsigned int, 3> &para) {
+bool VideoRenderer::updateSubTex() {
+    if (m_subRenderData && m_subRenderData->uploaded && !m_subRenderData->isSeeking) {
+        return true;
+    }
+
+    glActiveTexture(GL_TEXTURE0 + 4);
+    glBindTexture(GL_TEXTURE_2D, m_subTex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+    Q_ASSERT(lastSubTexX.size() == lastSubTexY.size() &&
+             lastSubTexX.size() == lastSubTexH.size() &&
+             lastSubTexX.size() == lastSubTexW.size());
+
+    // 清理纹理上的旧字幕
+    for (size_t i = 0; i < lastSubTexX.size(); ++i) {
+        int x = std::clamp(lastSubTexX[i], 0, (int)m_width);
+        int y = std::clamp(lastSubTexY[i], 0, (int)m_height);
+        int w = std::clamp(lastSubTexW[i], 0, (int)m_width - x);
+        int h = std::clamp(lastSubTexH[i], 0, (int)m_height - y);
+
+        if (w == 0 || h == 0)
+            continue;
+
+        if ((int)texFill.size() < h * w * 4) {
+            texFill.assign(h * w * 4, 0);
+        }
+        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, texFill.data());
+    }
+
+    if (!m_subRenderData || m_subRenderData->isSeeking) {
+        if (m_subRenderData) {
+            m_subRenderData->isSeeking = false;
+        }
+        lastSubTexX.clear();
+        lastSubTexY.clear();
+        lastSubTexW.clear();
+        lastSubTexH.clear();
+        return true;
+    }
+
+    m_subRenderData->mutex.lock();
+    // 保存当前字幕区域
+    lastSubTexX = m_subRenderData->x;
+    lastSubTexY = m_subRenderData->y;
+    lastSubTexH = m_subRenderData->h;
+    lastSubTexW = m_subRenderData->w;
+
+    // 绘制新字幕
+    for (size_t i = 0; i < m_subRenderData->dataArr.size(); ++i) {
+        int len = m_subRenderData->linesizeArr[i];
+        int x = m_subRenderData->x[i];
+        int y = m_subRenderData->y[i];
+        int h = m_subRenderData->h[i];
+        int w = m_subRenderData->w[i];
+        if (h == 0 || w == 0) {
+            continue;
+        }
+        uint8_t *data = m_subRenderData->dataArr[i].data();
+
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, len);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    }
+
+    m_subRenderData->uploaded = true;
+    m_subRenderData->mutex.unlock();
+    return true;
+}
+
+void VideoRenderer::initTex(GLuint &tex, const QSize &size, const std::array<unsigned int, 3> &para, uint8_t *fill) {
     if (tex != 0)
         glDeleteTextures(1, &tex);
     glGenTextures(1, &tex);
@@ -225,7 +317,7 @@ void VideoRenderer::initTex(GLuint &tex, const QSize &size, const std::array<uns
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, para[0], size.width(), size.height(), 0, para[1], para[2], NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, para[0], size.width(), size.height(), 0, para[1], para[2], fill);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -235,7 +327,8 @@ QQuickFramebufferObject::Renderer *VideoWindow::createRenderer() const {
     return render;
 }
 
-void VideoWindow::updateRenderData(RenderData *renderData) {
+void VideoWindow::updateRenderData(RenderData *renderData, SubRenderData *subRenderData) {
     m_renderData = renderData;
+    m_subRenderData = subRenderData;
     update();
 }

@@ -45,6 +45,7 @@ private:
      * @warning 与RenderData的排列顺序不同，单分量A永远在3号栏位
      */
     GLuint m_texArr[4]{0, 0, 0, 0};
+    GLuint m_subTex = 0;
     std::array<unsigned int, 3> GLParaArr[4]{};
     QSize componentSizeArr[4]{};
     uint8_t *dataArr[4]{};
@@ -57,10 +58,12 @@ private:
     bool m_needInitTex = true;
 
     RenderData *m_renderData = nullptr; // 渲染需要的数据
+    SubRenderData *m_subRenderData = nullptr;
 
     bool updateTex(RenderData::PixFormat fmt);
+    bool updateSubTex();
 
-    void initTex(GLuint &tex, const QSize &size, const std::array<unsigned int, 3> &para);
+    void initTex(GLuint &tex, const QSize &size, const std::array<unsigned int, 3> &para, uint8_t *fill = nullptr);
 };
 
 // QML控件
@@ -69,10 +72,11 @@ class VideoWindow : public QQuickFramebufferObject {
 public:
     Renderer *createRenderer() const override;
 public slots:
-    void updateRenderData(RenderData *renderData);
+    void updateRenderData(RenderData *renderData, SubRenderData *subRenderData);
 
 private:
     RenderData *m_renderData = nullptr;
+    SubRenderData *m_subRenderData = nullptr;
     friend VideoRenderer;
 };
 #endif // VIDEORENDERER_H

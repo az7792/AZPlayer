@@ -40,6 +40,7 @@ qt_add_qml_module(appAZPlayer
         SOURCES decode/decodevideo.h decode/decodevideo.cpp
         SOURCES renderer/renderdata.h renderer/renderdata.cpp
         SOURCES controller/mediacontroller.cpp controller/mediacontroller.h
+        SOURCES decode/decodesubtitle.h decode/decodesubtitle.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

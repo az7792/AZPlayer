@@ -15,6 +15,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/pixdesc.h>
+#include <libswscale/swscale.h>
 
 #ifdef __cplusplus
 }
@@ -40,7 +41,7 @@ struct RenderData {
      * 用于直接上传OpengGL的参数
      * 依次为：internalformat，format，type
      */
-    std::map<AVPixelFormat, std::array<unsigned int, 3>> GLParaMap{
+    inline static std::map<AVPixelFormat, std::array<unsigned int, 3>> GLParaMap{
         {AV_PIX_FMT_RGB24, {GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE}},                        ///< packed RGB 8:8:8, 24bpp, RGBRGB...
         {AV_PIX_FMT_BGR24, {GL_RGB8, GL_BGR, GL_UNSIGNED_BYTE}},                        ///< packed RGB 8:8:8, 24bpp, BGRBGR...
         {AV_PIX_FMT_BGR8, {GL_R3_G3_B2, GL_RGB, GL_UNSIGNED_BYTE_2_3_3_REV}},           ///< packed RGB 3:3:2,  8bpp, (msb)2B 3G 3R(lsb)
@@ -107,6 +108,30 @@ struct RenderData {
         if (!frmItem.frm) {
             av_frame_free(&frmItem.frm);
         }
+    }
+};
+
+struct SubRenderData {
+    AVFrmItem frmItem;
+    QMutex mutex; // 锁
+    SwsContext *subSwsCtx = nullptr;
+
+    std::vector<std::vector<uint8_t>> dataArr;
+    std::vector<int> linesizeArr; // 每行实际存储的像素数 = [有效 + 填充]
+    std::vector<int> x;
+    std::vector<int> y;
+    std::vector<int> w;
+    std::vector<int> h;
+    bool uploaded = false;
+    bool isSeeking = false; // seek时强制清理旧数据
+
+    void reset();
+    // 根据frm重新更新格式
+    void updateFormat(AVFrmItem &newItem, int videoWidth, int videoHeight);
+
+    SubRenderData() : mutex() { reset(); }
+    ~SubRenderData() {
+        avsubtitle_free(&frmItem.sub);
     }
 };
 

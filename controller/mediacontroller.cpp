@@ -30,6 +30,7 @@ MediaController::MediaController(QObject *parent)
     m_demux = new Demux(parent);
     m_decodeAudio = new DecodeAudio(parent);
     m_decodeVideo = new DecodeVideo(parent);
+    m_decodeSubtitl = new DecodeSubtitle(parent);
 
     m_audioPlayer = new AudioPlayer(parent);
     m_videoPlayer = new VideoPlayer(parent);
@@ -67,7 +68,7 @@ bool MediaController::open(const QUrl &URL) {
     }
 
     bool ok = true;
-    ok &= m_demux->init(localFile.toUtf8().constData(), m_pktAudioBuf, m_pktVideoBuf, nullptr);
+    ok &= m_demux->init(localFile.toUtf8().constData(), m_pktAudioBuf, m_pktVideoBuf, m_pktSubtitleBuf);
     if (!ok) {
         close();
         return false;
@@ -82,6 +83,9 @@ bool MediaController::open(const QUrl &URL) {
     if (m_demux->getVideoStream()) {
         ok &= m_decodeVideo->init(m_demux->getVideoStream(), m_pktVideoBuf, m_frmVideoBuf);
         haveVideo = true;
+    }
+    if (m_demux->getSubtitleStream()) {
+        ok &= m_decodeSubtitl->init(m_demux->getSubtitleStream(), m_pktSubtitleBuf, m_frmSubtitleBuf);
     }
 
     DeviceStatus::instance().setHaveAudio(haveAudio);
@@ -100,7 +104,7 @@ bool MediaController::open(const QUrl &URL) {
         GlobalClock::instance().setMainClockType(ClockType::VIDEO);
     }
 
-    ok &= m_videoPlayer->init(m_frmVideoBuf);
+    ok &= m_videoPlayer->init(m_frmVideoBuf, m_frmSubtitleBuf);
     if (!ok) {
         close();
         return false;
@@ -109,6 +113,7 @@ bool MediaController::open(const QUrl &URL) {
     m_demux->start();
     m_decodeAudio->start();
     m_decodeVideo->start();
+    m_decodeSubtitl->start();
     m_audioPlayer->start();
     m_videoPlayer->start();
 
@@ -126,12 +131,15 @@ bool MediaController::close() {
     ok &= m_demux->uninit();
     ok &= m_decodeAudio->uninit();
     ok &= m_decodeVideo->uninit();
+    ok &= m_decodeSubtitl->uninit();
     ok &= m_audioPlayer->uninit();
     ok &= m_videoPlayer->uninit();
     clearPktQ(m_pktAudioBuf);
     clearPktQ(m_pktVideoBuf);
+    clearPktQ(m_pktSubtitleBuf);
     clearFrmQ(m_frmAudioBuf);
     clearFrmQ(m_frmVideoBuf);
+    clearFrmQ(m_frmSubtitleBuf);
     DeviceStatus::instance().setHaveAudio(false);
     DeviceStatus::instance().setHaveVideo(false);
     GlobalClock::instance().reset();

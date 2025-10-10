@@ -20,16 +20,20 @@ VideoPlayer::~VideoPlayer() {
     uninit();
 }
 
-bool VideoPlayer::init(sharedFrmQueue frmBuf) {
+bool VideoPlayer::init(sharedFrmQueue frmBuf, sharedFrmQueue subFrmBuf) {
     if (m_initialized) {
         uninit();
     }
     m_isSeeking = false;
     m_frmBuf = frmBuf;
+    m_subFrmBuf = subFrmBuf;
     renderData1.reset();
     renderData2.reset();
+    subRenderData1.reset();
+    subRenderData2.reset();
     renderTime = std::numeric_limits<double>::quiet_NaN();
     renderData = &renderData1;
+    subRenderData = &subRenderData1;
     return true;
 }
 
@@ -37,9 +41,12 @@ bool VideoPlayer::uninit() {
     stop();
 
     m_frmBuf.reset();
+    m_subFrmBuf.reset();
     renderData1.reset();
     renderData2.reset();
-    emit renderDataReady(nullptr);
+    subRenderData1.reset();
+    subRenderData2.reset();
+    emit renderDataReady(nullptr, nullptr);
     return true;
 }
 
@@ -81,6 +88,7 @@ void VideoPlayer::playerLoop() {
     }
 
     AVFrmItem frmItem;
+    AVFrmItem subFrmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
         d0 = getRelativeSeconds();
         // 进行seek
@@ -96,6 +104,12 @@ void VideoPlayer::playerLoop() {
             m_frmBuf->pop(frmItem);
             av_frame_free(&frmItem.frm);
             continue;
+        }
+
+        // 处理字幕的seek
+        while (m_subFrmBuf->peekFirst(subFrmItem) && subFrmItem.seekCnt != seekCnt) {
+            m_subFrmBuf->pop(subFrmItem);
+            avsubtitle_free(&subFrmItem.sub);
         }
 
         if (!m_isSeeking && m_paused.load(std::memory_order_relaxed)) {
@@ -133,6 +147,23 @@ bool VideoPlayer::write(AVFrmItem &item) {
     }
     tmpPtr->updateFormat(item);
     tmpPtr->mutex.unlock();
+
+    // 读字幕
+    AVFrmItem subFrmItem;
+    bool readedSub = m_subFrmBuf->peekFirst(subFrmItem);
+    if (readedSub && GlobalClock::instance().videoPts() >= subFrmItem.pts) {
+        m_subFrmBuf->pop(subFrmItem);
+        SubRenderData *tmpSubPtr = subRenderData == &subRenderData1 ? &subRenderData2 : &subRenderData1;
+        if (!tmpSubPtr->mutex.try_lock_for(std::chrono::milliseconds(1))) {
+            std::swap(tmpSubPtr, subRenderData);
+            tmpSubPtr->mutex.lock();
+        }
+        tmpSubPtr->updateFormat(subFrmItem, tmpPtr->frmItem.frm->width, tmpPtr->frmItem.frm->height);
+        tmpSubPtr->mutex.unlock();
+        subRenderData = tmpSubPtr;
+    } else if (m_isSeeking && subRenderData) {
+        subRenderData->isSeeking = true;
+    }
 
     d2 = getRelativeSeconds();
 
@@ -181,7 +212,7 @@ bool VideoPlayer::write(AVFrmItem &item) {
     renderData = tmpPtr;
     nowTime = getRelativeSeconds();
     if (!peekOk || nowTime <= renderTime + getDuration(item, tmpItem)) {
-        emit renderDataReady(renderData);
+        emit renderDataReady(renderData, subRenderData);
     } else {
         loseCt++;
     }

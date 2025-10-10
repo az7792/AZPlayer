@@ -240,3 +240,71 @@ void RenderData::updateGLParaArr(PixFormat fmt) {
         }
     }
 }
+
+//======SubRenderData===========//
+void SubRenderData::reset() {
+    mutex.lock();
+    if (subSwsCtx) { // MABEY: 需要free吗
+        sws_freeContext(subSwsCtx);
+        subSwsCtx = nullptr;
+    }
+    avsubtitle_free(&frmItem.sub);
+    frmItem.pts = std::numeric_limits<double>::quiet_NaN();
+    frmItem.duration = std::numeric_limits<double>::quiet_NaN();
+    x.clear();
+    y.clear();
+    w.clear();
+    h.clear();
+    linesizeArr.clear();
+    dataArr.clear();
+    isSeeking = false;
+    uploaded = false;
+    mutex.unlock();
+}
+
+void SubRenderData::updateFormat(AVFrmItem &newItem, int videoWidth, int videoHeight) {
+    avsubtitle_free(&frmItem.sub);
+    uploaded = false;
+
+    AVSubtitle &sub = newItem.sub;
+    frmItem = newItem;
+
+    linesizeArr.resize(sub.num_rects);
+    x.resize(sub.num_rects);
+    y.resize(sub.num_rects);
+    w.resize(sub.num_rects);
+    h.resize(sub.num_rects);
+    dataArr.resize(sub.num_rects);
+
+    for (unsigned i = 0; i < sub.num_rects; ++i) {
+        AVSubtitleRect *subRect = sub.rects[i];
+        if (subRect->type == SUBTITLE_BITMAP) {
+            subRect->x = std::clamp(subRect->x, 0, videoWidth);
+            subRect->y = std::clamp(subRect->y, 0, videoHeight);
+            subRect->w = std::clamp(subRect->w, 0, videoWidth - subRect->x);
+            subRect->h = std::clamp(subRect->h, 0, videoHeight - subRect->y);
+
+            x[i] = subRect->x;
+            y[i] = subRect->y;
+            w[i] = subRect->w;
+            h[i] = subRect->h;
+            if (subRect->h == 0 || subRect->w == 0) {
+                continue;
+            }
+            linesizeArr[i] = subRect->w;
+            dataArr[i].resize(subRect->h * subRect->w * 4);
+
+            subSwsCtx = sws_getCachedContext(subSwsCtx,
+                                             subRect->w, subRect->h, AV_PIX_FMT_PAL8,
+                                             subRect->w, subRect->h, AV_PIX_FMT_RGBA,
+                                             0, NULL, NULL, NULL);
+
+            int dstStride[1] = {linesizeArr[i] * 4};
+            uint8_t *dst[1] = {dataArr[i].data()};
+            sws_scale(subSwsCtx, (const uint8_t *const *)subRect->data, subRect->linesize, 0, subRect->h, dst, dstStride);
+        } else if (subRect->type == SUBTITLE_TEXT) {
+
+        } else if (subRect->type == SUBTITLE_ASS) {
+        }
+    }
+}

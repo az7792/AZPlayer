@@ -24,7 +24,7 @@ public:
     explicit VideoPlayer(QObject *parent = nullptr);
     ~VideoPlayer();
 
-    bool init(sharedFrmQueue frmBuf);
+    bool init(sharedFrmQueue frmBuf, sharedFrmQueue subFrmBuf);
     bool uninit();
 
     // 开启解复用线程
@@ -35,10 +35,11 @@ public:
     void togglePaused();
 
 public:
-    sharedFrmQueue m_frmBuf;
+    sharedFrmQueue m_frmBuf;    // 视频
+    sharedFrmQueue m_subFrmBuf; // 字幕
 
 signals:
-    void renderDataReady(RenderData *data);
+    void renderDataReady(RenderData *data, SubRenderData *subData);
     void seeked();
 
 private:
@@ -46,13 +47,18 @@ private:
     RenderData renderData1;
     RenderData renderData2;
     RenderData *renderData{nullptr}; // 用于给渲染线程发数据
-    double renderTime;               // 实际渲染指令被发出的时间(相对现实时间，秒)
+    SubRenderData subRenderData1;
+    SubRenderData subRenderData2;
+    SubRenderData *subRenderData{nullptr};
+    double renderTime; // 实际渲染指令被发出的时间(相对现实时间，秒)
 
     std::atomic<bool> m_stop{true};
     std::atomic<bool> m_paused{false};
     bool m_isSeeking{false};
     std::thread m_thread;
     bool m_initialized = false; // 是否已经初始化
+
+private:
     /**
      * 写入一帧数据
      * @warning 方法会阻塞线程

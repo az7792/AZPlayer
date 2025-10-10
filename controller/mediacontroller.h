@@ -2,6 +2,7 @@
 #define MEDIACONTROLLER_H
 
 #include "decode/decodeaudio.h"
+#include "decode/decodesubtitle.h"
 #include "decode/decodevideo.h"
 #include "demux/demux.h"
 #include "renderer/audioplayer.h"
@@ -59,12 +60,15 @@ private:
     sharedFrmQueue m_frmAudioBuf = std::make_shared<SPSCQueue<AVFrmItem>>(8);
     sharedPktQueue m_pktVideoBuf = std::make_shared<SPSCQueue<AVPktItem>>(16);
     sharedFrmQueue m_frmVideoBuf = std::make_shared<SPSCQueue<AVFrmItem>>(8);
+    sharedPktQueue m_pktSubtitleBuf = std::make_shared<SPSCQueue<AVPktItem>>(16);
+    sharedFrmQueue m_frmSubtitleBuf = std::make_shared<SPSCQueue<AVFrmItem>>(8);
 
     // 解复用器
     Demux *m_demux = nullptr;
     // 音视频解码器
     DecodeAudio *m_decodeAudio = nullptr;
     DecodeVideo *m_decodeVideo = nullptr;
+    DecodeSubtitle *m_decodeSubtitl = nullptr;
     // 音视频播放控制器
     AudioPlayer *m_audioPlayer = nullptr;
     VideoPlayer *m_videoPlayer = nullptr;
