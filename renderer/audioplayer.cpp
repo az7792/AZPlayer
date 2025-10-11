@@ -249,6 +249,10 @@ void AudioPlayer::setVolume(double newVolume) {
 }
 
 bool AudioPlayer::getFrm(AVFrmItem &item) {
+    if (item.frm != nullptr) {
+        return true;
+    }
+
     if (!m_frmBuf->pop(item)) { // 空
         return false;
     } else if (item.serial != m_frmBuf->serial()) { // 非空 但是序号不同

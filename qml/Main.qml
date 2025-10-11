@@ -271,19 +271,20 @@ Window {
                 to: MediaCtrl.duration
                 stepSize: 0.01
                 snapMode: Slider.SnapOnRelease
-                Timer {
-                    id: seekDelay1//防止短时内频繁seek
-                    interval: 100
-                    repeat: false
-                    onTriggered: {
-                        MediaCtrl.seekBySec(videoSlider.seekTs,0.0)
-                    }
-                }
+                // Timer {
+                //     id: seekDelay1//防止短时内频繁seek
+                //     interval: 100
+                //     repeat: false
+                //     onTriggered: {
+                //         MediaCtrl.seekBySec(videoSlider.seekTs,0.0)
+                //     }
+                // }
                 onValueChanged: {
                     if(pressed){
                         seekTs = value
                         videoSlider.isSeeking = true
-                        seekDelay1.restart()
+                        MediaCtrl.seekBySec(videoSlider.seekTs,0.0)
+                        //seekDelay1.restart()
                     }
                 }
                 Connections {

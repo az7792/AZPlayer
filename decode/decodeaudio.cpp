@@ -56,7 +56,7 @@ void DecodeAudio::decodingLoop() {
 
         while (true) {
             frmItem.frm = av_frame_alloc();
-            frmItem.serial = pktItem.serial;
+            frmItem.serial = m_frmBuf->serial();
             ret = avcodec_receive_frame(m_codecCtx, frmItem.frm);
             // 完全消耗完解码后的帧
             if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {

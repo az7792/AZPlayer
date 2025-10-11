@@ -68,7 +68,8 @@ bool MediaController::open(const QUrl &URL) {
     }
 
     bool ok = true;
-    ok &= m_demux->init(localFile.toUtf8().constData(), m_pktAudioBuf, m_pktVideoBuf, m_pktSubtitleBuf);
+    ok &= m_demux->init(localFile.toUtf8().constData(), m_pktAudioBuf, m_pktVideoBuf, m_pktSubtitleBuf,
+                        m_frmAudioBuf, m_frmVideoBuf, m_frmSubtitleBuf);
     if (!ok) {
         close();
         return false;
@@ -197,12 +198,6 @@ void MediaController::setVolume(double newVolume) {
 void MediaController::seekBySec(double ts, double rel) {
     if (!m_opened)
         return;
-    m_pktAudioBuf->addSerial();
-    m_frmAudioBuf->addSerial();
-    m_pktVideoBuf->addSerial();
-    m_frmVideoBuf->addSerial();
-    m_pktSubtitleBuf->addSerial();
-    m_frmSubtitleBuf->addSerial();
     m_demux->seekBySec(ts, rel);
 }
 

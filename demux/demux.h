@@ -24,7 +24,8 @@ public:
     ~Demux();
 
     // 初始化
-    bool init(const std::string URL, sharedPktQueue audioQ, sharedPktQueue videoQ, sharedPktQueue subtitleQ);
+    bool init(const std::string URL, weakPktQueue audioQ, weakPktQueue videoQ, weakPktQueue subtitleQ,
+              weakFrmQueue audioFrmQ, weakFrmQueue videoFrmQ, weakFrmQueue subtitleFrmQ);
     // 反初始化，恢复到未初始化之前的状态
     bool uninit();
 
@@ -46,9 +47,14 @@ public:
 public slots:
 
 private:
-    sharedPktQueue m_audioPktBuf;
-    sharedPktQueue m_videoPktBuf;
-    sharedPktQueue m_subtitlePktBuf;
+    weakPktQueue m_audioPktBuf;
+    weakPktQueue m_videoPktBuf;
+    weakPktQueue m_subtitlePktBuf;
+    weakFrmQueue m_audioFrmBuf;    // 只用与修改队列序号用
+    weakFrmQueue m_videoFrmBuf;    // 只用与修改队列序号用
+    weakFrmQueue m_subtitleFrmBuf; // 只用与修改队列序号用
+
+    void addAllQueueSerial();
 
     AVFormatContext *m_formatCtx = nullptr;
     std::string m_URL;                                               // 媒体URL
@@ -68,7 +74,7 @@ private:
     void pushVideoPkt(AVPacket *pkt);
     void pushAudioPkt(AVPacket *pkt);
     void pushSubtitlePkt(AVPacket *pkt);
-    void pushPkt(sharedPktQueue q, AVPacket *pkt);
+    void pushPkt(weakPktQueue wq, AVPacket *pkt);
 };
 
 #endif // DEMUX_H

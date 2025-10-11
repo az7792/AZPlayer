@@ -9,7 +9,8 @@ Demux::~Demux() {
     uninit();
 }
 
-bool Demux::init(const std::string URL, sharedPktQueue audioQ, sharedPktQueue videoQ, sharedPktQueue subtitleQ) {
+bool Demux::init(const std::string URL, weakPktQueue audioQ, weakPktQueue videoQ, weakPktQueue subtitleQ,
+                 weakFrmQueue audioFrmQ, weakFrmQueue videoFrmQ, weakFrmQueue subtitleFrmQ) {
     if (m_initialized) {
         uninit();
     }
@@ -17,6 +18,9 @@ bool Demux::init(const std::string URL, sharedPktQueue audioQ, sharedPktQueue vi
     m_audioPktBuf = audioQ;
     m_videoPktBuf = videoQ;
     m_subtitlePktBuf = subtitleQ;
+    m_audioFrmBuf = audioFrmQ;
+    m_videoFrmBuf = videoFrmQ;
+    m_subtitleFrmBuf = subtitleFrmQ;
 
     // 打开文件并初始化FormatContext
     int ret = avformat_open_input(&m_formatCtx, URL.c_str(), nullptr, nullptr);
@@ -81,6 +85,9 @@ bool Demux::uninit() {
     m_audioPktBuf.reset();
     m_videoPktBuf.reset();
     m_subtitlePktBuf.reset();
+    m_audioFrmBuf.reset();
+    m_videoFrmBuf.reset();
+    m_subtitleFrmBuf.reset();
 
     return true;
 }
@@ -141,6 +148,28 @@ AVFormatContext *Demux::formatCtx() {
     return m_formatCtx;
 }
 
+void Demux::addAllQueueSerial() {
+    if (auto q = m_audioPktBuf.lock()) {
+        q->addSerial();
+    }
+    if (auto q = m_videoPktBuf.lock()) {
+        q->addSerial();
+    }
+    if (auto q = m_subtitlePktBuf.lock()) {
+        q->addSerial();
+    }
+
+    if (auto q = m_audioFrmBuf.lock()) {
+        q->addSerial();
+    }
+    if (auto q = m_videoFrmBuf.lock()) {
+        q->addSerial();
+    }
+    if (auto q = m_subtitleFrmBuf.lock()) {
+        q->addSerial();
+    }
+}
+
 void Demux::demuxLoop() {
     if (!m_initialized) {
         return;
@@ -150,6 +179,7 @@ void Demux::demuxLoop() {
 
         if (m_needSeek.load(std::memory_order_acquire)) {
             GlobalClock::instance().addSeekCnt();
+            addAllQueueSerial();
             double target = GlobalClock::instance().seekTs() * AV_TIME_BASE;
             int64_t seekMin = m_seekRel > 0 ? target - m_seekRel * AV_TIME_BASE + 2 : INT64_MIN;
             int64_t seekMax = m_seekRel < 0 ? target - m_seekRel * AV_TIME_BASE - 2 : INT64_MAX;
@@ -202,16 +232,16 @@ void Demux::pushSubtitlePkt(AVPacket *pkt) {
     pushPkt(m_subtitlePktBuf, pkt);
 }
 
-void Demux::pushPkt(sharedPktQueue q, AVPacket *pkt) {
-    if (!q) {
-        av_packet_free(&pkt);
-        return;
-    }
-    while (!q->push({pkt, GlobalClock::instance().seekCnt()})) {
-        if (m_needSeek.load(std::memory_order_acquire) || m_stop.load(std::memory_order_relaxed)) {
-            av_packet_free(&pkt);
-            return;
+void Demux::pushPkt(weakPktQueue wq, AVPacket *pkt) {
+    if (auto q = wq.lock()) {
+        while (!q->push({pkt, q->serial()})) {
+            if (m_needSeek.load(std::memory_order_acquire) || m_stop.load(std::memory_order_relaxed)) {
+                av_packet_free(&pkt);
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    } else {
+        av_packet_free(&pkt);
     }
 }

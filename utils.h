@@ -180,7 +180,9 @@ private:
 };
 
 using sharedPktQueue = std::shared_ptr<SPSCQueue<AVPktItem>>;
+using weakPktQueue = std::weak_ptr<SPSCQueue<AVPktItem>>;
 using sharedFrmQueue = std::shared_ptr<SPSCQueue<AVFrmItem>>;
+using weakFrmQueue = std::weak_ptr<SPSCQueue<AVFrmItem>>;
 
 struct AudioPar {
     int sampleRate = 0;                               // 采样率

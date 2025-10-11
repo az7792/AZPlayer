@@ -40,7 +40,7 @@ void DecodeSubtitle::decodingLoop() {
 
             if (got_frame) {
                 const AVSubtitle &sub = frmItem.sub;
-                frmItem.serial = pktItem.serial;
+                frmItem.serial = m_frmBuf->serial();
                 frmItem.pts = sub.pts == AV_NOPTS_VALUE ? 0.0
                                                         : sub.pts / (double)AV_TIME_BASE + sub.start_display_time / 1000.0;
                 frmItem.duration = (sub.end_display_time - sub.start_display_time) / 1000.0;

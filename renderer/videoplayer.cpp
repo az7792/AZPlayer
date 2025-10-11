@@ -228,7 +228,9 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
 }
 
 bool VideoPlayer::getVideoFrm(AVFrmItem &item) {
-    Q_ASSERT(item.frm == nullptr);
+    if (item.frm != nullptr) {
+        return true;
+    }
 
     if (!m_frmBuf->pop(item)) { // 空
         return false;
@@ -237,6 +239,5 @@ bool VideoPlayer::getVideoFrm(AVFrmItem &item) {
         m_forceRefresh = true;
         return false;
     }
-
     return true;
 }
