@@ -123,7 +123,7 @@ struct SubRenderData {
     std::vector<int> w;
     std::vector<int> h;
     bool uploaded = false;
-    bool isSeeking = false; // seek时强制清理旧数据
+    bool forceRefresh = false; // 用于通知videoRender强制清理旧数据
 
     void reset();
     // 根据frm重新更新格式

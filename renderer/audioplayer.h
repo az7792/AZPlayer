@@ -48,13 +48,6 @@ signals:
 
 private:
     sharedFrmQueue m_frmBuf;
-    /**
-     * 主要用于在seek时清零QAudioSink::processedUSecs()计数器
-     * 因为不方便真正清零QAudioSink::processedUSecs()计时器，因此采用补偿的方式清零，
-     * QAudioSink::processedUSecs() - m_offsetTime 即为seek后处理的数据量(微秒)
-     */
-    qint64 m_offsetTime = 0;
-    qint64 m_totalTime = 0; // 表示从0播放到seek节点的音频帧所花费的时间(微秒)，seek时会设置该值
 
     QAudioSink *m_audioSink = nullptr;     // 向音频输出设备发送音频数据的接口
     QAudioDevice *m_audioDevice = nullptr; // 用于播放音频的设备
@@ -73,10 +66,12 @@ private:
     QThread *m_thread = nullptr; // AudioSink需要使用QTimer，这而不能用std::thread
     std::atomic<bool> m_stop{true};
     std::atomic<bool> m_paused{false};
-    bool m_isSeeking{false};
+    bool m_forceRefresh{false};
     double m_volume = 1.0;
 
 private:
+    bool getFrm(AVFrmItem &item);
+
     void playerLoop();
     /**
      * 写入一帧数据

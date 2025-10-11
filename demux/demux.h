@@ -51,9 +51,9 @@ private:
     sharedPktQueue m_subtitlePktBuf;
 
     AVFormatContext *m_formatCtx = nullptr;
-    std::string m_URL;                                      // 媒体URL
-    std::vector<int> m_videoIdx, m_audioIdx, m_subtitleIdx; // 各个流的ID
-    int m_usedVIdx = -1, m_usedAIdx = -1, m_usedSIdx = -1;  // 当前使用的流ID
+    std::string m_URL;                                               // 媒体URL
+    std::vector<int> m_videoIdx, m_audioIdx, m_subtitleIdx;          // 各个流的ID
+    std::atomic<int> m_usedVIdx{-1}, m_usedAIdx{-1}, m_usedSIdx{-1}; // 当前使用的流ID
 
     char errBuf[512];
     std::atomic<bool> m_stop{true};

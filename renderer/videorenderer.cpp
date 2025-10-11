@@ -2,11 +2,27 @@
 #include "clock/globalclock.h"
 #include <QOpenGLFramebufferObjectFormat>
 namespace {
-    std::vector<uint8_t> texFill;
-    std::vector<int> lastSubTexX;
-    std::vector<int> lastSubTexY;
-    std::vector<int> lastSubTexW;
-    std::vector<int> lastSubTexH;
+    // 为了避免 非 POD 静态对象 导致的初始化顺序问题
+    std::vector<uint8_t> &texFill() {
+        static std::vector<uint8_t> instance;
+        return instance;
+    }
+    std::vector<int> &lastSubTexX() {
+        static std::vector<int> instance;
+        return instance;
+    }
+    std::vector<int> &lastSubTexY() {
+        static std::vector<int> instance;
+        return instance;
+    }
+    std::vector<int> &lastSubTexW() {
+        static std::vector<int> instance;
+        return instance;
+    }
+    std::vector<int> &lastSubTexH() {
+        static std::vector<int> instance;
+        return instance;
+    }
 }
 
 VideoRenderer::VideoRenderer() {
@@ -113,10 +129,10 @@ void VideoRenderer::init(RenderData *renderData) {
         }
 
         // 字幕纹理
-        if ((int)texFill.size() < m_width * m_height * 4) {
-            texFill.assign(m_width * m_height * 4, 0);
+        if ((int)texFill().size() < m_width * m_height * 4) {
+            texFill().assign(m_width * m_height * 4, 0);
         }
-        initTex(m_subTex, {m_width, m_height}, {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE}, texFill.data());
+        initTex(m_subTex, {m_width, m_height}, {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE}, texFill().data());
 
         if (tmpFmt == RenderData::RGB_PACKED || tmpFmt == RenderData::RGBA_PACKED ||
             tmpFmt == RenderData::Y || tmpFmt == RenderData::YA) {
@@ -240,7 +256,7 @@ bool VideoRenderer::updateTex(RenderData::PixFormat fmt) {
 }
 
 bool VideoRenderer::updateSubTex() {
-    if (m_subRenderData && m_subRenderData->uploaded && !m_subRenderData->isSeeking) {
+    if (m_subRenderData && m_subRenderData->uploaded && !m_subRenderData->forceRefresh) {
         return true;
     }
 
@@ -248,43 +264,43 @@ bool VideoRenderer::updateSubTex() {
     glBindTexture(GL_TEXTURE_2D, m_subTex);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
-    Q_ASSERT(lastSubTexX.size() == lastSubTexY.size() &&
-             lastSubTexX.size() == lastSubTexH.size() &&
-             lastSubTexX.size() == lastSubTexW.size());
+    Q_ASSERT(lastSubTexX().size() == lastSubTexY().size() &&
+             lastSubTexX().size() == lastSubTexH().size() &&
+             lastSubTexX().size() == lastSubTexW().size());
 
     // 清理纹理上的旧字幕
-    for (size_t i = 0; i < lastSubTexX.size(); ++i) {
-        int x = std::clamp(lastSubTexX[i], 0, (int)m_width);
-        int y = std::clamp(lastSubTexY[i], 0, (int)m_height);
-        int w = std::clamp(lastSubTexW[i], 0, (int)m_width - x);
-        int h = std::clamp(lastSubTexH[i], 0, (int)m_height - y);
+    for (size_t i = 0; i < lastSubTexX().size(); ++i) {
+        int x = std::clamp(lastSubTexX()[i], 0, (int)m_width);
+        int y = std::clamp(lastSubTexY()[i], 0, (int)m_height);
+        int w = std::clamp(lastSubTexW()[i], 0, (int)m_width - x);
+        int h = std::clamp(lastSubTexH()[i], 0, (int)m_height - y);
 
         if (w == 0 || h == 0)
             continue;
 
-        if ((int)texFill.size() < h * w * 4) {
-            texFill.assign(h * w * 4, 0);
+        if ((int)texFill().size() < h * w * 4) {
+            texFill().assign(h * w * 4, 0);
         }
-        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, texFill.data());
+        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
     }
 
-    if (!m_subRenderData || m_subRenderData->isSeeking) {
+    if (!m_subRenderData || m_subRenderData->forceRefresh) {
         if (m_subRenderData) {
-            m_subRenderData->isSeeking = false;
+            m_subRenderData->forceRefresh = false;
         }
-        lastSubTexX.clear();
-        lastSubTexY.clear();
-        lastSubTexW.clear();
-        lastSubTexH.clear();
+        lastSubTexX().clear();
+        lastSubTexY().clear();
+        lastSubTexW().clear();
+        lastSubTexH().clear();
         return true;
     }
 
     m_subRenderData->mutex.lock();
     // 保存当前字幕区域
-    lastSubTexX = m_subRenderData->x;
-    lastSubTexY = m_subRenderData->y;
-    lastSubTexH = m_subRenderData->h;
-    lastSubTexW = m_subRenderData->w;
+    lastSubTexX() = m_subRenderData->x;
+    lastSubTexY() = m_subRenderData->y;
+    lastSubTexH() = m_subRenderData->h;
+    lastSubTexW() = m_subRenderData->w;
 
     // 绘制新字幕
     for (size_t i = 0; i < m_subRenderData->dataArr.size(); ++i) {

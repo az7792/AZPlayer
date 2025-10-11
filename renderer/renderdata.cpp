@@ -257,7 +257,7 @@ void SubRenderData::reset() {
     h.clear();
     linesizeArr.clear();
     dataArr.clear();
-    isSeeking = false;
+    forceRefresh = false;
     uploaded = false;
     mutex.unlock();
 }

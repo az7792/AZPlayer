@@ -49,9 +49,9 @@ bool Demux::init(const std::string URL, sharedPktQueue audioQ, sharedPktQueue vi
             m_subtitleIdx.push_back(i);
     }
 
-    m_usedVIdx = m_videoIdx.empty() ? -1 : m_videoIdx.front();
-    m_usedAIdx = m_audioIdx.empty() ? -1 : m_audioIdx.front();
-    m_usedSIdx = m_subtitleIdx.empty() ? -1 : m_subtitleIdx.front();
+    m_usedVIdx.store(m_videoIdx.empty() ? -1 : m_videoIdx.front(), std::memory_order_relaxed);
+    m_usedAIdx.store(m_audioIdx.empty() ? -1 : m_audioIdx.front(), std::memory_order_relaxed);
+    m_usedSIdx.store(m_subtitleIdx.empty() ? -1 : m_subtitleIdx.front(), std::memory_order_relaxed);
 
     m_initialized = true;
 
@@ -71,6 +71,11 @@ bool Demux::uninit() {
     m_subtitleIdx.clear();
 
     m_usedVIdx = m_usedAIdx = m_usedSIdx = -1;
+
+    m_usedVIdx.store(-1, std::memory_order_relaxed);
+    m_usedAIdx.store(-1, std::memory_order_relaxed);
+    m_usedSIdx.store(-1, std::memory_order_relaxed);
+
     m_initialized = false;
 
     m_audioPktBuf.reset();
@@ -115,21 +120,21 @@ int Demux::getDuration() {
 }
 
 AVStream *Demux::getVideoStream() {
-    if (m_usedVIdx == -1)
+    if (m_usedVIdx.load(std::memory_order_relaxed) == -1)
         return nullptr;
-    return m_formatCtx->streams[m_usedVIdx];
+    return m_formatCtx->streams[m_usedVIdx.load(std::memory_order_relaxed)];
 }
 
 AVStream *Demux::getAudioStream() {
-    if (m_usedAIdx == -1)
+    if (m_usedAIdx.load(std::memory_order_relaxed) == -1)
         return nullptr;
-    return m_formatCtx->streams[m_usedAIdx];
+    return m_formatCtx->streams[m_usedAIdx.load(std::memory_order_relaxed)];
 }
 
 AVStream *Demux::getSubtitleStream() {
-    if (m_usedSIdx == -1)
+    if (m_usedSIdx.load(std::memory_order_relaxed) == -1)
         return nullptr;
-    return m_formatCtx->streams[m_usedSIdx];
+    return m_formatCtx->streams[m_usedSIdx.load(std::memory_order_relaxed)];
 }
 
 AVFormatContext *Demux::formatCtx() {
@@ -167,11 +172,11 @@ void Demux::demuxLoop() {
         }
 
         // ret == 0
-        if (pkt->stream_index == m_usedAIdx) {
+        if (pkt->stream_index == m_usedAIdx.load(std::memory_order_acquire)) {
             pushAudioPkt(pkt);
-        } else if (pkt->stream_index == m_usedVIdx) {
+        } else if (pkt->stream_index == m_usedVIdx.load(std::memory_order_acquire)) {
             pushVideoPkt(pkt);
-        } else if (pkt->stream_index == m_usedSIdx) {
+        } else if (pkt->stream_index == m_usedSIdx.load(std::memory_order_acquire)) {
             pushSubtitlePkt(pkt);
         } else {
             av_packet_free(&pkt);

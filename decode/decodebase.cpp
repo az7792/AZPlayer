@@ -99,26 +99,22 @@ bool DecodeBase::initialized() {
     return m_initialized;
 }
 
-bool DecodeBase::getPkt(AVPktItem &pktItem) {
+bool DecodeBase::getPkt(AVPktItem &pktItem, bool &needFlushBuffers) {
     if (pktItem.pkt && pktItem.pkt->data && pktItem.pkt->size != 0) {
-        return true;
-    }
-    // 进行seek
-    int seekCnt = GlobalClock::instance().seekCnt();
-    bool need_flush_buffers = false;
-    while (m_pktBuf->peekFirst(pktItem) && pktItem.seekCnt != seekCnt) {
-        need_flush_buffers = true;
-        m_pktBuf->pop(pktItem);
+        if (pktItem.serial == m_pktBuf->serial()) {
+            return true;
+        }
         av_packet_free(&pktItem.pkt);
-    }
-    if (need_flush_buffers) {
-        avcodec_flush_buffers(m_codecCtx);
+        needFlushBuffers = true;
     }
 
-    // 从缓冲区取数据
-    if (pktItem.pkt && pktItem.pkt->data && pktItem.pkt->size != 0) {
-        m_pktBuf->pop(pktItem);
-        return true;
+    if (!m_pktBuf->pop(pktItem)) { // 空
+        return false;
+    } else if (pktItem.serial != m_pktBuf->serial()) { // 非空 但是序号不同
+        av_packet_free(&pktItem.pkt);
+        needFlushBuffers = true;
+        return false;
     }
-    return false;
+
+    return true;
 }

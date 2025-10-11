@@ -49,13 +49,13 @@ private:
 
 struct AVPktItem {
     AVPacket *pkt = nullptr;
-    int seekCnt = 0;
+    int serial = 0;
 };
 
 struct AVFrmItem {
     AVFrame *frm = nullptr;
     AVSubtitle sub{};
-    int seekCnt = 0;
+    int serial = 0;
     double pts = std::numeric_limits<double>::quiet_NaN();
     double duration = std::numeric_limits<double>::quiet_NaN();
 };
@@ -158,6 +158,9 @@ public:
         return m_capacity - 1;
     }
 
+    int serial() const { return m_serial.load(std::memory_order_relaxed); }
+    void addSerial() { m_serial.fetch_add(1); }
+
 private:
     size_t nextIndex(size_t index) const {
         return (index + 1) % m_capacity;
@@ -173,6 +176,7 @@ private:
     };
     PaddedAtomic m_head; // 读索引（消费者使用）
     PaddedAtomic m_tail; // 写索引（生产者使用）
+    std::atomic<int> m_serial{0};
 };
 
 using sharedPktQueue = std::shared_ptr<SPSCQueue<AVPktItem>>;

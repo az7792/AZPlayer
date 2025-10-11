@@ -24,7 +24,7 @@ bool VideoPlayer::init(sharedFrmQueue frmBuf, sharedFrmQueue subFrmBuf) {
     if (m_initialized) {
         uninit();
     }
-    m_isSeeking = false;
+    m_forceRefresh = false;
     m_frmBuf = frmBuf;
     m_subFrmBuf = subFrmBuf;
     renderData1.reset();
@@ -88,53 +88,35 @@ void VideoPlayer::playerLoop() {
     }
 
     AVFrmItem frmItem;
-    AVFrmItem subFrmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
         d0 = getRelativeSeconds();
-        // 进行seek
-        AVFrmItem refFrm;
-        if (!m_frmBuf->peekFirst(refFrm)) { // 空的
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            continue;
-        }
-        int seekCnt = GlobalClock::instance().seekCnt();
-        if (refFrm.seekCnt != seekCnt) {
-            Q_ASSERT(frmItem.frm == nullptr);
-            m_isSeeking = true;
-            m_frmBuf->pop(frmItem);
-            av_frame_free(&frmItem.frm);
-            continue;
-        }
-
-        // 处理字幕的seek
-        while (m_subFrmBuf->peekFirst(subFrmItem) && subFrmItem.seekCnt != seekCnt) {
-            m_subFrmBuf->pop(subFrmItem);
-            avsubtitle_free(&subFrmItem.sub);
-        }
-
-        if (!m_isSeeking && m_paused.load(std::memory_order_relaxed)) {
+        // 处理视频seek/切流
+        int ok = getVideoFrm(frmItem);
+        if (!ok) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
             continue;
         }
 
-        // 读frm
-        m_frmBuf->pop(frmItem);
+        if (!m_forceRefresh && m_paused.load(std::memory_order_relaxed)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            continue;
+        }
 
         d1 = getRelativeSeconds();
 
         // 写如入设备
         write(frmItem);
 
-        if (m_isSeeking && GlobalClock::instance().mainClockType() == ClockType::VIDEO) {
+        if (m_forceRefresh && GlobalClock::instance().mainClockType() == ClockType::VIDEO) {
             emit seeked();
         }
-        m_isSeeking = false;
+        m_forceRefresh = false;
     }
     return;
 }
 
-bool VideoPlayer::write(AVFrmItem &item) {
-    if (!item.frm) {
+bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
+    if (!videoFrmitem.frm) {
         return false;
     }
 
@@ -145,13 +127,19 @@ bool VideoPlayer::write(AVFrmItem &item) {
         std::swap(tmpPtr, renderData);
         tmpPtr->mutex.lock();
     }
-    tmpPtr->updateFormat(item);
+    tmpPtr->updateFormat(videoFrmitem);
     tmpPtr->mutex.unlock();
 
-    // 读字幕
+    // 处理字幕seek/切流
     AVFrmItem subFrmItem;
-    bool readedSub = m_subFrmBuf->peekFirst(subFrmItem);
-    if (readedSub && GlobalClock::instance().videoPts() >= subFrmItem.pts) {
+    while (m_subFrmBuf->peekFirst(subFrmItem) && subFrmItem.serial != m_subFrmBuf->serial()) {
+        m_subFrmBuf->pop(subFrmItem);
+        avsubtitle_free(&subFrmItem.sub);
+        m_forceRefresh = true;
+    }
+
+    // 尝试读取字幕
+    if (m_subFrmBuf->peekFirst(subFrmItem) && GlobalClock::instance().videoPts() >= subFrmItem.pts) {
         m_subFrmBuf->pop(subFrmItem);
         SubRenderData *tmpSubPtr = subRenderData == &subRenderData1 ? &subRenderData2 : &subRenderData1;
         if (!tmpSubPtr->mutex.try_lock_for(std::chrono::milliseconds(1))) {
@@ -161,14 +149,16 @@ bool VideoPlayer::write(AVFrmItem &item) {
         tmpSubPtr->updateFormat(subFrmItem, tmpPtr->frmItem.frm->width, tmpPtr->frmItem.frm->height);
         tmpSubPtr->mutex.unlock();
         subRenderData = tmpSubPtr;
-    } else if (m_isSeeking && subRenderData) {
-        subRenderData->isSeeking = true;
+    }
+
+    if (m_forceRefresh && subRenderData) {
+        subRenderData->forceRefresh = true;
     }
 
     d2 = getRelativeSeconds();
 
     // 上一帧持续时间
-    double delay = getDuration(renderData->frmItem, item);
+    double delay = getDuration(renderData->frmItem, videoFrmitem);
 
     static int lessCt = 0, moreCt = 0, loseCt = 0;
     // 同步主时钟
@@ -186,7 +176,7 @@ bool VideoPlayer::write(AVFrmItem &item) {
         }
     }
 
-    if (std::isnan(renderTime) || m_isSeeking) {
+    if (std::isnan(renderTime) || m_forceRefresh) {
         renderTime = getRelativeSeconds();
     } else {
         renderTime += delay;
@@ -211,7 +201,7 @@ bool VideoPlayer::write(AVFrmItem &item) {
     bool peekOk = m_frmBuf->peekFirst(tmpItem);
     renderData = tmpPtr;
     nowTime = getRelativeSeconds();
-    if (!peekOk || nowTime <= renderTime + getDuration(item, tmpItem)) {
+    if (!peekOk || nowTime <= renderTime + getDuration(videoFrmitem, tmpItem)) {
         emit renderDataReady(renderData, subRenderData);
     } else {
         loseCt++;
@@ -219,7 +209,7 @@ bool VideoPlayer::write(AVFrmItem &item) {
 
     // 更新视频时钟
     // qDebug() << "v:" << pts << GlobalClock::instance().videoPts();
-    GlobalClock::instance().setVideoClk(item.pts);
+    GlobalClock::instance().setVideoClk(videoFrmitem.pts);
     GlobalClock::instance().syncExternalClk(ClockType::VIDEO);
 
     d5 = getRelativeSeconds();
@@ -234,5 +224,19 @@ bool VideoPlayer::write(AVFrmItem &item) {
         qDebug() << "lessCt:" << lessCt << "moreCt:" << moreCt << "loseCt:" << loseCt;
         qDebug() << "AVdiff1" << GlobalClock::instance().videoPts() - GlobalClock::instance().getMainPts();
     }
+    return true;
+}
+
+bool VideoPlayer::getVideoFrm(AVFrmItem &item) {
+    Q_ASSERT(item.frm == nullptr);
+
+    if (!m_frmBuf->pop(item)) { // 空
+        return false;
+    } else if (item.serial != m_frmBuf->serial()) { // 非空 但是序号不同
+        av_frame_free(&item.frm);
+        m_forceRefresh = true;
+        return false;
+    }
+
     return true;
 }

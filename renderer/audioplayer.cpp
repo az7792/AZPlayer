@@ -156,7 +156,7 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
         *m_swrBuffer = static_cast<uint8_t *>(av_malloc(m_swrBufferSize));
     }
 
-    m_isSeeking = false;
+    m_forceRefresh = false;
     m_initialized = true;
 
     return true;
@@ -176,9 +176,6 @@ bool AudioPlayer::uninit() {
         delete m_audioDevice;
         m_audioDevice = nullptr;
     }
-
-    m_offsetTime = 0;
-    m_totalTime = 0;
 
     m_format = QAudioFormat{};
 
@@ -249,6 +246,17 @@ void AudioPlayer::setVolume(double newVolume) {
         m_audioSink->setVolume(linearVolume);
     }
     m_volume = newVolume;
+}
+
+bool AudioPlayer::getFrm(AVFrmItem &item) {
+    if (!m_frmBuf->pop(item)) { // 空
+        return false;
+    } else if (item.serial != m_frmBuf->serial()) { // 非空 但是序号不同
+        av_frame_free(&item.frm);
+        m_forceRefresh = true;
+        return false;
+    }
+    return true;
 }
 
 qint64 AudioPlayer::write(AVFrmItem *item) {
@@ -332,16 +340,6 @@ qint64 AudioPlayer::write(AVFrmItem *item) {
     return writeCnt;
 }
 
-// qint64 AudioPlayer::audioClock() {
-//     if (!m_audioSink)
-//         return 0;
-//     // seek后已经写入缓冲区的数据量(微秒)
-//     qint64 t = m_audioSink->processedUSecs() - m_offsetTime;
-//     // 减去缓冲区里未被设备读取的数据量,由于播放设备本身还有缓冲区，因此得到的值会与实际真正播放完的数据量存在误差
-//     t -= m_format.durationForBytes(m_audioSink->bufferSize() - m_audioSink->bytesFree());
-//     return t + m_totalTime;
-// }
-
 void AudioPlayer::playerLoop() {
     if (!m_initialized) {
         return;
@@ -361,22 +359,13 @@ void AudioPlayer::playerLoop() {
 
     AVFrmItem frmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
-        // 进行seek
-        AVFrmItem refFrm;
-        if (!m_frmBuf->peekFirst(refFrm)) { // 空的
+        bool ok = getFrm(frmItem);
+        if (!ok) {
             QThread::msleep(5);
             continue;
         }
-        int seekCnt = GlobalClock::instance().seekCnt();
-        if (refFrm.seekCnt != seekCnt) {
-            Q_ASSERT(frmItem.frm == nullptr);
-            m_isSeeking = true;
-            m_frmBuf->pop(frmItem);
-            av_frame_free(&frmItem.frm);
-            continue;
-        }
 
-        if (!m_isSeeking && m_paused.load(std::memory_order_relaxed)) {
+        if (!m_forceRefresh && m_paused.load(std::memory_order_relaxed)) {
             if (m_audioSink->state() == QAudio::ActiveState || m_audioSink->state() == QAudio::IdleState) {
                 m_audioSink->suspend();
             }
@@ -386,17 +375,14 @@ void AudioPlayer::playerLoop() {
             m_audioSink->resume();
         }
 
-        // 读frm
-        m_frmBuf->pop(frmItem);
-
         // 写如入设备
         write(&frmItem);
         av_frame_free(&frmItem.frm);
 
-        if (m_isSeeking && GlobalClock::instance().mainClockType() == ClockType::AUDIO) {
+        if (m_forceRefresh && GlobalClock::instance().mainClockType() == ClockType::AUDIO) {
             emit seeked();
         }
-        m_isSeeking = false;
+        m_forceRefresh = false;
     }
 
     if (m_audioSink) { // 不能在其他线程销毁
