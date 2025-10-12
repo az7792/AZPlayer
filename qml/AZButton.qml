@@ -95,7 +95,7 @@ Rectangle {
             root.hideTip()
         }
         onPositionChanged: {
-            if (tooltipText !== "") {
+            if (containsMouse && tooltipText !== "") {
                 let globalPos = root.mapToItem(root.window, 0, 0)
                 root.hoverTip(tooltipText,mouseX + globalPos.x, mouseY + globalPos.y)
             }
