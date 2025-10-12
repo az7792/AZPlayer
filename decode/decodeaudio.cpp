@@ -26,8 +26,8 @@ void DecodeAudio::decodingLoop() {
 
     AVPktItem pktItem;
     AVFrmItem frmItem;
+    bool needFlushBuffers = false;
     while (!m_stop.load(std::memory_order_relaxed)) {
-        bool needFlushBuffers = false;
         bool ok = getPkt(pktItem, needFlushBuffers);
         if (!ok) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -36,6 +36,7 @@ void DecodeAudio::decodingLoop() {
 
         if (needFlushBuffers) {
             avcodec_flush_buffers(m_codecCtx);
+            needFlushBuffers = false;
         }
 
         int ret = avcodec_send_packet(m_codecCtx, pktItem.pkt);
@@ -56,7 +57,7 @@ void DecodeAudio::decodingLoop() {
 
         while (true) {
             frmItem.frm = av_frame_alloc();
-            frmItem.serial = m_frmBuf->serial();
+            frmItem.serial = pktItem.serial;
             ret = avcodec_receive_frame(m_codecCtx, frmItem.frm);
             // 完全消耗完解码后的帧
             if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {

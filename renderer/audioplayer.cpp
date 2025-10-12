@@ -250,6 +250,11 @@ void AudioPlayer::setVolume(double newVolume) {
 
 bool AudioPlayer::getFrm(AVFrmItem &item) {
     if (item.frm != nullptr) {
+        if (item.serial != m_frmBuf->serial()) {
+            av_frame_free(&item.frm);
+            m_forceRefresh = true;
+            return false;
+        }
         return true;
     }
 

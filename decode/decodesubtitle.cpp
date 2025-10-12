@@ -18,8 +18,8 @@ void DecodeSubtitle::decodingLoop() {
 
     AVPktItem pktItem;
     AVFrmItem frmItem;
+    bool needFlushBuffers = false;
     while (!m_stop.load(std::memory_order_relaxed)) {
-        bool needFlushBuffers = false;
         bool ok = getPkt(pktItem, needFlushBuffers);
         if (!ok) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -28,6 +28,7 @@ void DecodeSubtitle::decodingLoop() {
 
         if (needFlushBuffers) {
             avcodec_flush_buffers(m_codecCtx);
+            needFlushBuffers = false;
         }
 
         while (true) {
@@ -40,7 +41,7 @@ void DecodeSubtitle::decodingLoop() {
 
             if (got_frame) {
                 const AVSubtitle &sub = frmItem.sub;
-                frmItem.serial = m_frmBuf->serial();
+                frmItem.serial = pktItem.serial;
                 frmItem.pts = sub.pts == AV_NOPTS_VALUE ? 0.0
                                                         : sub.pts / (double)AV_TIME_BASE + sub.start_display_time / 1000.0;
                 frmItem.duration = (sub.end_display_time - sub.start_display_time) / 1000.0;
