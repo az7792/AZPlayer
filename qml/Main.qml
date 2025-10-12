@@ -2,10 +2,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import VideoWindow 1.0
+import QtQuick.Layouts
 Window {
     id: mainWin
     width: 640
+    minimumWidth: splitView.leftMinWidth + splitView.rightMinWidth + 20
     height: 480
+    minimumHeight: 360
     visible: true
     title: qsTr("AZPlayer")
     color: "black"
@@ -114,7 +117,7 @@ Window {
                 forceShowTopBar = forceShowBottomBar = false
                 return
             }
-            forceShowTopBar = (y <= topBar.height)
+            forceShowTopBar = (y <= topBar.height && (!fileListBar.visible || x <= fileListBar.x))
             forceShowBottomBar = (y >= mainWin.height - bottomBar.height)
         }
 
@@ -200,296 +203,191 @@ Window {
         }
     }
 
-    //视频显示区域
     Item{
-        id: videoArea
-        anchors.top:topBar.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: bottomBar.top
-        anchors.topMargin: 1
-        anchors.bottomMargin: 1
-        anchors.leftMargin: resizeMargin / 2
-        anchors.rightMargin: resizeMargin / 2
-        z:0
-
-        states: [
-            State {
-                name: "fullscreen"
-                when: mainWin.visibility === Window.FullScreen
-                PropertyChanges { target: videoArea;
-                    anchors.topMargin: 0; anchors.bottomMargin: 0; anchors.leftMargin: 0; anchors.rightMargin: 0;
-                    anchors.top:mainWin.contentItem.top ; anchors.bottom: mainWin.contentItem.bottom;}
-            },
-            State {
-                name: "Maximized"
-                when: mainWin.visibility === Window.Maximized
-                PropertyChanges { target: videoArea;
-                    anchors.top: topBar.bottom; anchors.bottom: bottomBar.top;
-                    anchors.topMargin: 1; anchors.bottomMargin: 1; anchors.leftMargin: 0; anchors.rightMargin: 0 }
-            },
-            State {
-                name: "windowed"
-                when: mainWin.visibility === Window.Windowed
-                PropertyChanges { target: videoArea;
-                    anchors.top: topBar.bottom; anchors.bottom: bottomBar.top;
-                    anchors.topMargin: 1; anchors.bottomMargin: 1; anchors.leftMargin: resizeMargin / 2; anchors.rightMargin: resizeMargin / 2 }
-            }
-        ]
-
-        VideoWindow{
-            anchors.fill: parent
-            id:videoWindow
-            objectName: "videoWindow"
-            Component.onCompleted:{
-                MediaCtrl.setVideoWindow(videoWindow)
-            }
-        }
-    }
-
-    Rectangle{
-        id:bottomBar
+        id: splitView
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
+        anchors.top: mainWin.visibility === Window.FullScreen ? parent.top : topBar.bottom
         anchors.bottomMargin: mainWin.visibility === Window.Windowed ? resizeMargin / 2 : 0
         anchors.leftMargin: mainWin.visibility === Window.Windowed ? resizeMargin / 2 : 0
         anchors.rightMargin: mainWin.visibility === Window.Windowed ? resizeMargin / 2 : 0
-        visible: mainWin.visibility !== Window.FullScreen || forceShowBottomBar
-        height: progressBar.height + playerCtrlBar.height + 1
-        z:1
-        color: "black"
+        anchors.topMargin: mainWin.visibility === Window.FullScreen ? 0 : 1
+        z:0
 
-        Component.onCompleted:{
-            currentTimeTimer.start()
+        property int leftMinWidth: 360      // 左侧最小宽度
+        property int rightMinWidth: 140     // 右侧最小宽度
+        property bool isLeftExpanded: (mainWin.visibility === Window.FullScreen || !showed) ? true : false
+        property bool showed: false
+        property int _rightRectWidth: 200
+
+        function toggleSidebar(){
+            showed = !showed
         }
 
-        property int currentTime: 0
-        Timer {
-            id: currentTimeTimer
-            interval: 500
-            repeat: true
-            onTriggered: {
-                bottomBar.currentTime = MediaCtrl.getCurrentTime()
-            }
-        }
-
-        Rectangle{
-            id:progressBar
-            height: 20
-            z:1
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            color: "#1d1d1d"
-
-            AZSlider{
-                id:videoSlider
-
-                property bool isSeeking: false
-                property real seekTs: 0.0
-
-                height: parent.height
-                anchors.left: parent.left
-                anchors.right: volumeBtn.left
-                from: 0.0
-                value: (pressed || isSeeking) ? value : bottomBar.currentTime
-                to: MediaCtrl.duration
-                stepSize: 0.01
-                snapMode: Slider.SnapOnRelease
-                // Timer {
-                //     id: seekDelay1//防止短时内频繁seek
-                //     interval: 100
-                //     repeat: false
-                //     onTriggered: {
-                //         MediaCtrl.seekBySec(videoSlider.seekTs,0.0)
-                //     }
-                // }
-                onValueChanged: {
-                    if(pressed){
-                        seekTs = value
-                        videoSlider.isSeeking = true
-                        MediaCtrl.seekBySec(videoSlider.seekTs,0.0)
-                        //seekDelay1.restart()
-                    }
-                }
-                Connections {
-                    target: MediaCtrl
-                    function onSeeked() {
-                        bottomBar.currentTime = MediaCtrl.getCurrentTime()//强制更新
-                        videoSlider.isSeeking = false
-                    }
-                }
-            }
-
-            AZButton{
-                id:volumeBtn
-                height: parent.height
-                width: height
-                anchors.right: volumSlider.left
-                iconWidth: 16
-                iconHeight: 16
-                iconSource: MediaCtrl.muted ? "qrc:/icon/volume_off.png" : "qrc:/icon/volume_on.png"
-                tooltipText: "静音 开/关"
-                onLeftClicked: {
-                    MediaCtrl.toggleMuted();
-                }
-                onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
-                onHideTip: tooltip.hide()
-            }
-
-            AZSlider{
-                id:volumSlider
-                height: parent.height
-                width: 100
-                anchors.right: parent.right
-                from: 0.0
-                value: MediaCtrl.volume
-                to: 1.0
-                stepSize: 0.01
-                snapMode: Slider.SnapOnRelease
-                onMoved:{
-                    MediaCtrl.setVolume(value);
-                }
-            }
-        }
-
+        //视频显示区域
         Item{
-            id:playerCtrlBar
-            z:1
+            id: videoArea
+            anchors.top: parent.top
             anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: progressBar.bottom
-            anchors.topMargin: 1
-            height: 40
+            anchors.right: splitView.isLeftExpanded ? parent.right : splitter.left
+            anchors.bottom: mainWin.visibility === Window.FullScreen ? parent.bottom : bottomBar.top
+            anchors.bottomMargin: 1
+            z:0
 
-            AZButton{
-                id:playBtn
-                height: parent.height
-                width: height
+            VideoWindow{
+                anchors.fill: parent
+                id:videoWindow
+                objectName: "videoWindow"
+                Component.onCompleted:{
+                    MediaCtrl.setVideoWindow(videoWindow)
+                }
+            }
+        }
+
+        //底部控制栏
+        Rectangle{
+            id:bottomBar
+            anchors.left: parent.left
+            anchors.right: splitView.showed ? splitter.left : parent.right
+            anchors.bottom: parent.bottom
+            visible: mainWin.visibility !== Window.FullScreen || forceShowBottomBar
+            height: progressBar.height + playerCtrlBar.height + 1
+            z:1
+            color: "black"
+
+            AZProgressBar{
+                id:progressBar
                 anchors.left: parent.left
-                iconWidth: 16
-                iconHeight: 16
-                iconSource: MediaCtrl.paused ? "qrc:/icon/play.png" : "qrc:/icon/pause.png"
-                tooltipText: MediaCtrl.paused ? "播放" : "暂停"
-                onLeftClicked: MediaCtrl.togglePaused();
-                onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
-                onHideTip: tooltip.hide()
-            }
-            AZButton{
-                id:stopBtn
-                height: parent.height
-                width: height
-                anchors.left: playBtn.right
-                anchors.leftMargin: 1
-                iconWidth: 16
-                iconHeight: 16
-                iconSource: "qrc:/icon/stop.png"
-                tooltipText: "停止"
-                onLeftClicked: {
-                    MediaCtrl.close()
-                    textWrapper.text = ""
-                }
-                onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
-                onHideTip: tooltip.hide()
-            }
-            AZButton{
-                id:skipPrevBtn
-                height: parent.height
-                width: height
-                anchors.left:stopBtn.right
-                anchors.leftMargin: 1
-                iconWidth: 16
-                iconHeight: 16
-                iconSource: "qrc:/icon/skip_previous.png"
-                tooltipText: "L:快退，R:上一个"
-                onLeftClicked: MediaCtrl.fastRewind()
-                onRightClicked: ;
-                onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
-                onHideTip: tooltip.hide()
-            }
-            AZButton{
-                id:skipNextBtn
-                height: parent.height
-                width: height
-                anchors.left:skipPrevBtn.right
-                anchors.leftMargin: 1
-                iconWidth: 16
-                iconHeight: 16
-                iconSource: "qrc:/icon/skip_next.png"
-                tooltipText: "L:快进，R:下一个"
-                onLeftClicked: MediaCtrl.fastForward()
-                onRightClicked: ;
-                onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
-                onHideTip: tooltip.hide()
-            }
-            AZButton{
-                id:openFileBtn
-                height: parent.height
-                width: height
-                anchors.left:skipNextBtn.right
-                anchors.leftMargin: 1
-                iconWidth: 16
-                iconHeight: 16
-                iconSource: "qrc:/icon/open.png"
-                tooltipText: "打开文件"
-                onLeftClicked: fileDialog.open()
-                onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
-                onHideTip: tooltip.hide()
-            }
-
-            Rectangle{
-                height: parent.height
-                anchors.left: openFileBtn.right
-                anchors.right: fileListBtn.left
-                anchors.leftMargin: 1
-                anchors.rightMargin: 1
-                color: "#1c1c1c"
-
-                function secondsToHMS(seconds) {
-                    var h = Math.floor(seconds / 3600);
-                    var m = Math.floor((seconds % 3600) / 60);
-                    var s = seconds % 60;
-
-                    // 保证两位数字显示
-                    var hh = h < 10 ? "0" + h : "" + h;
-                    var mm = m < 10 ? "0" + m : "" + m;
-                    var ss = s < 10 ? "0" + s : "" + s;
-
-                    return hh + ":" + mm + ":" + ss;
-                }
-
-                Text {
-                    id: mediaDurationText1
-                    color: "#ebebeb"
-                    text: parent.secondsToHMS(bottomBar.currentTime)
-                    font.pixelSize: 10
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: parent.left
-                    anchors.leftMargin: 10
-                    wrapMode: Text.NoWrap
-                    elide: Text.ElideNone
-
-                }
-                Text {
-                    id: mediaDurationText2
-                    color: "#747474"
-                    text: "  /  " + parent.secondsToHMS(MediaCtrl.duration)
-                    font.pixelSize: 10
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: mediaDurationText1.right
-                    wrapMode: Text.NoWrap
-                    elide: Text.ElideNone
-                }
-            }
-
-            AZButton{
-                id:fileListBtn
-                height: parent.height
-                width: height
                 anchors.right: parent.right
-                text:"列表"
+                anchors.top: parent.top
             }
+
+            AZPlayerCtrlBar{
+                id:playerCtrlBar
+                tooltip: tooltip
+                textWrapper: textWrapper
+                fileDialog: fileDialog
+                splitView: splitView
+                currentTime: progressBar.currentTime
+                z:1
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: progressBar.bottom
+                anchors.topMargin: 1
+            }
+
+        }
+
+
+        Rectangle {
+            id: splitter
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            visible: splitView.showed
+            width: 4
+            color: "black"
+
+            MouseArea {
+                id: tmp
+                anchors.fill: parent
+                drag.target: splitter
+                drag.axis: Drag.XAxis
+                drag.minimumX: splitView.leftMinWidth
+                drag.maximumX: splitView.width - splitView.rightMinWidth - width
+                cursorShape: Qt.SplitHCursor
+                drag.smoothed:false
+
+                // 拖动时保存右侧宽度
+                onPositionChanged: {
+                    if (drag.active) {
+                        splitView._rightRectWidth = splitView.width - (splitter.x + splitter.width);
+                        // 确保右侧宽度不小于最小值
+                        splitView._rightRectWidth = Math.max(splitView.rightMinWidth, splitView._rightRectWidth);
+                    }
+                }
+            }
+        }
+
+        ColumnLayout {
+            id:fileListBar
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.top: parent.top
+            anchors.left: splitter.right
+            visible: splitView.showed
+            spacing: 0
+
+            TabBar {
+                id:tabBar
+                Layout.fillWidth: true
+                background: Rectangle{
+                    color:"black"
+                }
+                position:TabBar.Header
+
+                Repeater {
+                    model: ListModel {
+                        ListElement { label: "文件" }
+                        ListElement { label: "字幕" }
+                        ListElement { label: "音频" }
+                    }
+
+                    TabButton {
+                        id: tabBtn
+                        background: Rectangle {
+                            color: (tabBtn.pressed || tabBtn.checked) ? "#3b3b3b" : "#333333"
+                        }
+                        contentItem: Text {
+                            text: label
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            color: tabBtn.checked ? "white" : "#747474"
+                        }
+                    }
+                }
+
+            }
+
+            StackLayout {
+                id: stackView
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                currentIndex: tabBar.currentIndex
+                Rectangle {
+                    id: fileTab
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: "red"
+                }
+                Rectangle {
+                    id: subtitleTab
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: "blue"
+                }
+                Rectangle {
+                    id: audioTab
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: "green"
+                }
+            }
+
+        }
+
+        onWidthChanged: {
+            // 确保右侧宽度不小于最小值
+            splitView._rightRectWidth = Math.max(splitView.rightMinWidth, splitView._rightRectWidth);
+
+            // 检查是否需要调整右侧宽度以适应新的窗口大小
+            var maxPossibleRightWidth = splitView.width - splitView.leftMinWidth - splitter.width;
+            if (splitView._rightRectWidth > maxPossibleRightWidth) {
+                splitView._rightRectWidth = maxPossibleRightWidth;
+            }
+
+            // 更新分割条位置
+            splitter.x = splitView.width - splitView._rightRectWidth - splitter.width;
         }
     }
 

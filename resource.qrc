@@ -25,5 +25,7 @@
         <file>qml/AZTooltip.qml</file>
         <file>qml/AZWindowControls.qml</file>
         <file>qml/AZSlider.qml</file>
+        <file>qml/AZProgressBar.qml</file>
+        <file>qml/AZPlayerCtrlBar.qml</file>
     </qresource>
 </RCC>
