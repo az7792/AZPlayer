@@ -30,6 +30,16 @@ Window {
         hoverEnabled: true
         propagateComposedEvents:true
 
+        // 定时器，隐藏鼠标
+        Timer {
+            id: hideTimer
+            interval: 1000
+            repeat: false
+            onTriggered: {
+                parent.cursorShape = Qt.BlankCursor
+            }
+        }
+
         //切换调整窗口大小时的鼠标样式
         function toggleCursorShape(x,y){
             // 改变鼠标样式
@@ -83,6 +93,21 @@ Window {
             }
         }
 
+        // 控制鼠标在视频区域内是否隐藏
+        function toggleMouseHidden(x,y){
+            let topY = videoArea.y + (mainWin.visibility === Window.FullScreen ? topBar.height : 0)
+            let bottomY = videoArea.y + videoArea.height - (mainWin.visibility === Window.FullScreen ? bottomBar.height : 0)
+            let pd = 10;
+            if(x>=videoArea.x + pd && x<=videoArea.x + videoArea.width -pd && y>=topY+pd && y <= bottomY-pd){
+                if(cursorShape === Qt.BlankCursor){
+                    cursorShape = Qt.ArrowCursor
+                }
+                hideTimer.restart()
+            }else{
+                hideTimer.stop()
+            }
+        }
+
         //全屏时呼出topBar和bottomBar
         function toggleBarVisible(x,y){
             if(mainWin.visibility !== Window.FullScreen){
@@ -96,6 +121,7 @@ Window {
         onPositionChanged:function(mouse) {
             toggleCursorShape(mouse.x,mouse.y)
             toggleBarVisible(mouse.x,mouse.y)
+            toggleMouseHidden(mouse.x,mouse.y)
         }
 
         onPressed: function(mouse) {
