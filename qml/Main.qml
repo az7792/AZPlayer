@@ -359,6 +359,27 @@ Window {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
                     color: "red"
+                    Button{
+                        id:tbtn
+                        width: 50
+                        height: 50
+                        property  int ct: 0
+                        onClicked: {
+                            ct = (ct + 1) % 5;
+                            MediaCtrl.switchSubtitleStream(0,ct)
+                        }
+                    }
+                    Button{
+                        anchors.left: tbtn.right
+                        width: 50
+                        height: 50
+                        property  int ct: 5
+                        onClicked: {
+                            ct = (ct + 1) % 10;
+                            MediaCtrl.switchAudioStream(0,ct)
+                            console.log(ct)
+                        }
+                    }
                 }
                 Rectangle {
                     id: subtitleTab

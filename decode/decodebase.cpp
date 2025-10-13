@@ -1,5 +1,4 @@
 #include "decodebase.h"
-#include "clock/globalclock.h"
 #include <QDebug>
 
 DecodeBase::DecodeBase(QObject *parent)
@@ -16,7 +15,7 @@ bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue fr
     if (m_initialized) {
         uninit();
     }
-
+    m_streamIdx = stream->index;
     m_codecCtx = avcodec_alloc_context3(nullptr);
     if (!m_codecCtx) {
         qDebug() << "解码器上下文分配失败";
@@ -72,6 +71,7 @@ bool DecodeBase::uninit() {
         avcodec_free_context(&m_codecCtx);
     }
     m_initialized = false;
+    m_streamIdx = -1;
     m_pktBuf.reset();
     m_frmBuf.reset();
     return true;
@@ -100,12 +100,15 @@ bool DecodeBase::initialized() {
 }
 
 bool DecodeBase::getPkt(AVPktItem &pktItem, bool &needFlushBuffers) {
+    // *流ID不同直接丢弃，不用清解码器缓存
+
     if (pktItem.pkt && pktItem.pkt->data && pktItem.pkt->size != 0) {
-        if (pktItem.serial == m_pktBuf->serial()) {
+        if (pktItem.serial == m_pktBuf->serial() && pktItem.pkt->stream_index == m_streamIdx) {
             return true;
         }
         av_packet_free(&pktItem.pkt);
-        needFlushBuffers = true;
+        if(pktItem.serial != m_pktBuf->serial())
+            needFlushBuffers = true;
     }
 
     if (!m_pktBuf->pop(pktItem)) { // 空
@@ -113,6 +116,11 @@ bool DecodeBase::getPkt(AVPktItem &pktItem, bool &needFlushBuffers) {
     } else if (pktItem.serial != m_pktBuf->serial()) { // 非空 但是序号不同
         av_packet_free(&pktItem.pkt);
         needFlushBuffers = true;
+        return false;
+    }
+    else if (pktItem.pkt->stream_index != m_streamIdx) {// 非空 但是流idx不同
+        av_packet_free(&pktItem.pkt);
+        //needFlushBuffers = true;
         return false;
     }
 

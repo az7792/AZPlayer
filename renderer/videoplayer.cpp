@@ -80,6 +80,12 @@ void VideoPlayer::togglePaused() {
     m_paused.store(!paused, std::memory_order_release);
 }
 
+void VideoPlayer::forceRefreshSubtitle() {
+    if (subRenderData) {
+        subRenderData->forceRefresh = true;
+    }
+}
+
 double d0, d1, d2, d3, d4, d5;
 void VideoPlayer::playerLoop() {
     // 确保音视频设备都完成了基本初始化

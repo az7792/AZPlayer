@@ -4,6 +4,7 @@
 #include <QObject>
 #include <atomic>
 #include <string>
+#include <mutex>
 #include <thread>
 #ifdef __cplusplus
 extern "C" {
@@ -24,8 +25,7 @@ public:
     ~Demux();
 
     // 初始化
-    bool init(const std::string URL, weakPktQueue audioQ, weakPktQueue videoQ, weakPktQueue subtitleQ,
-              weakFrmQueue audioFrmQ, weakFrmQueue videoFrmQ, weakFrmQueue subtitleFrmQ);
+    bool init(const std::string URL);
     // 反初始化，恢复到未初始化之前的状态
     bool uninit();
 
@@ -37,11 +37,22 @@ public:
     // seek
     void seekBySec(double ts, double rel);
 
+    bool switchVideoStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
+    bool switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
+    bool switchAudioStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
+
+    // 0视频 1字幕 2音频
+    void closeStream(int streamType);
+
     int getDuration();
 
     AVStream *getVideoStream();
     AVStream *getAudioStream();
     AVStream *getSubtitleStream();
+
+    bool haveVideoStream() { return !m_videoIdx.empty(); }
+    bool haveAudioStream() { return !m_audioIdx.empty(); }
+    bool haveSubtitleStream() { return !m_subtitleIdx.empty(); }
 
     AVFormatContext *formatCtx();
 public slots:
@@ -65,6 +76,7 @@ private:
     std::atomic<bool> m_stop{true};
     std::thread m_thread;
     bool m_initialized = false;
+    std::mutex m_mutex;//保护队列和流ID的更新
 
     std::atomic<bool> m_needSeek{false};
     double m_seekRel = 0.0;

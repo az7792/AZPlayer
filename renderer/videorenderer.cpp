@@ -312,10 +312,10 @@ bool VideoRenderer::updateSubTex() {
         if (h == 0 || w == 0) {
             continue;
         }
-        uint8_t *data = m_subRenderData->dataArr[i].data();
+        uint8_t *subtitleData = m_subRenderData->dataArr[i].data();
 
         glPixelStorei(GL_UNPACK_ROW_LENGTH, len);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, subtitleData);
     }
 
     m_subRenderData->uploaded = true;

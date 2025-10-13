@@ -1,3 +1,6 @@
+#ifdef _MSC_VER
+#pragma warning(disable:4324)
+#endif
 #ifndef UTILS_H
 #define UTILS_H
 #include <QAudioFormat>
@@ -13,6 +16,11 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+enum MediaIdx {
+    VIDEO = 0,
+    SUBTITLE,
+    AUDIO
+};
 
 class DeviceStatus {
 public:

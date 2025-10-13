@@ -40,6 +40,7 @@ protected:
 
     const AVCodec *m_codec = nullptr; // FFmpeg内部管理，不用释放
     AVCodecContext *m_codecCtx = nullptr;
+    int m_streamIdx = -1;
     char errBuf[512] = {0};
     std::atomic<bool> m_stop{true};
     std::thread m_thread;

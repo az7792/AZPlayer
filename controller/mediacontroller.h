@@ -11,6 +11,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QUrl>
+#include <array>
 
 class MediaController : public QObject {
     Q_OBJECT
@@ -44,6 +45,9 @@ public slots:
     void fastForward();                    // 快进
     void fastRewind();                     // 快退
 
+    bool switchSubtitleStream(int demuxIdx, int streamIdx);
+    bool switchAudioStream(int demuxIdx, int streamIdx);
+
 signals:
     void pausedChanged();
     void volumeChanged();
@@ -64,7 +68,9 @@ private:
     sharedFrmQueue m_frmSubtitleBuf = std::make_shared<SPSCQueue<AVFrmItem>>(8);
 
     // 解复用器
-    Demux *m_demux = nullptr;
+    std::array<Demux *, 3> m_demuxs{nullptr, nullptr, nullptr};                          // 0文件 1字幕 2音轨
+    std::array<std::array<std::vector<std::pair<int, std::string>>, 3>, 3> m_streamInfo; //[demuxIdx][streamIdx] 0视频流 1字幕流 2音频流
+    std::array<std::pair<int, int>, 3> m_streams;                                        // 当前的视频流/字幕流/音频流所使用的{demuxIdx,streamIdx}
     // 音视频解码器
     DecodeAudio *m_decodeAudio = nullptr;
     DecodeVideo *m_decodeVideo = nullptr;

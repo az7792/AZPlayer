@@ -51,7 +51,8 @@ void DecodeAudio::decodingLoop() {
         } else if (ret == AVERROR(EAGAIN)) {
             ;
         } else if (ret < 0) {
-            qDebug() << "发送audiopkt错误:" << ret;
+            av_strerror(ret, errBuf, sizeof(errBuf));
+            qDebug() << "发送audiopkt错误:" << errBuf << pktItem.pkt->stream_index;
             goto end;
         }
 

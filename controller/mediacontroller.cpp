@@ -27,7 +27,10 @@ namespace {
 MediaController::MediaController(QObject *parent)
     : QObject{parent} {
 
-    m_demux = new Demux(parent);
+    for (int i = 0; i < 3; ++i) {
+        m_demuxs[i] = new Demux(parent);
+    }
+
     m_decodeAudio = new DecodeAudio(parent);
     m_decodeVideo = new DecodeVideo(parent);
     m_decodeSubtitl = new DecodeSubtitle(parent);
@@ -41,8 +44,8 @@ MediaController::MediaController(QObject *parent)
     // DEBUG:start
     static QTimer timer;
     QObject::connect(&timer, &QTimer::timeout, this, [&]() {
-        qDebug() << "AudioPkt:" << m_pktAudioBuf->size() << "VideoPkt:" << m_pktVideoBuf->size();
-        qDebug() << "AudioFrm:" << m_frmAudioBuf->size() << "VideoFrm:" << m_frmVideoBuf->size() << "\n";
+        qDebug() << "AudioPkt:" << m_pktAudioBuf->size() << "VideoPkt:" << m_pktVideoBuf->size() << "SubtitlePkt:" << m_pktSubtitleBuf->size();
+        qDebug() << "AudioFrm:" << m_frmAudioBuf->size() << "VideoFrm:" << m_frmVideoBuf->size() << "SubtitleFrm:" << m_frmSubtitleBuf->size() << "\n";
     });
     timer.start(1000); // 每1000ms触发一次
     // DEBUG: end
@@ -67,32 +70,42 @@ bool MediaController::open(const QUrl &URL) {
         close();
     }
 
+    static constexpr int defDemuxIdx = 0;
+
     bool ok = true;
-    ok &= m_demux->init(localFile.toUtf8().constData(), m_pktAudioBuf, m_pktVideoBuf, m_pktSubtitleBuf,
-                        m_frmAudioBuf, m_frmVideoBuf, m_frmSubtitleBuf);
+    ok &= m_demuxs[defDemuxIdx]->init(localFile.toUtf8().constData());
     if (!ok) {
         close();
         return false;
     }
 
-    bool haveAudio = false, haveVideo = false;
-    if (m_demux->getAudioStream()) {
-        ok &= m_decodeAudio->init(m_demux->getAudioStream(), m_pktAudioBuf, m_frmAudioBuf);
-        ok &= m_audioPlayer->init(m_demux->getAudioStream()->codecpar, m_frmAudioBuf);
-        haveAudio = true;
+    bool haveAudio = m_demuxs[defDemuxIdx]->haveAudioStream(), haveVideo = m_demuxs[defDemuxIdx]->haveVideoStream();
+    if (haveAudio) {
+        const int audioIdx = 0;
+        m_demuxs[defDemuxIdx]->switchAudioStream(audioIdx, m_pktAudioBuf, m_frmAudioBuf);
+        m_streams[MediaIdx::AUDIO] = {defDemuxIdx, audioIdx};
+        ok &= m_decodeAudio->init(m_demuxs[defDemuxIdx]->getAudioStream(), m_pktAudioBuf, m_frmAudioBuf);
+        ok &= m_audioPlayer->init(m_demuxs[defDemuxIdx]->getAudioStream()->codecpar, m_frmAudioBuf);
     }
-    if (m_demux->getVideoStream()) {
-        ok &= m_decodeVideo->init(m_demux->getVideoStream(), m_pktVideoBuf, m_frmVideoBuf);
-        haveVideo = true;
+
+    if (haveVideo) {
+        const int videoIdx = 0;
+        m_streams[MediaIdx::VIDEO] = {defDemuxIdx, videoIdx};
+        m_demuxs[defDemuxIdx]->switchVideoStream(videoIdx, m_pktVideoBuf, m_frmVideoBuf);
+        ok &= m_decodeVideo->init(m_demuxs[defDemuxIdx]->getVideoStream(), m_pktVideoBuf, m_frmVideoBuf);
     }
-    if (m_demux->getSubtitleStream()) {
-        ok &= m_decodeSubtitl->init(m_demux->getSubtitleStream(), m_pktSubtitleBuf, m_frmSubtitleBuf);
+
+    if (m_demuxs[defDemuxIdx]->haveSubtitleStream()) {
+        const int subtitleIdx = 0;
+        m_streams[MediaIdx::SUBTITLE] = {defDemuxIdx, subtitleIdx};
+        m_demuxs[defDemuxIdx]->switchSubtitleStream(subtitleIdx, m_pktSubtitleBuf, m_frmSubtitleBuf);
+        ok &= m_decodeSubtitl->init(m_demuxs[defDemuxIdx]->getSubtitleStream(), m_pktSubtitleBuf, m_frmSubtitleBuf);
     }
 
     DeviceStatus::instance().setHaveAudio(haveAudio);
     DeviceStatus::instance().setHaveVideo(haveVideo);
 
-    setDuration(m_demux->getDuration()); // 总时长
+    setDuration(m_demuxs[defDemuxIdx]->getDuration()); // 总时长
     GlobalClock::instance().reset();
     GlobalClock::instance().setMainClockType(ClockType::AUDIO); // 默认
     m_audioPlayer->setVolume(m_muted ? 0.0 : m_volume);         // start之前设置好
@@ -111,7 +124,7 @@ bool MediaController::open(const QUrl &URL) {
         return false;
     }
 
-    m_demux->start();
+    m_demuxs[defDemuxIdx]->start();
     m_decodeAudio->start();
     m_decodeVideo->start();
     m_decodeSubtitl->start();
@@ -129,7 +142,11 @@ bool MediaController::close() {
         return true;
     }
     bool ok = true;
-    ok &= m_demux->uninit();
+    for (int i = 0; i < 3; ++i) {
+        if (m_demuxs[i]) {
+            ok &= m_demuxs[i]->uninit();
+        }
+    }
     ok &= m_decodeAudio->uninit();
     ok &= m_decodeVideo->uninit();
     ok &= m_decodeSubtitl->uninit();
@@ -145,6 +162,11 @@ bool MediaController::close() {
     DeviceStatus::instance().setHaveVideo(false);
     GlobalClock::instance().reset();
     m_opened = false;
+    m_streams.fill({-1, -1});
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j)
+            m_streamInfo[i][j].clear();
+    }
     setPaused(true);
     setDuration(0);
     qDebug() << "关闭";
@@ -198,7 +220,7 @@ void MediaController::setVolume(double newVolume) {
 void MediaController::seekBySec(double ts, double rel) {
     if (!m_opened)
         return;
-    m_demux->seekBySec(ts, rel);
+    m_demuxs[0]->seekBySec(ts, rel);
 }
 
 void MediaController::fastForward() {
@@ -207,6 +229,54 @@ void MediaController::fastForward() {
 
 void MediaController::fastRewind() {
     seekBySec(std::max(0.0, getCurrentTime() - 5.0), -5.0);
+}
+
+bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
+    if (m_streams[MediaIdx::SUBTITLE] == std::pair{demuxIdx, streamIdx}) {
+        return true;
+    }
+    // 关闭旧的
+    m_demuxs[m_streams[MediaIdx::SUBTITLE].first]->closeStream(MediaIdx::SUBTITLE);
+    m_decodeSubtitl->uninit();
+    m_videoPlayer->forceRefreshSubtitle(); // 切换后需要一定时间才会解码到新字幕，因此提前强制清掉旧字幕
+
+    clearPktQ(m_pktSubtitleBuf);
+    m_pktSubtitleBuf->addSerial();
+    m_frmSubtitleBuf->addSerial(); // videoPlayer可能还在使用，不需要清空，仅修改序号即可
+    // 打开新的
+    m_demuxs[demuxIdx]->switchSubtitleStream(streamIdx, m_pktSubtitleBuf, m_frmSubtitleBuf);
+    m_decodeSubtitl->init(m_demuxs[demuxIdx]->getSubtitleStream(), m_pktSubtitleBuf, m_frmSubtitleBuf);
+    m_decodeSubtitl->start();
+
+    m_streams[MediaIdx::SUBTITLE] = {demuxIdx, streamIdx}; // 更新
+
+    return true;
+}
+
+bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
+    if (m_streams[MediaIdx::AUDIO] == std::pair{demuxIdx, streamIdx}) {
+        return true;
+    }
+    // 关闭旧的
+    m_demuxs[m_streams[MediaIdx::AUDIO].first]->closeStream(MediaIdx::AUDIO);
+    m_decodeAudio->uninit();
+    m_audioPlayer->uninit(); // 音频设备需要重新设置
+
+    clearPktQ(m_pktAudioBuf);
+    clearFrmQ(m_frmAudioBuf);
+    m_pktAudioBuf->addSerial();
+    m_frmAudioBuf->addSerial();
+
+    // 打开新的
+    m_demuxs[demuxIdx]->switchAudioStream(streamIdx, m_pktAudioBuf, m_frmAudioBuf);
+    m_decodeAudio->init(m_demuxs[demuxIdx]->getAudioStream(), m_pktAudioBuf, m_frmAudioBuf);
+    m_audioPlayer->init(m_demuxs[demuxIdx]->getAudioStream()->codecpar, m_frmAudioBuf);
+    m_decodeAudio->start();
+    m_audioPlayer->start();
+
+    m_streams[MediaIdx::AUDIO] = {demuxIdx, streamIdx}; // 更新
+
+    return true;
 }
 
 int MediaController::getCurrentTime() const {

@@ -34,6 +34,8 @@ public:
 
     void togglePaused();
 
+    void forceRefreshSubtitle();
+
 public:
     sharedFrmQueue m_frmBuf;    // 视频
     sharedFrmQueue m_subFrmBuf; // 字幕

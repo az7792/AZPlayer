@@ -72,5 +72,11 @@ CMakeLists.txt.user*
 *.dll
 *.exe
 
+# build
 build/
+out/
+#vs
 .vscode/
+.vs
+CMakePresets.json
+CMakeUserPresets.json

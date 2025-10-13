@@ -16,7 +16,11 @@ find_package(Qt6 REQUIRED COMPONENTS Gui)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Multimedia)
 
-add_compile_options(-Wall -Wextra -Wpedantic)
+if (MSVC)
+    add_compile_options(/W4 /WX)
+else() # GCC/Clang 下
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
 qt_standard_project_setup()
 

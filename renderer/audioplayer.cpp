@@ -297,7 +297,7 @@ qint64 AudioPlayer::write(AVFrmItem *item) {
         }
 
         // 执行重采样
-        int nb_samples = swr_convert(
+        nb_samples = swr_convert(
             m_swrContext,
             m_swrBuffer, out_nb_samples,                 // 输出
             (const uint8_t **)frm->data, frm->nb_samples // 输入
