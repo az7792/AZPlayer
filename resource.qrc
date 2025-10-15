@@ -29,5 +29,6 @@
         <file>qml/AZPlayerCtrlBar.qml</file>
         <file>qml/AZListView.qml</file>
         <file>qml/AZFileDialog.qml</file>
+        <file>qml/AZStreamView.qml</file>
     </qresource>
 </RCC>

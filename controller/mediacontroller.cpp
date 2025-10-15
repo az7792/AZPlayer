@@ -27,6 +27,8 @@ namespace {
 MediaController::MediaController(QObject *parent)
     : QObject{parent} {
 
+    m_streams.fill({-1, -1});
+
     for (int i = 0; i < 3; ++i) {
         m_demuxs[i] = new Demux(parent);
     }
@@ -95,7 +97,7 @@ bool MediaController::open(const QUrl &URL) {
         ok &= m_decodeVideo->init(m_demuxs[defDemuxIdx]->getVideoStream(), m_pktVideoBuf, m_frmVideoBuf);
     }
 
-    if (m_demuxs[defDemuxIdx]->haveSubtitleStream()) {
+    if (haveVideo && m_demuxs[defDemuxIdx]->haveSubtitleStream()) {
         const int subtitleIdx = 0;
         m_streams[MediaIdx::SUBTITLE] = {defDemuxIdx, subtitleIdx};
         m_demuxs[defDemuxIdx]->switchSubtitleStream(subtitleIdx, m_pktSubtitleBuf, m_frmSubtitleBuf);
@@ -134,6 +136,7 @@ bool MediaController::open(const QUrl &URL) {
     m_opened = true;
     setPaused(false);
     qDebug() << "打开成功";
+    emit streamInfoUpdate();
     return true;
 }
 
@@ -163,13 +166,10 @@ bool MediaController::close() {
     GlobalClock::instance().reset();
     m_opened = false;
     m_streams.fill({-1, -1});
-    for (int i = 0; i < 3; ++i) {
-        for (int j = 0; j < 3; ++j)
-            m_streamInfo[i][j].clear();
-    }
     setPaused(true);
     setDuration(0);
     qDebug() << "关闭";
+    emit streamInfoUpdate();
     return ok;
 }
 
@@ -232,6 +232,9 @@ void MediaController::fastRewind() {
 }
 
 bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
+    if (m_streams[MediaIdx::VIDEO].first < 0 || m_streams[MediaIdx::VIDEO].first < 0)
+        return false;
+
     if (m_streams[MediaIdx::SUBTITLE] == std::pair{demuxIdx, streamIdx}) {
         return true;
     }
@@ -279,9 +282,48 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
     return true;
 }
 
+bool MediaController::opened() const {
+    return m_opened;
+}
+
+void MediaController::setOpened(bool newOpened) {
+    if (m_opened == newOpened)
+        return;
+    m_opened = newOpened;
+    emit openedChanged();
+}
+
+QVariantList MediaController::getStreamInfo(MediaIdx type) const {
+    QVariantList list;
+    for (size_t i = 0; i < m_demuxs.size(); ++i) {
+        Demux *demux = m_demuxs[i];
+        if (demux == nullptr)
+            continue;
+
+        const auto &v = demux->streamInfo()[type];
+        for (size_t j = 0; j < v.size(); ++j) {
+            QVariantMap item;
+            item["text"] = v[j];     // 流的文本描述
+            item["demuxIdx"] = i;    // 属于哪个解复用器
+            item["mediaIdx"] = type; // 属于那种流
+            item["streamIdx"] = j;   // 第几个流（stream[j]才是实际formatCtx里用的）
+            list.append(item);
+        }
+    }
+    return list;
+}
+
 int MediaController::getCurrentTime() const {
     double ptsSecond = GlobalClock::instance().getMainPts();
     return std::isnan(ptsSecond) ? 0 : ptsSecond;
+}
+
+QVariantList MediaController::getSubtitleInfo() const {
+    return getStreamInfo(MediaIdx::SUBTITLE);
+}
+
+QVariantList MediaController::getAudioInfo() const {
+    return getStreamInfo(MediaIdx::AUDIO);
 }
 
 int MediaController::duration() const {

@@ -54,6 +54,8 @@ public:
     bool haveAudioStream() { return !m_audioIdx.empty(); }
     bool haveSubtitleStream() { return !m_subtitleIdx.empty(); }
 
+    const std::array<std::vector<QString>, 3> &streamInfo() { return m_stringInfo; }
+
     AVFormatContext *formatCtx();
 public slots:
 
@@ -71,6 +73,7 @@ private:
     std::string m_URL;                                               // 媒体URL
     std::vector<int> m_videoIdx, m_audioIdx, m_subtitleIdx;          // 各个流的ID
     std::atomic<int> m_usedVIdx{-1}, m_usedAIdx{-1}, m_usedSIdx{-1}; // 当前使用的流ID
+    std::array<std::vector<QString>, 3> m_stringInfo;                // 流描述
 
     char errBuf[512];
     std::atomic<bool> m_stop{true};
@@ -87,6 +90,7 @@ private:
     void pushAudioPkt(AVPacket *pkt);
     void pushSubtitlePkt(AVPacket *pkt);
     void pushPkt(weakPktQueue wq, AVPacket *pkt);
+    void fillStreamInfo();
 };
 
 #endif // DEMUX_H

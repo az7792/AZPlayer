@@ -1,6 +1,30 @@
 #include "demux.h"
 #include "clock/globalclock.h"
 #include <QDebug>
+namespace {
+    char _infoBuf[512];
+
+    QString getStringInfo(AVStream *st) {
+        const AVDictionaryEntry *lang = av_dict_get(st->metadata, "language", NULL, 0);
+        QString str = lang ? QString("(%1), ").arg(lang->value) : "";
+        lang = av_dict_get(st->metadata, "title", NULL, 0);
+        str += lang ? QString("%1, ").arg(lang->value) : "";
+
+        AVCodecContext *ctx = avcodec_alloc_context3(nullptr);
+        if (!ctx)
+            return str;
+        int ret = avcodec_parameters_to_context(ctx, st->codecpar);
+        if (ret < 0) {
+            avcodec_free_context(&ctx);
+            return str;
+        }
+        avcodec_string(_infoBuf, sizeof(_infoBuf), ctx, 0);
+        avcodec_free_context(&ctx);
+
+        str += QString(" %1").arg(_infoBuf);
+        return str;
+    }
+}
 
 Demux::Demux(QObject *parent)
     : QObject{parent} {}
@@ -45,6 +69,8 @@ bool Demux::init(const std::string URL) {
             m_subtitleIdx.push_back(i);
     }
 
+    fillStreamInfo(); // 填充流的描述信息
+
     m_usedVIdx.store(-1, std::memory_order_relaxed);
     m_usedAIdx.store(-1, std::memory_order_relaxed);
     m_usedSIdx.store(-1, std::memory_order_relaxed);
@@ -65,6 +91,10 @@ bool Demux::uninit() {
     m_videoIdx.clear();
     m_audioIdx.clear();
     m_subtitleIdx.clear();
+
+    for (auto &v : m_stringInfo) {
+        v.clear();
+    }
 
     m_usedVIdx.store(-1, std::memory_order_relaxed);
     m_usedAIdx.store(-1, std::memory_order_relaxed);
@@ -327,5 +357,22 @@ void Demux::pushPkt(weakPktQueue wq, AVPacket *pkt) {
         }
     } else {
         av_packet_free(&pkt);
+    }
+}
+
+void Demux::fillStreamInfo() {
+    // Video
+    // Subtitle
+    auto &subArr = m_stringInfo[MediaIdx::SUBTITLE];
+    for (auto v : m_subtitleIdx) {
+        AVStream *st = m_formatCtx->streams[v];
+        subArr.emplace_back(getStringInfo(st));
+    }
+
+    // Audio
+    auto &audioArr = m_stringInfo[MediaIdx::AUDIO];
+    for (auto v : m_audioIdx) {
+        AVStream *st = m_formatCtx->streams[v];
+        audioArr.emplace_back(getStringInfo(st));
     }
 }

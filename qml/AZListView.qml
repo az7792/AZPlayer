@@ -10,6 +10,7 @@ Rectangle {
     // 记录当前播放和单击选择
     property int activeIndex: -1
     property ListModel listModel: null
+    property bool readOnly: false
 
     signal delActive()
     signal stopActive()
@@ -94,6 +95,10 @@ Rectangle {
         }
 
         Keys.onPressed:function(event) {
+            if(root.readOnly){
+                return
+            }
+
             if (event.key === Qt.Key_Delete && listView.currentIndex >= 0) {
                 //更新播放索引
                 if(listView.currentIndex === root.activeIndex){

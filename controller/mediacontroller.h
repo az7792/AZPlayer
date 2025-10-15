@@ -11,6 +11,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QUrl>
+#include <QVariant>
 #include <array>
 
 class MediaController : public QObject {
@@ -29,7 +30,13 @@ public:
     int duration() const;
     void setDuration(int newDuration);
 
+    bool opened() const;
+    void setOpened(bool newOpened);
+
     Q_INVOKABLE int getCurrentTime() const;
+    Q_INVOKABLE QVariantList getSubtitleInfo() const;
+    Q_INVOKABLE QVariantList getAudioInfo() const;
+
 public slots:
     // 设置用于显示画面的QML元素
     bool setVideoWindow(QObject *videoWindow);
@@ -52,9 +59,12 @@ signals:
     void pausedChanged();
     void volumeChanged();
     void mutedChanged();
+    void streamInfoUpdate(); // 流信息已更新
 
     void durationChanged();
     void seeked(); // 通知前端seek完成，主要用于防止进度条鬼畜
+
+    void openedChanged();
 
 private:
     QUrl m_URL{};
@@ -68,9 +78,8 @@ private:
     sharedFrmQueue m_frmSubtitleBuf = std::make_shared<SPSCQueue<AVFrmItem>>(8);
 
     // 解复用器
-    std::array<Demux *, 3> m_demuxs{nullptr, nullptr, nullptr};                          // 0文件 1字幕 2音轨
-    std::array<std::array<std::vector<std::pair<int, std::string>>, 3>, 3> m_streamInfo; //[demuxIdx][streamIdx] 0视频流 1字幕流 2音频流
-    std::array<std::pair<int, int>, 3> m_streams;                                        // 当前的视频流/字幕流/音频流所使用的{demuxIdx,streamIdx}
+    std::array<Demux *, 3> m_demuxs{nullptr, nullptr, nullptr}; // 0文件 1字幕 2音轨
+    std::array<std::pair<int, int>, 3> m_streams;               // 当前的视频流/字幕流/音频流所使用的{demuxIdx,streamIdx}
     // 音视频解码器
     DecodeAudio *m_decodeAudio = nullptr;
     DecodeVideo *m_decodeVideo = nullptr;
@@ -89,6 +98,9 @@ private:
     Q_PROPERTY(double volume READ volume WRITE setVolume NOTIFY volumeChanged FINAL)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged FINAL)
     Q_PROPERTY(int duration READ duration WRITE setDuration NOTIFY durationChanged FINAL)
+    Q_PROPERTY(bool opened READ opened WRITE setOpened NOTIFY openedChanged FINAL)
+private:
+    QVariantList getStreamInfo(MediaIdx type) const;
 };
 
 #endif // MEDIACONTROLLER_H
