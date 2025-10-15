@@ -27,5 +27,7 @@
         <file>qml/AZSlider.qml</file>
         <file>qml/AZProgressBar.qml</file>
         <file>qml/AZPlayerCtrlBar.qml</file>
+        <file>qml/AZListView.qml</file>
+        <file>qml/AZFileDialog.qml</file>
     </qresource>
 </RCC>

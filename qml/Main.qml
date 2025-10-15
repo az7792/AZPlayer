@@ -266,8 +266,7 @@ Window {
             AZPlayerCtrlBar{
                 id:playerCtrlBar
                 tooltip: tooltip
-                textWrapper: textWrapper
-                fileDialog: fileDialog
+                listView: fileTab
                 splitView: splitView
                 currentTime: progressBar.currentTime
                 z:1
@@ -275,6 +274,7 @@ Window {
                 anchors.right: parent.right
                 anchors.top: progressBar.bottom
                 anchors.topMargin: 1
+                onOpenFileBtnClicked: fileDialog.openFile()
             }
 
         }
@@ -316,7 +316,7 @@ Window {
             anchors.top: parent.top
             anchors.left: splitter.right
             visible: splitView.showed
-            spacing: 0
+            spacing: 1
 
             TabBar {
                 id:tabBar
@@ -354,11 +354,78 @@ Window {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 currentIndex: tabBar.currentIndex
-                Rectangle {
-                    id: fileTab
+
+                ColumnLayout{
                     Layout.fillHeight: true
                     Layout.fillWidth: true
-                    color: "red"
+                    spacing: 1
+                    AZListView{
+                        id: fileTab
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+                        color: "#3b3b3b"
+                        listModel: fileDialog.listModel
+
+                        onDelActive:{
+                            textWrapper.text = ""
+                            MediaCtrl.close()
+                        }
+
+                        onStopActive: {
+                            textWrapper.text = ""
+                            MediaCtrl.close()
+                        }
+
+                        Connections {
+                            target: fileDialog
+                            function onOpenIndex(index) {
+                                fileTab.setHighlightIdx(index)
+                                textWrapper.text = fileDialog.listModel.get(index).text
+                                MediaCtrl.open(fileDialog.activeFilePath)
+                            }
+                        }
+
+                        onOpenIndex:function(index){
+                            textWrapper.text = fileDialog.listModel.get(index).text
+                            MediaCtrl.open(fileDialog.listModel.get(index).fileUrl)
+                        }
+                    }
+                    Rectangle{
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: 30
+                        Layout.maximumHeight: 30
+                        color: "#323232"
+                        Button{
+                            id:addFileBtn
+                            width: 60
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            anchors.left: parent.left
+                            anchors.topMargin: 3
+                            anchors.bottomMargin: 3
+                            anchors.leftMargin: 3
+                            background: Rectangle {
+                                anchors.fill: parent
+                                color: addFileBtn.pressed ? "#424242" : "#5a5a5a"
+                                radius: 3
+                            }
+
+                            contentItem: Text {
+                                text: "添加文件"
+                                color: "white"
+                                font.pointSize: 8
+                                anchors.centerIn: parent
+                            }
+                            onClicked: fileDialog.addFile()
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: subtitleTab
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: "blue"
                     Button{
                         id:tbtn
                         width: 50
@@ -380,12 +447,6 @@ Window {
                             console.log(ct)
                         }
                     }
-                }
-                Rectangle {
-                    id: subtitleTab
-                    Layout.fillHeight: true
-                    Layout.fillWidth: true
-                    color: "blue"
                 }
                 Rectangle {
                     id: audioTab
@@ -412,20 +473,7 @@ Window {
         }
     }
 
-    FileDialog {
-        id: fileDialog
-        title: "选择一个媒体文件"
-        acceptLabel:"打开"
-        rejectLabel:"取消"
-        fileMode: FileDialog.OpenFile
-        nameFilters: ["媒体文件 (*.mp4 *.mkv *.avi *.mp3 *.aac *.mka)", "所有文件 (*)"]
-        onAccepted: {
-            console.log("选中的文件:", selectedFile)
-            var ok = MediaCtrl.open(selectedFile)
-            if(ok){
-                textWrapper.text = selectedFile.toString().split(/[\\/]/).pop()
-            }
-        }
-        onRejected: console.log("取消选择")
+    AZFileDialog{
+        id:fileDialog
     }
 }

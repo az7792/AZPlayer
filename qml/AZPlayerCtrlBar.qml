@@ -5,10 +5,10 @@ Item{
     height: 40
 
     property AZTooltip tooltip: null
-    property Rectangle textWrapper: null
-    property FileDialog fileDialog: null
+    property AZListView listView: null
     property Item splitView: null
     property int currentTime: 0
+    signal openFileBtnClicked()
 
     AZButton{
         id:playBtn
@@ -33,10 +33,7 @@ Item{
         iconHeight: 16
         iconSource: "qrc:/icon/stop.png"
         tooltipText: "停止"
-        onLeftClicked: {
-            MediaCtrl.close()
-            playerCtrlBar.textWrapper.text = ""
-        }
+        onLeftClicked: listView.stopActiveItem()
         onHoverTip: (txt, x, y) => playerCtrlBar.tooltip.show(txt, x, y)
         onHideTip: playerCtrlBar.tooltip.hide()
     }
@@ -51,7 +48,7 @@ Item{
         iconSource: "qrc:/icon/skip_previous.png"
         tooltipText: "L:快退，R:上一个"
         onLeftClicked: MediaCtrl.fastRewind()
-        onRightClicked: ;
+        onRightClicked: listView.openPrev()
         onHoverTip: (txt, x, y) => playerCtrlBar.tooltip.show(txt, x, y)
         onHideTip: playerCtrlBar.tooltip.hide()
     }
@@ -66,7 +63,7 @@ Item{
         iconSource: "qrc:/icon/skip_next.png"
         tooltipText: "L:快进，R:下一个"
         onLeftClicked: MediaCtrl.fastForward()
-        onRightClicked: ;
+        onRightClicked: listView.openNext()
         onHoverTip: (txt, x, y) => playerCtrlBar.tooltip.show(txt, x, y)
         onHideTip: playerCtrlBar.tooltip.hide()
     }
@@ -80,7 +77,7 @@ Item{
         iconHeight: 16
         iconSource: "qrc:/icon/open.png"
         tooltipText: "打开文件"
-        onLeftClicked: playerCtrlBar.fileDialog.open()
+        onLeftClicked: playerCtrlBar.openFileBtnClicked()
         onHoverTip: (txt, x, y) => playerCtrlBar.tooltip.show(txt, x, y)
         onHideTip: playerCtrlBar.tooltip.hide()
     }
