@@ -59,6 +59,8 @@ bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue fr
     m_pktBuf = pktBuf;
     m_frmBuf = frmBuf;
     m_time_base = stream->time_base;
+    m_isEOF = false;
+    m_serial = 0;
     return true;
 }
 
@@ -107,7 +109,7 @@ bool DecodeBase::getPkt(AVPktItem &pktItem, bool &needFlushBuffers) {
             return true;
         }
         av_packet_free(&pktItem.pkt);
-        if(pktItem.serial != m_pktBuf->serial())
+        if (pktItem.serial != m_pktBuf->serial())
             needFlushBuffers = true;
     }
 
@@ -117,10 +119,9 @@ bool DecodeBase::getPkt(AVPktItem &pktItem, bool &needFlushBuffers) {
         av_packet_free(&pktItem.pkt);
         needFlushBuffers = true;
         return false;
-    }
-    else if (pktItem.pkt->stream_index != m_streamIdx) {// 非空 但是流idx不同
+    } else if (pktItem.pkt->stream_index != m_streamIdx) { // 非空 但是流idx不同
         av_packet_free(&pktItem.pkt);
-        //needFlushBuffers = true;
+        // needFlushBuffers = true;
         return false;
     }
 

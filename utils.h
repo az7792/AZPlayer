@@ -7,6 +7,8 @@
 #include <atomic>
 #include <limits>
 #include <vector>
+#include <deque>
+#include <mutex>
 
 #ifdef __cplusplus
 extern "C" {
@@ -131,28 +133,6 @@ public:
         return true;
     }
 
-    /**
-     * 获取第二个有效的元素
-     * @note 请确保pop与peekSecond只在同一个线程下使用
-     */
-    bool peekSecond(T &value) {
-        size_t current_head = m_head.v.load(std::memory_order_acquire);
-        size_t current_tail = m_tail.v.load(std::memory_order_acquire);
-
-        if (current_head == current_tail) {
-            return false;
-        }
-
-        size_t secondIdx = nextIndex(current_head);
-
-        if (secondIdx == current_tail) {
-            return false;
-        }
-
-        value = m_buffer[secondIdx];
-        return true;
-    }
-
     size_t size() const {
         size_t head = m_head.v.load(std::memory_order_acquire);
         size_t tail = m_tail.v.load(std::memory_order_acquire);
@@ -187,8 +167,82 @@ private:
     std::atomic<int> m_serial{0};
 };
 
-using sharedPktQueue = std::shared_ptr<SPSCQueue<AVPktItem>>;
-using weakPktQueue = std::weak_ptr<SPSCQueue<AVPktItem>>;
+class AVPktQueue {
+public:
+    explicit AVPktQueue(size_t maxMB = 2)
+        : m_maxBytes(maxMB * 1024 * 1024), m_currentBytes(0) {
+    }
+
+    bool push(const AVPktItem& item) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        size_t pktSize = item.pkt ? item.pkt->size : 0;
+
+        //在不超过最大容量的情况下最少16帧
+        if (pktSize + m_currentBytes > m_maxBytes && m_queue.size() >= 16) {
+            return false; // 超出总容量限制
+        }
+
+        m_queue.push_back(item);
+        m_currentBytes += pktSize;
+        return true;
+    }
+
+    bool pop(AVPktItem& item) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_queue.empty())
+            return false;
+
+        item = m_queue.front();
+        m_queue.pop_front();
+        size_t pktSize = item.pkt ? item.pkt->size : 0;
+        m_currentBytes -= pktSize;
+        return true;
+    }
+
+    // 查看第一个元素（不移除）
+    bool peekFirst(AVPktItem& item) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_queue.empty())
+            return false;
+
+        item = m_queue.front();
+        return true;
+    }
+
+    size_t size() const {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_queue.size();
+    }
+
+    size_t currentBytes() const {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_currentBytes;
+    }
+
+    size_t maxBytes() const { return m_maxBytes; }
+
+    void clear() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        while (!m_queue.empty()) {
+            AVPktItem item = m_queue.front();
+            m_queue.pop_front();
+            av_packet_free(&item.pkt);
+        }
+        m_currentBytes = 0;
+    }
+
+    int serial() const { return m_serial.load(std::memory_order_relaxed); }
+    void addSerial() { m_serial.fetch_add(1); }
+private:
+    mutable std::mutex m_mutex;
+    std::deque<AVPktItem> m_queue;
+    const size_t m_maxBytes;  // 总字节上限
+    size_t m_currentBytes;    // 当前总字节数
+    std::atomic<int> m_serial{ 0 };
+};
+
+using sharedPktQueue = std::shared_ptr<AVPktQueue>;
+using weakPktQueue = std::weak_ptr<AVPktQueue>;
 using sharedFrmQueue = std::shared_ptr<SPSCQueue<AVFrmItem>>;
 using weakFrmQueue = std::weak_ptr<SPSCQueue<AVFrmItem>>;
 

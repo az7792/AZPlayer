@@ -34,7 +34,8 @@ void DecodeAudio::decodingLoop() {
             continue;
         }
 
-        if (needFlushBuffers) {
+        if (needFlushBuffers || m_serial != m_pktBuf->serial()) {
+            m_serial = m_pktBuf->serial();
             avcodec_flush_buffers(m_codecCtx);
             needFlushBuffers = false;
         }
@@ -44,18 +45,19 @@ void DecodeAudio::decodingLoop() {
         if (ret == 0) {
             av_packet_free(&pktItem.pkt);
         } else if (ret == AVERROR_EOF) {
-            // TODO : 处理音频时钟
-            qDebug() << "pkt EOP";
             av_packet_free(&pktItem.pkt);
+            m_isEOF = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             continue;
         } else if (ret == AVERROR(EAGAIN)) {
             ;
         } else if (ret < 0) {
             av_strerror(ret, errBuf, sizeof(errBuf));
-            qDebug() << "发送audiopkt错误:" << errBuf << pktItem.pkt->stream_index;
+            qDebug() << "Audio发送audiopkt错误:" << errBuf << pktItem.pkt->stream_index;
             goto end;
         }
 
+        m_isEOF = false;
         while (true) {
             frmItem.frm = av_frame_alloc();
             frmItem.serial = pktItem.serial;

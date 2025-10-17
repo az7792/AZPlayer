@@ -26,7 +26,8 @@ void DecodeSubtitle::decodingLoop() {
             continue;
         }
 
-        if (needFlushBuffers) {
+        if (needFlushBuffers || m_serial != m_pktBuf->serial()) {
+            m_serial = m_pktBuf->serial();
             avcodec_flush_buffers(m_codecCtx);
             needFlushBuffers = false;
         }

@@ -43,6 +43,8 @@ protected:
     int m_streamIdx = -1;
     char errBuf[512] = {0};
     std::atomic<bool> m_stop{true};
+    bool m_isEOF = false;
+    int m_serial = 0;
     std::thread m_thread;
     bool m_initialized = false;
     AVRational m_time_base;

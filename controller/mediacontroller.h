@@ -70,12 +70,12 @@ private:
     QUrl m_URL{};
 
     // 音视频队列
-    sharedPktQueue m_pktAudioBuf = std::make_shared<SPSCQueue<AVPktItem>>(16);
-    sharedFrmQueue m_frmAudioBuf = std::make_shared<SPSCQueue<AVFrmItem>>(8);
-    sharedPktQueue m_pktVideoBuf = std::make_shared<SPSCQueue<AVPktItem>>(16);
-    sharedFrmQueue m_frmVideoBuf = std::make_shared<SPSCQueue<AVFrmItem>>(8);
-    sharedPktQueue m_pktSubtitleBuf = std::make_shared<SPSCQueue<AVPktItem>>(16);
-    sharedFrmQueue m_frmSubtitleBuf = std::make_shared<SPSCQueue<AVFrmItem>>(8);
+    sharedPktQueue m_pktAudioBuf = std::make_shared<AVPktQueue>(1);//max(1MB,16packets)
+    sharedFrmQueue m_frmAudioBuf = std::make_shared<SPSCQueue<AVFrmItem>>(9);//max(9frames)
+    sharedPktQueue m_pktVideoBuf = std::make_shared<AVPktQueue>(3);//max(3MB,16packets)
+    sharedFrmQueue m_frmVideoBuf = std::make_shared<SPSCQueue<AVFrmItem>>(3);//max(3frames)
+    sharedPktQueue m_pktSubtitleBuf = std::make_shared<AVPktQueue>(1);//max(1MB,16packets)
+    sharedFrmQueue m_frmSubtitleBuf = std::make_shared<SPSCQueue<AVFrmItem>>(16);//max(16frames)
 
     // 解复用器
     std::array<Demux *, 3> m_demuxs{nullptr, nullptr, nullptr}; // 0文件 1字幕 2音轨

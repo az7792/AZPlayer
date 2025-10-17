@@ -3,8 +3,8 @@
 #include "utils.h"
 #include <QObject>
 #include <atomic>
-#include <string>
 #include <mutex>
+#include <string>
 #include <thread>
 #ifdef __cplusplus
 extern "C" {
@@ -67,7 +67,7 @@ private:
     weakFrmQueue m_videoFrmBuf;    // 只用与修改队列序号用
     weakFrmQueue m_subtitleFrmBuf; // 只用与修改队列序号用
 
-    void addAllQueueSerial();
+    void seekAllPktQueue();
 
     AVFormatContext *m_formatCtx = nullptr;
     std::string m_URL;                                               // 媒体URL
@@ -79,10 +79,11 @@ private:
     std::atomic<bool> m_stop{true};
     std::thread m_thread;
     bool m_initialized = false;
-    std::mutex m_mutex;//保护队列和流ID的更新
+    std::mutex m_mutex; // 保护队列和流ID的更新
 
     std::atomic<bool> m_needSeek{false};
     double m_seekRel = 0.0;
+    bool m_isEOF = false;
 
 private:
     void demuxLoop();

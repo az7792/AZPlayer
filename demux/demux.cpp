@@ -76,6 +76,7 @@ bool Demux::init(const std::string URL) {
     m_usedSIdx.store(-1, std::memory_order_relaxed);
 
     m_initialized = true;
+    m_isEOF = false;
 
     return true;
 }
@@ -145,7 +146,7 @@ bool Demux::switchVideoStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq)
     }
     Q_ASSERT(streamIdx < m_videoIdx.size());
     {
-        std::lock_guard<std::mutex>mtx(m_mutex);
+        std::lock_guard<std::mutex> mtx(m_mutex);
         m_videoPktBuf = wpq, m_videoFrmBuf = wfq;
         m_usedVIdx.store(m_videoIdx[streamIdx], std::memory_order_release);
     }
@@ -169,7 +170,7 @@ bool Demux::switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue w
     }
     Q_ASSERT(streamIdx < m_subtitleIdx.size());
     {
-        std::lock_guard<std::mutex>mtx(m_mutex);
+        std::lock_guard<std::mutex> mtx(m_mutex);
         m_subtitlePktBuf = wpq, m_subtitleFrmBuf = wfq;
         m_usedSIdx.store(m_subtitleIdx[streamIdx], std::memory_order_release);
     }
@@ -195,7 +196,7 @@ bool Demux::switchAudioStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq)
     Q_ASSERT(streamIdx < m_audioIdx.size());
 
     {
-        std::lock_guard<std::mutex>mtx(m_mutex);
+        std::lock_guard<std::mutex> mtx(m_mutex);
         m_audioPktBuf = wpq, m_audioFrmBuf = wfq;
         m_usedAIdx.store(m_audioIdx[streamIdx], std::memory_order_release);
     }
@@ -215,14 +216,12 @@ bool Demux::switchAudioStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq)
 
 void Demux::closeStream(int streamType) {
     {
-        std::lock_guard<std::mutex>mtx(m_mutex);
+        std::lock_guard<std::mutex> mtx(m_mutex);
         if (streamType == 0) {
             m_videoPktBuf.reset(), m_videoFrmBuf.reset(), m_usedVIdx = -1;
-        }
-        else if (streamType == 1) {
+        } else if (streamType == 1) {
             m_subtitlePktBuf.reset(), m_subtitleFrmBuf.reset(), m_usedSIdx = -1;
-        }
-        else if (streamType == 2) {
+        } else if (streamType == 2) {
             m_audioPktBuf.reset(), m_audioFrmBuf.reset(), m_usedAIdx = -1;
         }
     }
@@ -261,15 +260,18 @@ AVFormatContext *Demux::formatCtx() {
     return m_formatCtx;
 }
 
-void Demux::addAllQueueSerial() {
+void Demux::seekAllPktQueue() {
     if (auto q = m_audioPktBuf.lock()) {
         q->addSerial();
+        q->clear();
     }
     if (auto q = m_videoPktBuf.lock()) {
         q->addSerial();
+        q->clear();
     }
     if (auto q = m_subtitlePktBuf.lock()) {
         q->addSerial();
+        q->clear();
     }
 
     if (auto q = m_audioFrmBuf.lock()) {
@@ -292,7 +294,7 @@ void Demux::demuxLoop() {
 
         if (m_needSeek.load(std::memory_order_acquire)) {
             GlobalClock::instance().addSeekCnt();
-            addAllQueueSerial();
+            seekAllPktQueue();
             double target = GlobalClock::instance().seekTs() * AV_TIME_BASE;
             int64_t seekMin = m_seekRel > 0.0 ? static_cast<int64_t>(target - m_seekRel * AV_TIME_BASE + 2) : INT64_MIN;
             int64_t seekMax = m_seekRel < 0.0 ? static_cast<int64_t>(target - m_seekRel * AV_TIME_BASE - 2) : INT64_MAX;
@@ -305,13 +307,24 @@ void Demux::demuxLoop() {
 
         pkt = av_packet_alloc();
         int ret = av_read_frame(m_formatCtx, pkt);
-        if (pkt == nullptr || ret > 0) { // error
-            qDebug() << "解复用出错";
-            goto end;
-        }
-        if (ret < 0) { // EOF
-            qDebug() << "文件解复用完毕";
-            goto end;
+        if (ret < 0) {
+            if (ret == AVERROR_EOF && !m_isEOF) { // EOF
+                Q_ASSERT(pkt->data == NULL && pkt->size == 0);
+                pushVideoPkt(pkt);
+                pkt = av_packet_alloc();
+                pushSubtitlePkt(pkt);
+                pkt = av_packet_alloc();
+                pushAudioPkt(pkt);
+                qDebug() << "解复用EOF";
+                m_isEOF = true;
+            } else if (ret != AVERROR_EOF) { // error
+                qDebug() << "解复用出错";
+                goto end;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        } else {
+            m_isEOF = false;
         }
 
         // ret == 0
@@ -346,7 +359,7 @@ void Demux::pushSubtitlePkt(AVPacket *pkt) {
 }
 
 void Demux::pushPkt(weakPktQueue wq, AVPacket *pkt) {
-    std::lock_guard<std::mutex>mtx(m_mutex);
+    std::lock_guard<std::mutex> mtx(m_mutex);
     if (auto q = wq.lock()) {
         while (!q->push({pkt, q->serial()})) {
             if (m_needSeek.load(std::memory_order_acquire) || m_stop.load(std::memory_order_relaxed)) {
