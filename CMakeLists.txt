@@ -17,7 +17,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Multimedia)
 
 if (MSVC)
-    add_compile_options(/W4 /WX)
+    add_compile_options(/W4)
 else() # GCC/Clang 下
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -28,23 +28,38 @@ qt_add_executable(appAZPlayer
     main.cpp
 )
 
+#qt_policy(SET QTP0001 NEW)
+
+set_source_files_properties(qml/AZTooltip.qml
+    PROPERTIES QT_QML_SINGLETON_TYPE TRUE
+)
+
 qt_add_qml_module(appAZPlayer
     URI AZPlayer
     VERSION 1.0
-    QML_FILES
-        SOURCES demux/demux.h demux/demux.cpp
-        SOURCES decode/decodebase.h decode/decodebase.cpp
-        SOURCES decode/decodeaudio.h decode/decodeaudio.cpp
-        SOURCES renderer/audioplayer.h renderer/audioplayer.cpp
-        SOURCES utils.h
-        RESOURCES resource.qrc
-        SOURCES renderer/videorenderer.h renderer/videorenderer.cpp
-        SOURCES clock/globalclock.h clock/globalclock.cpp
-        SOURCES renderer/videoplayer.h renderer/videoplayer.cpp
-        SOURCES decode/decodevideo.h decode/decodevideo.cpp
-        SOURCES renderer/renderdata.h renderer/renderdata.cpp
-        SOURCES controller/mediacontroller.cpp controller/mediacontroller.h
-        SOURCES decode/decodesubtitle.h decode/decodesubtitle.cpp
+    QML_FILES qml/Main.qml
+              qml/AZButton.qml
+              qml/AZFileDialog.qml
+              qml/AZListView.qml
+              qml/AZPlayerCtrlBar.qml
+              qml/AZProgressBar.qml
+              qml/AZSlider.qml
+              qml/AZStreamView.qml
+              qml/AZTooltip.qml
+              qml/AZWindowControls.qml
+    SOURCES demux/demux.h demux/demux.cpp
+            decode/decodebase.h decode/decodebase.cpp
+            decode/decodeaudio.h decode/decodeaudio.cpp
+            renderer/audioplayer.h renderer/audioplayer.cpp
+            utils.h
+            renderer/videorenderer.h renderer/videorenderer.cpp
+            clock/globalclock.h clock/globalclock.cpp
+            renderer/videoplayer.h renderer/videoplayer.cpp
+            decode/decodevideo.h decode/decodevideo.cpp
+            renderer/renderdata.h renderer/renderdata.cpp
+            controller/mediacontroller.cpp controller/mediacontroller.h
+            decode/decodesubtitle.h decode/decodesubtitle.cpp
+    RESOURCES resource.qrc
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

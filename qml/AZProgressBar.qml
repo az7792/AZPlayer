@@ -62,8 +62,6 @@ Rectangle{
         onLeftClicked: {
             MediaCtrl.toggleMuted();
         }
-        onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
-        onHideTip: tooltip.hide()
     }
 
     AZSlider{

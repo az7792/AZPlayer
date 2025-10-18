@@ -8,7 +8,6 @@ import QtQuick.Layouts
 Rectangle{
     id: root
 
-    property AZTooltip targetToolTip: null
     // 外部传入的窗口
     property Window targetWindow: null
 
@@ -75,8 +74,6 @@ Rectangle{
             iconSource: "qrc:/icon/minimize.png"
             tooltipText: "最小化"
             onLeftClicked:targetWindow.showMinimized();
-            onHoverTip: (txt, x, y) => targetToolTip.show(txt, x, y)
-            onHideTip: targetToolTip.hide()
         }
 
         AZButton {
@@ -88,8 +85,6 @@ Rectangle{
             iconSource: "qrc:/icon/maximize.png"
             tooltipText: "最大化"
             onLeftClicked: controlBar.toggleMaximized()
-            onHoverTip: (txt, x, y) => targetToolTip.show(txt, x, y)
-            onHideTip: targetToolTip.hide()
         }
 
         AZButton {
@@ -101,8 +96,6 @@ Rectangle{
             iconSource: "qrc:/icon/fullscreen.png"
             tooltipText: "全屏"
             onLeftClicked: controlBar.toggleFullScreen()
-            onHoverTip: (txt, x, y) => targetToolTip.show(txt, x, y)
-            onHideTip: targetToolTip.hide()
         }
 
         AZButton {
@@ -114,8 +107,6 @@ Rectangle{
             iconSource: "qrc:/icon/close.png"
             tooltipText: "关闭"
             onLeftClicked:targetWindow.close();
-            onHoverTip: (txt, x, y) => targetToolTip.show(txt, x, y)
-            onHideTip: targetToolTip.hide()
         }
     }
 }

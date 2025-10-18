@@ -7,7 +7,6 @@
 #include "controller/mediacontroller.h"
 #include "renderer/videorenderer.h"
 
-#include "main.moc"
 int main(int argc, char *argv[]) {
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL); // 绘图使用的FBO只有在OpenGL模式下才生效
 

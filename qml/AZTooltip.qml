@@ -1,57 +1,47 @@
-import QtQuick
+pragma Singleton
+import QtQuick 2.15
+import QtQuick.Window 2.15
 
-//TODO: 超出显示区域的会被裁掉
-Rectangle {
-    id: overlay
+Window {
+    id: tooltipWindow
     visible: false
-    z: 9999
-    color: "#f9f9f9"
-    radius: 3
+    flags: Qt.ToolTip | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+    color: "transparent"
 
-    property Window targetWindow: null
-    property alias text: tipLabel.text
+    property Window mainWindow: null
 
-    Text {
-        id: tipLabel
-        anchors.centerIn: parent
-        color: "black"
-        font.pixelSize: 12
-    }
+    Rectangle {
+        id: box
+        color: "#f9f9f9"
+        radius: 3
+        border.color: "#d0d0d0"
+        border.width: 1
 
-    width: tipLabel.width + 10
-    height: tipLabel.height + 6
-
-    function show(msg, px, py) {
-        text = msg
-        px += 8
-        py += 16
-        if(!targetWindow){
-            x = px
-            y = py
-            visible = true
-            return
+        Text {
+            id: label
+            anchors.centerIn: parent
+            color: "black"
+            font.pixelSize: 12
+            wrapMode: Text.WrapAnywhere
         }
 
-        // 获取窗口宽高
-        var winWidth = targetWindow.width
-        var winHeight = targetWindow.height
+        width: label.width + 10
+        height: label.height + 6
+    }
 
-        // 修正 x 坐标，确保 tooltip 不超出右边界
-        if (px + width > winWidth)
-            x = winWidth - width
-        else if (px < 0)
-            x = 0
-        else
-            x = px
+    width: box.width
+    height: box.height
 
-        // 修正 y 坐标，确保 tooltip 不超出下边界
-        if (py + height > winHeight)
-            y = winHeight - height
-        else if (py < 0)
-            y = 0
-        else
-            y = py
+    function show(msg, px, py) {
+        px += mainWindow.x
+        py += mainWindow.y
+        label.text = msg
+        width = box.width
+        height = box.height
+        x = px + 8
+        y = py + 16
         visible = true
+        raise() // 保证显示在最上层
     }
 
     function hide() {

@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import VideoWindow 1.0
 import QtQuick.Layouts
+import AZPlayer 1.0
 Window {
     id: mainWin
     width: 640
@@ -21,10 +22,8 @@ Window {
     property bool forceShowTopBar: false
 
     //用于显示提示信息
-    AZTooltip {
-        id: tooltip
-        targetWindow: mainWin
-        z:999
+    Component.onCompleted: {
+        AZTooltip.mainWindow = mainWin
     }
 
     //用于调整窗口大小
@@ -160,8 +159,6 @@ Window {
             onClicked: console.log("按下")
             onLeftClicked: console.log("L按下")
             onRightClicked: console.log("R按下")
-            onHoverTip: (txt, x, y) => tooltip.show(txt, x, y)
-            onHideTip: tooltip.hide()
         }
 
         Rectangle{
@@ -196,7 +193,6 @@ Window {
         AZWindowControls{
             id:windowControls
             targetWindow: mainWin
-            targetToolTip: tooltip
             height: parent.height
             anchors.right: parent.right
             width: 120
@@ -265,7 +261,6 @@ Window {
 
             AZPlayerCtrlBar{
                 id:playerCtrlBar
-                tooltip: tooltip
                 listView: fileTab
                 splitView: splitView
                 currentTime: progressBar.currentTime

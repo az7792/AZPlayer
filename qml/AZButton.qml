@@ -21,9 +21,6 @@ Rectangle {
     signal leftClicked   //左键点击
     signal rightClicked  //右键点击
 
-    signal hoverTip(string text, int x, int y)
-    signal hideTip()
-
     // 图标
     Image {
         id: icon
@@ -85,19 +82,19 @@ Rectangle {
         onEntered: {
             if (!pressed) root.color = hoverColor
             if (tooltipText !== "") {
-                let globalPos = root.mapToItem(root.window, 0, 0)
-                root.hoverTip(tooltipText,mouseX + globalPos.x, mouseY + globalPos.y)
+                let globalPos = root.mapToItem(root.window, 0, 0)                
+                AZTooltip.show(tooltipText,mouseX + globalPos.x, mouseY + globalPos.y)
             }
         }
 
         onExited: {
             if (!pressed) root.color = defaultColor
-            root.hideTip()
+            AZTooltip.hide()
         }
         onPositionChanged: {
             if (containsMouse && tooltipText !== "") {
                 let globalPos = root.mapToItem(root.window, 0, 0)
-                root.hoverTip(tooltipText,mouseX + globalPos.x, mouseY + globalPos.y)
+                AZTooltip.show(tooltipText,mouseX + globalPos.x, mouseY + globalPos.y)
             }
         }
     }
