@@ -38,7 +38,7 @@ public:
     Q_INVOKABLE QVariantList getAudioInfo() const;
 
     bool loopOnEnd() const;
-    void setLoopOnEnd(bool newLoopOnEnd);
+    Q_INVOKABLE void setLoopOnEnd(bool newLoopOnEnd);
 
 public slots:
     // 设置用于显示画面的QML元素
@@ -107,7 +107,6 @@ private:
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged FINAL)
     Q_PROPERTY(int duration READ duration WRITE setDuration NOTIFY durationChanged FINAL)
     Q_PROPERTY(bool opened READ opened WRITE setOpened NOTIFY openedChanged FINAL)
-    Q_PROPERTY(bool loopOnEnd READ loopOnEnd WRITE setLoopOnEnd FINAL)
 
 private:
     QVariantList getStreamInfo(MediaIdx type) const;

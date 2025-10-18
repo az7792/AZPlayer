@@ -29,21 +29,40 @@ Rectangle {
 
     }
 
+    // 播放列表下一个
     function openNext(){
         if(activeIndex === -1) return
+        if (listModel.count === 0) return
 
         activeIndex = (activeIndex + 1) % listView.count
         openIndex(activeIndex)
         listView.currentIndex = activeIndex
     }
 
+    // 播放列表上一个
     function openPrev(){
         if(activeIndex === -1) return
+        if (listModel.count === 0) return
 
         activeIndex = (activeIndex - 1 + listView.count) % listView.count
         openIndex(activeIndex)
         listView.currentIndex = activeIndex
     }
+
+    // 随机播放一个
+    function openRandom() {
+        if(activeIndex === -1) return
+        if (listModel.count === 0) return
+
+        if (listModel.count >= 2) {
+            var r = Math.floor(Math.random() * (listModel.count - 1))
+            activeIndex = r < activeIndex ? r : r + 1
+        }
+
+        openIndex(activeIndex)
+        listView.currentIndex = activeIndex
+    }
+
 
     ListView {
         id: listView

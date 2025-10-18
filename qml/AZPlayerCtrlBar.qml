@@ -136,9 +136,24 @@ Item{
             else
                 return "qrc:/icon/shuffle.png"
         }
-        tooltipText:mode === 0?"播完重播" : (mode === 1 ? "顺序播放" : "随机播放")
+        tooltipText:mode === 0? "播完重播" : (mode === 1 ? "顺序播放" : "随机播放")
         onLeftClicked: {
             mode = (mode + 1) % 3
+            if(mode === 0){
+                MediaCtrl.setLoopOnEnd(true)
+            } else {//1 or 2
+                MediaCtrl.setLoopOnEnd(false)
+            }
+        }
+        Connections {
+            target: MediaCtrl
+            function onPlayed() {
+                if(playbackModeBtn.mode === 1){
+                    listView.openNext()
+                } else if(playbackModeBtn.mode === 2){
+                    listView.openRandom()
+                }
+            }
         }
     }
 
