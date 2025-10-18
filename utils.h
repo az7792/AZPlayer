@@ -1,14 +1,14 @@
 #ifdef _MSC_VER
-#pragma warning(disable:4324)
+#pragma warning(disable : 4324)
 #endif
 #ifndef UTILS_H
 #define UTILS_H
 #include <QAudioFormat>
 #include <atomic>
-#include <limits>
-#include <vector>
 #include <deque>
+#include <limits>
 #include <mutex>
+#include <vector>
 
 #ifdef __cplusplus
 extern "C" {
@@ -173,11 +173,11 @@ public:
         : m_maxBytes(maxMB * 1024 * 1024), m_currentBytes(0) {
     }
 
-    bool push(const AVPktItem& item) {
+    bool push(const AVPktItem &item) {
         std::lock_guard<std::mutex> lock(m_mutex);
         size_t pktSize = item.pkt ? item.pkt->size : 0;
 
-        //在不超过最大容量的情况下最少16帧
+        // 在不超过最大容量的情况下最少16帧
         if (pktSize + m_currentBytes > m_maxBytes && m_queue.size() >= 16) {
             return false; // 超出总容量限制
         }
@@ -187,7 +187,7 @@ public:
         return true;
     }
 
-    bool pop(AVPktItem& item) {
+    bool pop(AVPktItem &item) {
         std::lock_guard<std::mutex> lock(m_mutex);
         if (m_queue.empty())
             return false;
@@ -200,7 +200,7 @@ public:
     }
 
     // 查看第一个元素（不移除）
-    bool peekFirst(AVPktItem& item) {
+    bool peekFirst(AVPktItem &item) {
         std::lock_guard<std::mutex> lock(m_mutex);
         if (m_queue.empty())
             return false;
@@ -233,12 +233,13 @@ public:
 
     int serial() const { return m_serial.load(std::memory_order_relaxed); }
     void addSerial() { m_serial.fetch_add(1); }
+
 private:
     mutable std::mutex m_mutex;
     std::deque<AVPktItem> m_queue;
-    const size_t m_maxBytes;  // 总字节上限
-    size_t m_currentBytes;    // 当前总字节数
-    std::atomic<int> m_serial{ 0 };
+    const size_t m_maxBytes; // 总字节上限
+    size_t m_currentBytes;   // 当前总字节数
+    std::atomic<int> m_serial{0};
 };
 
 using sharedPktQueue = std::shared_ptr<AVPktQueue>;

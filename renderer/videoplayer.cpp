@@ -34,6 +34,7 @@ bool VideoPlayer::init(sharedFrmQueue frmBuf, sharedFrmQueue subFrmBuf) {
     renderTime = std::numeric_limits<double>::quiet_NaN();
     renderData = &renderData1;
     subRenderData = &subRenderData1;
+    m_serial = 0;
     return true;
 }
 
@@ -101,6 +102,11 @@ void VideoPlayer::playerLoop() {
         if (!ok) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
             continue;
+        }
+
+        if (m_serial != m_frmBuf->serial()) {
+            m_serial = m_frmBuf->serial();
+            m_forceRefresh = true;
         }
 
         if (!m_forceRefresh && m_paused.load(std::memory_order_relaxed)) {

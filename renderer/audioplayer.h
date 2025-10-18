@@ -63,6 +63,7 @@ private:
     AudioPar m_swrPar; // 重采样音频参数，未进行重采样时与m_oldPar一致
 
     bool m_initialized = false;  // 是否已经初始化
+    int m_serial = 0;
     QThread *m_thread = nullptr; // AudioSink需要使用QTimer，这而不能用std::thread
     std::atomic<bool> m_stop{true};
     std::atomic<bool> m_paused{false};

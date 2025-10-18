@@ -42,6 +42,9 @@ MediaController::MediaController(QObject *parent)
 
     QObject::connect(m_audioPlayer, &AudioPlayer::seeked, this, &MediaController::seeked);
     QObject::connect(m_videoPlayer, &VideoPlayer::seeked, this, &MediaController::seeked);
+    QObject::connect(this, &MediaController::seeked, this, [&]() {
+        m_played = false;
+    });
 
     // DEBUG:start
     static QTimer timer;
@@ -51,6 +54,20 @@ MediaController::MediaController(QObject *parent)
     });
     timer.start(1000); // 每1000ms触发一次
     // DEBUG: end
+
+    // 定时判断是否播完
+    QObject::connect(&m_timer, &QTimer::timeout, this, [&]() {
+        if (m_opened && !m_played && getCurrentTime() > m_duration) {
+            if (m_loopOnEnd) {
+                seekBySec(0.0, 0.0);
+            } else {
+                togglePaused();
+                m_played = true;
+                emit played();
+            }
+        }
+    });
+    m_timer.start(100);
 }
 
 bool MediaController::setVideoWindow(QObject *videoWindow) {
@@ -135,6 +152,7 @@ bool MediaController::open(const QUrl &URL) {
 
     m_opened = true;
     setPaused(false);
+    m_played = false;
     qDebug() << "打开成功";
     emit streamInfoUpdate();
     return true;
@@ -281,6 +299,10 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
 
     return true;
 }
+
+bool MediaController::loopOnEnd() const { return m_loopOnEnd; }
+
+void MediaController::setLoopOnEnd(bool newLoopOnEnd) { m_loopOnEnd = newLoopOnEnd; }
 
 bool MediaController::opened() const {
     return m_opened;

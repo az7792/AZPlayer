@@ -74,7 +74,7 @@ Item{
     Rectangle{
         height: parent.height
         anchors.left: openFileBtn.right
-        anchors.right: fileListBtn.left
+        anchors.right: playbackModeBtn.left
         anchors.leftMargin: 1
         anchors.rightMargin: 1
         color: "#1c1c1c"
@@ -114,6 +114,32 @@ Item{
             wrapMode: Text.NoWrap
             elide: Text.ElideNone
         }
+
+    }
+
+    AZButton{
+        id:playbackModeBtn
+        //0播完重播 1列表顺序 2列表随机
+        property int mode: 0
+
+        height: parent.height
+        width: height
+        anchors.right: fileListBtn.left
+        anchors.rightMargin: 1
+        iconHeight: 20
+        iconWidth: 20
+        iconSource: {
+            if(mode === 0)
+                return "qrc:/icon/repeat_one.png"
+            else if(mode === 1)
+                return "qrc:/icon/repeat.png"
+            else
+                return "qrc:/icon/shuffle.png"
+        }
+        tooltipText:mode === 0?"播完重播" : (mode === 1 ? "顺序播放" : "随机播放")
+        onLeftClicked: {
+            mode = (mode + 1) % 3
+        }
     }
 
     AZButton{
@@ -122,6 +148,9 @@ Item{
         width: height
         anchors.right: parent.right
         onLeftClicked: playerCtrlBar.splitView.toggleSidebar()
-        text:"列表"
+        iconHeight: 20
+        iconWidth: 20
+        iconSource: "qrc:/icon/list.png"
+        tooltipText: "打开/关闭列表"
     }
 }

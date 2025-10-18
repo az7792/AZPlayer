@@ -18,6 +18,10 @@
         <file alias="restore.png">resource/icon/restore.png</file>
         <file alias="volume_off.png">resource/icon/volume_off.png</file>
         <file alias="volume_on.png">resource/icon/volume_on.png</file>
+        <file alias="repeat.png">resource/icon/repeat.png</file>
+        <file alias="repeat_one.png">resource/icon/repeat_one.png</file>
+        <file alias="shuffle.png">resource/icon/shuffle.png</file>
+        <file alias="list.png">resource/icon/list.png</file>
     </qresource>
     <qresource prefix="/">
         <file>qml/AZButton.qml</file>

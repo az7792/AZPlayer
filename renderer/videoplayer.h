@@ -57,6 +57,7 @@ private:
     std::atomic<bool> m_stop{true};
     std::atomic<bool> m_paused{false};
     bool m_forceRefresh{false};
+    int m_serial = 0;
     std::thread m_thread;
     bool m_initialized = false; // 是否已经初始化
 

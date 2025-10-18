@@ -41,6 +41,13 @@ Rectangle {
         visible: text !== ""
     }
 
+    onTooltipTextChanged: {
+        if (ma.containsMouse && tooltipText !== "") {
+            let globalPos = root.mapToItem(root.window, 0, 0)
+            AZTooltip.show(tooltipText, ma.mouseX + globalPos.x, ma.mouseY + globalPos.y)
+        }
+    }
+
     MouseArea {
         id: ma
         anchors.fill: parent

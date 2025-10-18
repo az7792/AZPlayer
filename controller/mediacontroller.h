@@ -37,6 +37,9 @@ public:
     Q_INVOKABLE QVariantList getSubtitleInfo() const;
     Q_INVOKABLE QVariantList getAudioInfo() const;
 
+    bool loopOnEnd() const;
+    void setLoopOnEnd(bool newLoopOnEnd);
+
 public slots:
     // 设置用于显示画面的QML元素
     bool setVideoWindow(QObject *videoWindow);
@@ -66,16 +69,18 @@ signals:
 
     void openedChanged();
 
+    void played(); // 播放完毕
+
 private:
     QUrl m_URL{};
 
     // 音视频队列
-    sharedPktQueue m_pktAudioBuf = std::make_shared<AVPktQueue>(1);//max(1MB,16packets)
-    sharedFrmQueue m_frmAudioBuf = std::make_shared<SPSCQueue<AVFrmItem>>(9);//max(9frames)
-    sharedPktQueue m_pktVideoBuf = std::make_shared<AVPktQueue>(3);//max(3MB,16packets)
-    sharedFrmQueue m_frmVideoBuf = std::make_shared<SPSCQueue<AVFrmItem>>(3);//max(3frames)
-    sharedPktQueue m_pktSubtitleBuf = std::make_shared<AVPktQueue>(1);//max(1MB,16packets)
-    sharedFrmQueue m_frmSubtitleBuf = std::make_shared<SPSCQueue<AVFrmItem>>(16);//max(16frames)
+    sharedPktQueue m_pktAudioBuf = std::make_shared<AVPktQueue>(1);               // max(1MB,16packets)
+    sharedFrmQueue m_frmAudioBuf = std::make_shared<SPSCQueue<AVFrmItem>>(9);     // max(9frames)
+    sharedPktQueue m_pktVideoBuf = std::make_shared<AVPktQueue>(3);               // max(3MB,16packets)
+    sharedFrmQueue m_frmVideoBuf = std::make_shared<SPSCQueue<AVFrmItem>>(3);     // max(3frames)
+    sharedPktQueue m_pktSubtitleBuf = std::make_shared<AVPktQueue>(1);            // max(1MB,16packets)
+    sharedFrmQueue m_frmSubtitleBuf = std::make_shared<SPSCQueue<AVFrmItem>>(16); // max(16frames)
 
     // 解复用器
     std::array<Demux *, 3> m_demuxs{nullptr, nullptr, nullptr}; // 0文件 1字幕 2音轨
@@ -88,17 +93,22 @@ private:
     AudioPlayer *m_audioPlayer = nullptr;
     VideoPlayer *m_videoPlayer = nullptr;
 
-    bool m_opened = false;
+    QTimer m_timer;
 
+    bool m_opened = false;
     bool m_paused = true;
     bool m_muted = false;
     double m_volume = 1.0; // 表现音量，非静音状态下才等于实际音量
     int m_duration = 0;
+    bool m_loopOnEnd = true; // true播完重播 | false播完暂停
+    bool m_played = false;   // 是否播完
     Q_PROPERTY(bool paused READ paused WRITE setPaused NOTIFY pausedChanged FINAL)
     Q_PROPERTY(double volume READ volume WRITE setVolume NOTIFY volumeChanged FINAL)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged FINAL)
     Q_PROPERTY(int duration READ duration WRITE setDuration NOTIFY durationChanged FINAL)
     Q_PROPERTY(bool opened READ opened WRITE setOpened NOTIFY openedChanged FINAL)
+    Q_PROPERTY(bool loopOnEnd READ loopOnEnd WRITE setLoopOnEnd FINAL)
+
 private:
     QVariantList getStreamInfo(MediaIdx type) const;
 };

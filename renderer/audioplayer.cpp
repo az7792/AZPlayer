@@ -158,6 +158,7 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
 
     m_forceRefresh = false;
     m_initialized = true;
+    m_serial = 0;
 
     return true;
 }
@@ -372,6 +373,11 @@ void AudioPlayer::playerLoop() {
         if (!ok) {
             QThread::msleep(5);
             continue;
+        }
+
+        if (m_serial != m_frmBuf->serial()) {
+            m_serial = m_frmBuf->serial();
+            m_forceRefresh = true;
         }
 
         if (!m_forceRefresh && m_paused.load(std::memory_order_relaxed)) {
