@@ -34,5 +34,6 @@
         <file>qml/AZListView.qml</file>
         <file>qml/AZFileDialog.qml</file>
         <file>qml/AZStreamView.qml</file>
+        <file>qml/AZTextButton.qml</file>
     </qresource>
 </RCC>

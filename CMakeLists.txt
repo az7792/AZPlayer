@@ -47,6 +47,7 @@ qt_add_qml_module(appAZPlayer
               qml/AZStreamView.qml
               qml/AZTooltip.qml
               qml/AZWindowControls.qml
+              qml/AZTextButton.qml
     SOURCES demux/demux.h demux/demux.cpp
             decode/decodebase.h decode/decodebase.cpp
             decode/decodeaudio.h decode/decodeaudio.cpp

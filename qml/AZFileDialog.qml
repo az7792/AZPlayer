@@ -22,6 +22,14 @@ Rectangle {
         fileDialogMulti.open()
     }
 
+    function openSubtitleStreamFile(){
+        subtitleStreamDialog.open()
+    }
+
+    function openAudioStreamFile(){
+        audioStreamDialog.open()
+    }
+
     ListModel {
         id: listModel
 
@@ -111,4 +119,44 @@ Rectangle {
         onRejected: { console.log("[FileDialogMulti] 取消") }
     }
 
+    // 打开字幕文件对话框
+    FileDialog {
+        id: subtitleStreamDialog
+        title: "选择字幕文件"
+        acceptLabel: "打开"
+        rejectLabel: "取消"
+        fileMode: FileDialog.OpenFile
+        nameFilters: [
+            "字幕文件 (*.srt *.ass *.ssa *.sub *.vtt)",
+            "所有文件 (*)"
+        ]
+        onAccepted: {
+            if (!selectedFile) return
+            MediaCtrl.openSubtitleStream(selectedFile)
+        }
+
+        onRejected: {
+            console.log("[SubtitleDialog] 用户取消选择")
+        }
+    }
+
+    // 打开音轨文件对话框
+    FileDialog {
+        id: audioStreamDialog
+        title: "选择音轨文件"
+        acceptLabel: "打开"
+        rejectLabel: "取消"
+        fileMode: FileDialog.OpenFile
+        nameFilters: [
+            "音频文件 (*.mp3 *.aac *.flac *.mka *.wav *.ogg *.ac3)",
+            "所有文件 (*)"
+        ]
+        onAccepted: {
+            if (!selectedFile) return
+            MediaCtrl.openAudioStream(selectedFile)
+        }
+        onRejected: {
+            console.log("[AudioTrackDialog] 用户取消选择")
+        }
+    }
 }

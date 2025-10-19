@@ -3,6 +3,7 @@ import QtQuick
 Item{
 
     property string streamType: "AUDIO"
+    property int currentIdx: -1
 
     ListModel{
         id:listModel
@@ -10,17 +11,20 @@ Item{
 
     function update(){
         var arr = []
-        if(streamType === "AUDIO")
+        if(streamType === "AUDIO"){
             arr = MediaCtrl.getAudioInfo()
-        else if(streamType === "SUBTITLE")
+            currentIdx = MediaCtrl.getAudioIdx()
+        } else if(streamType === "SUBTITLE"){
             arr = MediaCtrl.getSubtitleInfo()
+            currentIdx = MediaCtrl.getSubtitleIdx()
+        }
 
         listModel.clear()
         for(let i = 0;i<arr.length;++i){
             listModel.append(arr[i])
         }
         if(arr.length !== -1)
-            view.setHighlightIdx(0)
+            view.setHighlightIdx(currentIdx)
     }
 
     AZListView{

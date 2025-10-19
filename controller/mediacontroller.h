@@ -36,6 +36,8 @@ public:
     Q_INVOKABLE int getCurrentTime() const;
     Q_INVOKABLE QVariantList getSubtitleInfo() const;
     Q_INVOKABLE QVariantList getAudioInfo() const;
+    Q_INVOKABLE int getSubtitleIdx() const; // 获取当前使用的流在所有同类流中的索引，-1为未使用
+    Q_INVOKABLE int getAudioIdx() const; // 获取当前使用的流在所有同类流中的索引，-1为未使用
 
     bool loopOnEnd() const;
     Q_INVOKABLE void setLoopOnEnd(bool newLoopOnEnd);
@@ -45,6 +47,8 @@ public slots:
     bool setVideoWindow(QObject *videoWindow);
 
     bool open(const QUrl &URL);
+    bool openSubtitleStream(const QUrl &URL);
+    bool openAudioStream(const QUrl &URL);
     bool close();
 
     void togglePaused();
@@ -110,6 +114,7 @@ private:
 
 private:
     QVariantList getStreamInfo(MediaIdx type) const;
+    bool openStreamByFile(const QUrl &URL, MediaIdx idx);
 };
 
 #endif // MEDIACONTROLLER_H

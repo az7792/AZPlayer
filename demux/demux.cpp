@@ -159,6 +159,8 @@ bool Demux::switchVideoStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq)
             ok = avformat_seek_file(m_formatCtx, m_videoIdx[streamIdx], target, target, target, 0);
             start();
         }
+    } else {
+        seekBySec(GlobalClock::instance().getMainPts(), 0);
     }
 
     return ok;
@@ -184,6 +186,8 @@ bool Demux::switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue w
                                     m_usedVIdx.load(std::memory_order_relaxed) == -1 ? AVSEEK_FLAG_ANY : 0);
             start();
         }
+    } else {
+        seekBySec(GlobalClock::instance().getMainPts(), 0);
     }
 
     return ok;
@@ -209,6 +213,8 @@ bool Demux::switchAudioStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq)
                                     m_usedVIdx.load(std::memory_order_relaxed) == -1 ? AVSEEK_FLAG_ANY : 0);
             start();
         }
+    } else {
+        seekBySec(GlobalClock::instance().getMainPts(), 0);
     }
 
     return ok;
@@ -254,6 +260,11 @@ AVStream *Demux::getSubtitleStream() {
     if (m_usedSIdx.load(std::memory_order_relaxed) == -1)
         return nullptr;
     return m_formatCtx->streams[m_usedSIdx.load(std::memory_order_relaxed)];
+}
+
+std::array<size_t, 3> Demux::getStreamsCount() const
+{
+    return { m_videoIdx.size(),m_subtitleIdx.size(),m_audioIdx.size() };
 }
 
 AVFormatContext *Demux::formatCtx() {
@@ -359,18 +370,16 @@ void Demux::pushSubtitlePkt(AVPacket *pkt) {
 }
 
 void Demux::pushPkt(weakPktQueue wq, AVPacket *pkt) {
-    std::lock_guard<std::mutex> mtx(m_mutex);
-    if (auto q = wq.lock()) {
-        while (!q->push({pkt, q->serial()})) {
-            if (m_needSeek.load(std::memory_order_acquire) || m_stop.load(std::memory_order_relaxed)) {
-                av_packet_free(&pkt);
-                return;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    while (auto q = wq.lock()) {
+        bool ok = q->push({ pkt, q->serial() });
+        if (ok) return;
+        if (m_needSeek.load(std::memory_order_acquire) || m_stop.load(std::memory_order_relaxed)) {
+            av_packet_free(&pkt);
+            return;
         }
-    } else {
-        av_packet_free(&pkt);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
+    av_packet_free(&pkt);
 }
 
 void Demux::fillStreamInfo() {

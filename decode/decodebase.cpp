@@ -97,7 +97,7 @@ void DecodeBase::stop() {
     m_thread.join();
 }
 
-bool DecodeBase::initialized() {
+bool DecodeBase::initialized() const {
     return m_initialized;
 }
 

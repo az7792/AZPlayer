@@ -32,7 +32,7 @@ public:
     // 退出解复用线程
     void stop();
 
-    bool initialized();
+    bool initialized() const;
 
 protected:
     sharedPktQueue m_pktBuf;

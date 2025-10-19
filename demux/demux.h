@@ -54,6 +54,8 @@ public:
     bool haveAudioStream() { return !m_audioIdx.empty(); }
     bool haveSubtitleStream() { return !m_subtitleIdx.empty(); }
 
+    std::array<size_t,3> getStreamsCount() const;
+
     const std::array<std::vector<QString>, 3> &streamInfo() { return m_stringInfo; }
 
     AVFormatContext *formatCtx();

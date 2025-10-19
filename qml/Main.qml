@@ -384,13 +384,14 @@ Window {
                             textWrapper.text = fileDialog.listModel.get(index).text
                             MediaCtrl.open(fileDialog.listModel.get(index).fileUrl)
                         }
-                    }
+                    }                   
+
                     Rectangle{
                         Layout.fillWidth: true
                         Layout.minimumHeight: 30
                         Layout.maximumHeight: 30
                         color: "#323232"
-                        Button{
+                        AZTextButton{
                             id:addFileBtn
                             width: 60
                             anchors.top: parent.top
@@ -399,36 +400,71 @@ Window {
                             anchors.topMargin: 3
                             anchors.bottomMargin: 3
                             anchors.leftMargin: 3
-                            background: Rectangle {
-                                anchors.fill: parent
-                                color: addFileBtn.pressed ? "#424242" : "#5a5a5a"
-                                radius: 3
-                            }
-
-                            contentItem: Text {
-                                text: "添加文件"
-                                color: "white"
-                                font.pointSize: 8
-                                anchors.centerIn: parent
-                            }
+                            text: "添加文件"
                             onClicked: fileDialog.addFile()
                         }
                     }
                 }
 
-                AZStreamView {
-                    id: subtitleTab
-                    streamType: "SUBTITLE"
+                ColumnLayout{
                     Layout.fillHeight: true
                     Layout.fillWidth: true
+                    spacing: 1
+                    AZStreamView {
+                        id: subtitleTab
+                        streamType: "SUBTITLE"
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+                    }
+                    Rectangle{
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: 30
+                        Layout.maximumHeight: 30
+                        color: "#323232"
+                        AZTextButton{
+                            id:addSubtitleBtn
+                            width: 60
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            anchors.left: parent.left
+                            anchors.topMargin: 3
+                            anchors.bottomMargin: 3
+                            anchors.leftMargin: 3
+                            text: "添加字幕"
+                            onClicked: fileDialog.openSubtitleStreamFile()
+                        }
+                    }
                 }
-                AZStreamView {
-                    id: audioTab
-                    streamType: "AUDIO"
+                ColumnLayout{
                     Layout.fillHeight: true
                     Layout.fillWidth: true
-                }
-            }
+                    spacing: 1
+                    AZStreamView {
+                        id: audioTab
+                        streamType: "AUDIO"
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+                    }
+                    Rectangle{
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: 30
+                        Layout.maximumHeight: 30
+                        color: "#323232"
+                        AZTextButton{
+                            id:addAudioBtn
+                            width: 60
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            anchors.left: parent.left
+                            anchors.topMargin: 3
+                            anchors.bottomMargin: 3
+                            anchors.leftMargin: 3
+                            text: "添加音轨"
+                            onClicked: fileDialog.openAudioStreamFile()
+                        }
+                    }
+                }// end ColumnLayout
+            }// end StackLayout
 
         }
 
