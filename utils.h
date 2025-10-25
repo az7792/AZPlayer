@@ -65,6 +65,7 @@ struct AVPktItem {
 struct AVFrmItem {
     AVFrame *frm = nullptr;
     AVSubtitle sub{};
+    int width{0}, height{0}; // HACK 目前仅用于表示字幕的分辨率大小
     int serial = 0;
     double pts = std::numeric_limits<double>::quiet_NaN();
     double duration = std::numeric_limits<double>::quiet_NaN();

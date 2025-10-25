@@ -37,7 +37,7 @@ public:
     Q_INVOKABLE QVariantList getSubtitleInfo() const;
     Q_INVOKABLE QVariantList getAudioInfo() const;
     Q_INVOKABLE int getSubtitleIdx() const; // 获取当前使用的流在所有同类流中的索引，-1为未使用
-    Q_INVOKABLE int getAudioIdx() const; // 获取当前使用的流在所有同类流中的索引，-1为未使用
+    Q_INVOKABLE int getAudioIdx() const;    // 获取当前使用的流在所有同类流中的索引，-1为未使用
 
     bool loopOnEnd() const;
     Q_INVOKABLE void setLoopOnEnd(bool newLoopOnEnd);
@@ -54,6 +54,8 @@ public slots:
     void togglePaused();
     void toggleMuted();
     void setVolume(double newVolume);
+    void addVolum();
+    void subVolum();
 
     void seekBySec(double ts, double rel); // seek到指定位置(秒)
     void fastForward();                    // 快进

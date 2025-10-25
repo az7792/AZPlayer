@@ -1,8 +1,12 @@
 import QtQuick
 import QtQuick.Dialogs
+import VideoWindow 1.0
 Item{
     id:playerCtrlBar
     height: 40
+
+    property VideoWindow videoWindow: null
+    property AZDial angleDial : null
 
     property AZListView listView: null
     property Item splitView: null
@@ -78,6 +82,7 @@ Item{
         anchors.leftMargin: 1
         anchors.rightMargin: 1
         color: "#1c1c1c"
+        clip: true
 
         function secondsToHMS(seconds) {
             var h = Math.floor(seconds / 3600);
@@ -96,7 +101,8 @@ Item{
             id: mediaDurationText1
             color: "#ebebeb"
             text: parent.secondsToHMS(playerCtrlBar.currentTime)
-            font.pixelSize: 10
+            font.family: "Segoe UI"
+            font.pixelSize: 12
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: parent.left
             anchors.leftMargin: 10
@@ -108,11 +114,132 @@ Item{
             id: mediaDurationText2
             color: "#747474"
             text: "  /  " + parent.secondsToHMS(MediaCtrl.duration)
-            font.pixelSize: 10
+            font.family: "Segoe UI"
+            font.pixelSize: 12
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: mediaDurationText1.right
             wrapMode: Text.NoWrap
             elide: Text.ElideNone
+        }
+
+
+        AZTextInput{
+            id: inputAngle
+            width: 70
+            height: 20
+            text: "0"
+            labelText:"角度:"
+            validator: DoubleValidator{
+                bottom: 0.0
+                top: 360.0
+                decimals : 1
+                notation: DoubleValidator.StandardNotation
+            }
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: mediaDurationText2.right
+            anchors.leftMargin: 10
+            onEditingFinished: angleDial.value = Number(text) //angleDial会自己调用setAngle
+            onWheelUp: angleDial.value = (Number(text) + 1) % 360     //angleDial会自己调用setAngle
+            onWheelDown: angleDial.value = (Number(text) - 1 + 360) % 360   //angleDial会自己调用setAngle
+            Connections {
+                target: videoWindow
+                function onVideoAngleChanged() {
+                    inputAngle.text = videoWindow.angle().toFixed(1)
+                }
+            }
+        }
+
+        AZTextInput{
+            id: inputScale
+            width: 60
+            height: 20
+            text: "100"
+            labelText:"缩放:"
+            validator: IntValidator{
+                bottom: 2
+                top: 600
+            }
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: inputAngle.right
+            anchors.leftMargin: 10
+            onEditingFinished: videoWindow.setScale(Number(text))
+            onWheelUp: videoWindow.addScale()
+            onWheelDown: videoWindow.subScale()
+            Connections {
+                target: videoWindow
+                function onVideoScaleChanged() {
+                    inputScale.text = videoWindow.scale()
+                }
+            }
+        }
+
+        AZTextInput{
+            id: inputX
+            width: 60
+            height: 20
+            text: "0"
+            labelText:"X:"
+            validator: DoubleValidator{
+                bottom: -10000
+                top: 10000
+                decimals : 1
+                notation: DoubleValidator.StandardNotation
+            }
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: inputScale.right
+            anchors.leftMargin: 10
+            onEditingFinished: {videoWindow.setX(Number(text))
+            console.log(text)}
+            onWheelUp: videoWindow.addX()
+            onWheelDown: videoWindow.subX()
+            Connections {
+                target: videoWindow
+                function onVideoXChanged() {
+                    inputX.text = videoWindow.tx().toFixed(1)
+                }
+            }
+        }
+
+        AZTextInput{
+            id: inputY
+            width: 60
+            height: 20
+            text: "0"
+            labelText:"Y:"
+            validator: DoubleValidator{
+                bottom: -10000
+                top: 10000
+                decimals : 1
+                notation: DoubleValidator.StandardNotation
+            }
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: inputX.right
+            anchors.leftMargin: 10
+            onEditingFinished: videoWindow.setY(Number(text))
+            onWheelUp: videoWindow.addY()
+            onWheelDown: videoWindow.subY()
+            Connections {
+                target: videoWindow
+                function onVideoYChanged() {
+                    inputY.text = videoWindow.ty().toFixed(1)
+                }
+            }
+        }
+
+        AZTextButton{
+            id: resetBtn
+            width: 60
+            height: 25
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: inputY.right
+            anchors.leftMargin: 10
+            text: "恢复屏幕"
+            onClicked: {
+                videoWindow.setXY(0,0)
+                //videoWindow.setAngle(0)
+                angleDial.value = 0
+                videoWindow.setScale(100)
+            }
         }
 
     }

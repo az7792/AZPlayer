@@ -35,5 +35,8 @@
         <file>qml/AZFileDialog.qml</file>
         <file>qml/AZStreamView.qml</file>
         <file>qml/AZTextButton.qml</file>
+        <file>qml/AZTopBar.qml</file>
+        <file>qml/AZDial.qml</file>
+        <file>qml/AZTextInput.qml</file>
     </qresource>
 </RCC>

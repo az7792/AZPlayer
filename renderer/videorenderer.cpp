@@ -97,9 +97,12 @@ VideoRenderer::~VideoRenderer() {
     }
 }
 
-void VideoRenderer::init(RenderData *renderData) {
+void VideoRenderer::initVideoTex(RenderData *renderData) {
+    if (!renderData)
+        return;
+
     AVFrame *frm = renderData->frmItem.frm;
-    if (m_needInitTex && frm) {
+    if (m_needInitVideoTex && frm) {
         // 初始化像素格式与上传方式
         m_width = frm->width, m_height = frm->height;
         m_AVPixelFormat = (AVPixelFormat)frm->format;
@@ -115,8 +118,6 @@ void VideoRenderer::init(RenderData *renderData) {
         m_program.setUniformValue(loc, 2);
         loc = m_program.uniformLocation("aTex");
         m_program.setUniformValue(loc, 3);
-        loc = m_program.uniformLocation("subTex");
-        m_program.setUniformValue(loc, 4);
 
         // 拷贝一些参数方便使用
         RenderData::PixFormat tmpFmt = renderData->pixFormat;
@@ -127,12 +128,6 @@ void VideoRenderer::init(RenderData *renderData) {
             componentSizeArr[i] = renderData->componentSizeArr[i];
             alignment = renderData->alignment;
         }
-
-        // 字幕纹理
-        if ((int)texFill().size() < m_width * m_height * 4) {
-            texFill().assign(m_width * m_height * 4, 0);
-        }
-        initTex(m_subTex, {m_width, m_height}, {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE}, texFill().data());
 
         if (tmpFmt == RenderData::RGB_PACKED || tmpFmt == RenderData::RGBA_PACKED ||
             tmpFmt == RenderData::Y || tmpFmt == RenderData::YA) {
@@ -148,7 +143,33 @@ void VideoRenderer::init(RenderData *renderData) {
                 initTex(m_texArr[3], componentSizeArr[3], GLParaArr[3]); // A
             }
         }
-        m_needInitTex = false;
+        m_needInitVideoTex = false;
+    }
+}
+
+void VideoRenderer::initSubtitleTex(SubRenderData *subRenderData) {
+    if (m_needInitSubtitleTex && subRenderData) {
+        m_program.bind();
+        int loc = m_program.uniformLocation("subTex");
+        m_program.setUniformValue(loc, 4);
+
+        m_heightSub = subRenderData->frmItem.height;
+        m_widthSub = subRenderData->frmItem.width;
+
+        if (m_heightSub == 0 || m_widthSub == 0) {
+            m_heightSub = m_height, m_widthSub = m_width;
+        }
+
+        // 字幕纹理
+        if ((int)texFill().size() < m_widthSub * m_heightSub * 4) {
+            texFill().assign(m_widthSub * m_heightSub * 4, 0);
+        }
+        initTex(m_subTex, {m_widthSub, m_heightSub}, {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE}, texFill().data());
+
+        loc = m_program.uniformLocation("haveSubTex"); // 主要用于标记有字幕纹理(即使当前播放的视频没有字幕)
+        m_program.setUniformValue(loc, true);
+
+        m_needInitSubtitleTex = false;
     }
 }
 
@@ -157,7 +178,9 @@ QOpenGLFramebufferObject *VideoRenderer::createFramebufferObject(const QSize &si
     m_heightFBO = size.height();
 
     QOpenGLFramebufferObjectFormat format;
-    format.setAttachment(QOpenGLFramebufferObject::Depth);
+    format.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
+    format.setSamples(4); // 抗锯齿4x MSAA
+    // format.setAttachment(QOpenGLFramebufferObject::Depth);
     return new QOpenGLFramebufferObject(size, format);
 }
 
@@ -170,11 +193,16 @@ void VideoRenderer::render() {
 
     m_renderData->mutex.lock();
 
-    // // 更新纹理
+    // 更新视频纹理
     AVFrame *frm = m_renderData->frmItem.frm;
     if (frm->width != m_width || frm->height != m_height || frm->format != m_AVPixelFormat) {
-        m_needInitTex = true;
-        init(m_renderData);
+        m_needInitVideoTex = true;
+        initVideoTex(m_renderData);
+    }
+
+    if (m_subRenderData && (m_subRenderData->frmItem.width != m_widthSub || m_subRenderData->frmItem.height != m_heightSub)) {
+        m_needInitSubtitleTex = true;
+        initSubtitleTex(m_subRenderData);
     }
 
     // 更新参数
@@ -188,7 +216,21 @@ void VideoRenderer::render() {
         glClearColor(0.0627f, 0.0627f, 0.0627f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         m_program.bind();
-        // 调整画面比例
+
+        QMatrix4x4 mat;
+        mat.setToIdentity();
+
+        mat.translate(m_tx, m_ty, 0.0f); // 移动 #step5
+
+        // 视频等比例缩放到[-1,1]的正方形里时视频右上角的坐标
+        float scaleX0 = 1.0f, scaleY0 = 1.0f;
+        if (m_width > m_height) {
+            scaleY0 = 1.f * m_height / m_width;
+        } else {
+            scaleX0 = 1.f * m_width / m_height;
+        }
+
+        // 将视频等比例填充满FBO并将FBO缩放到[-1,1]时视频右上角的坐标
         float scaleX = 1.0f, scaleY = 1.0f;
         float videoAspect = 1.f * m_width / m_height, fboAspect = 1.f * m_widthFBO / m_heightFBO;
         if (videoAspect > fboAspect) {
@@ -198,9 +240,14 @@ void VideoRenderer::render() {
             // 视频比FBO高，高撑满，宽缩放
             scaleX = videoAspect / fboAspect;
         }
-        QMatrix4x4 mat;
-        mat.setToIdentity();
-        mat.scale(scaleX, scaleY, 1.0f);
+        mat.scale(scaleX / scaleX0, scaleY / scaleY0, 1.0f); // 调整画面比例，将step1的原始比例映射到新的比例 #step4
+
+        mat.scale(m_scale, m_scale, 1.0f); // 缩放 #step3
+        mat.rotate(m_angle, 0, 0, 1);      // 旋转 #step2
+
+        // 按视频比例将顶点在[-1,1]的正方形里先保持比例正确 #step1
+        mat.scale(scaleX0, scaleY0, 1.f);
+
         m_program.setUniformValue(m_program.uniformLocation("transform"), mat);
         // 绘制视频画面
         glBindVertexArray(m_vao);
@@ -219,6 +266,10 @@ void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
     VideoWindow *videoWindow = static_cast<VideoWindow *>(item);
     m_renderData = videoWindow->m_renderData;
     m_subRenderData = videoWindow->m_subRenderData;
+    m_tx = 2.f * videoWindow->m_tx / m_widthFBO;
+    m_ty = 2.f * videoWindow->m_ty / m_heightFBO;
+    m_angle = videoWindow->m_angle;
+    m_scale = videoWindow->m_scale / 100.f;
 }
 
 bool VideoRenderer::updateTex(RenderData::PixFormat fmt) {
@@ -329,8 +380,8 @@ void VideoRenderer::initTex(GLuint &tex, const QSize &size, const std::array<uns
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
     // 为当前绑定的纹理对象设置环绕、过滤方式
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, para[0], size.width(), size.height(), 0, para[1], para[2], fill);

@@ -19,6 +19,7 @@ uniform sampler2D uTex;// U | G
 uniform sampler2D vTex;// V | B
 uniform sampler2D aTex;// A
 uniform sampler2D subTex;// 字幕RGBA
+uniform bool haveSubTex = false;
 
 
 out vec4 FragColor;
@@ -64,6 +65,8 @@ void main()
         FragColor = vec4(1.0, 0.0, 0.0, 1.0); // 未知格式
     }
 
-    vec4 subColor = texture(subTex, TexCoord);
-    FragColor = mix(FragColor, subColor, subColor.a);
+    if(haveSubTex) {
+        vec4 subColor = texture(subTex, TexCoord);
+        FragColor = mix(FragColor, subColor, subColor.a);
+    }
 }

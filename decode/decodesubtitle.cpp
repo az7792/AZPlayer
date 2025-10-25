@@ -42,6 +42,8 @@ void DecodeSubtitle::decodingLoop() {
 
             if (got_frame) {
                 const AVSubtitle &sub = frmItem.sub;
+                frmItem.width = m_codecCtx->width;
+                frmItem.height = m_codecCtx->height;
                 frmItem.serial = pktItem.serial;
                 frmItem.pts = sub.pts == AV_NOPTS_VALUE ? 0.0
                                                         : sub.pts / (double)AV_TIME_BASE + sub.start_display_time / 1000.0;

@@ -6,9 +6,9 @@ import QtQuick.Layouts
 import AZPlayer 1.0
 Window {
     id: mainWin
-    width: 640
+    width: 800
     minimumWidth: splitView.leftMinWidth + splitView.rightMinWidth + 20
-    height: 480
+    height: 600
     minimumHeight: 360
     visible: true
     title: qsTr("AZPlayer")
@@ -26,8 +26,25 @@ Window {
         AZTooltip.mainWindow = mainWin
     }
 
+
+    // 鼠标滚轮控制旋转角度
+    WheelHandler {
+        target: videoArea
+        onWheel:function(wheel) {
+            if (wheel.modifiers & Qt.ControlModifier) {// 按住 Ctrl
+                if (wheel.angleDelta.y > 0) videoWindow.addScale()
+                else if (wheel.angleDelta.y < 0) videoWindow.subScale()
+            }else{
+                if (wheel.angleDelta.y > 0) MediaCtrl.addVolum()
+                else if (wheel.angleDelta.y < 0) MediaCtrl.subVolum()
+            }
+            wheel.accepted = true
+        }
+    }
+
     //用于调整窗口大小
     MouseArea {
+        id: mainMouseArea
         anchors.fill: parent
         hoverEnabled: true
         propagateComposedEvents:true
@@ -35,7 +52,7 @@ Window {
         // 定时器，隐藏鼠标
         Timer {
             id: hideTimer
-            interval: 1000
+            interval: 2000
             repeat: false
             onTriggered: {
                 parent.cursorShape = Qt.BlankCursor
@@ -46,7 +63,10 @@ Window {
         function toggleCursorShape(x,y){
             // 改变鼠标样式
             if(mainWin.visibility !== Window.Windowed){
-                cursorShape = Qt.ArrowCursor
+                if(cursorShape === Qt.SizeFDiagCursor || cursorShape === Qt.SizeBDiagCursor ||
+                   cursorShape === Qt.SizeHorCursor || cursorShape === Qt.SizeVerCursor){
+                   cursorShape = Qt.ArrowCursor
+                }
                 return
             }
 
@@ -62,8 +82,10 @@ Window {
                 cursorShape = Qt.SizeHorCursor     // 左右边
             else if (y <= resizeMargin || y >= parent.height - resizeMargin)
                 cursorShape = Qt.SizeVerCursor     // 上下边
-            else
+            else if(cursorShape === Qt.SizeFDiagCursor || cursorShape === Qt.SizeBDiagCursor ||
+                cursorShape === Qt.SizeHorCursor || cursorShape === Qt.SizeVerCursor){
                 cursorShape = Qt.ArrowCursor
+            }
         }
 
         //调整窗口大小
@@ -96,7 +118,7 @@ Window {
         }
 
         // 控制鼠标在视频区域内是否隐藏
-        function toggleMouseHidden(x,y){
+        function toggleVideoMouseHidden(x,y){
             let topY = videoArea.y + (mainWin.visibility === Window.FullScreen ? topBar.height : 0)
             let bottomY = videoArea.y + videoArea.height - (mainWin.visibility === Window.FullScreen ? bottomBar.height : 0)
             let pd = 10;
@@ -110,6 +132,39 @@ Window {
             }
         }
 
+        // 点击视频区域获取焦点
+        function toggleVideoGetForce(x,y){
+            let topY = videoArea.y + (mainWin.visibility === Window.FullScreen ? topBar.height : 0)
+            let bottomY = videoArea.y + videoArea.height - (mainWin.visibility === Window.FullScreen ? bottomBar.height : 0)
+            let pd = 10;
+            if(x>=videoArea.x + pd && x<=videoArea.x + videoArea.width -pd && y>=topY+pd && y <= bottomY-pd){
+                videoArea.forceActiveFocus()
+            }
+        }
+
+        // 处理视频移动
+        function toggleVideoMove(x,y){
+            if(!pressed || !videoArea.spacePressed) return
+            let deltaX = (x - videoArea.lastMouseX) * Screen.devicePixelRatio
+            let deltaY = (y - videoArea.lastMouseY) * Screen.devicePixelRatio
+
+            videoWindow.addXY(deltaX, deltaY)
+
+            videoArea.lastMouseX = x
+            videoArea.lastMouseY = y
+        }
+
+        // 处理移动视频时的指针样式
+        function toggleVideoMoveCursorShape(){
+            if(!videoArea.spacePressed) {
+                if(cursorShape === Qt.ClosedHandCursor || cursorShape === Qt.OpenHandCursor)
+                    cursorShape = Qt.ArrowCursor
+                return
+            }
+
+            cursorShape = pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        }
+
         //全屏时呼出topBar和bottomBar
         function toggleBarVisible(x,y){
             if(mainWin.visibility !== Window.FullScreen){
@@ -117,22 +172,33 @@ Window {
                 return
             }
             forceShowTopBar = (y <= topBar.height && (!fileListBar.visible || x <= fileListBar.x))
-            forceShowBottomBar = (y >= mainWin.height - bottomBar.height)
+            forceShowBottomBar = (y >= mainWin.height - bottomBar.height && x <= bottomBar.width)
         }
 
         onPositionChanged:function(mouse) {
-            toggleCursorShape(mouse.x,mouse.y)
-            toggleBarVisible(mouse.x,mouse.y)
-            toggleMouseHidden(mouse.x,mouse.y)
+            toggleCursorShape(mouse.x,mouse.y)      // 切换调整窗口大小时的鼠标样式
+            toggleBarVisible(mouse.x,mouse.y)       // 全屏时呼出topBar和bottomBar
+            toggleVideoMouseHidden(mouse.x,mouse.y) // 控制鼠标在视频区域内是否隐藏
+            toggleVideoMove(mouse.x,mouse.y)        // 处理视频移动
         }
 
         onPressed: function(mouse) {
-            toggleSystemResize(mouse.x,mouse.y)
+            toggleSystemResize(mouse.x,mouse.y)     // 调整窗口大小
+            toggleVideoGetForce(mouse.x,mouse.y)    // 点击视频区域使其获取焦点
+            toggleVideoMoveCursorShape()            // 处理移动视频时的指针样式
+
+            videoArea.lastMouseX = mouse.x
+            videoArea.lastMouseY = mouse.y
+        }
+
+        onReleased: function(mouse) {
+            toggleVideoMoveCursorShape()            // 处理移动视频时的指针样式
         }
     }
 
-    Rectangle{
+    AZTopBar{
         id: topBar
+        mainWindow: mainWin
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
@@ -143,60 +209,6 @@ Window {
         height: 32
         color: "black"
         z:1
-
-        AZButton{
-            id:menuBtn
-            height: parent.height
-            width: 2.5 * height
-            anchors.left: parent.left
-            defaultColor: "#1c1c1c"
-            hoverColor: "#252525"
-            pressedColor:"#161616"
-            text: "AZPlayer"
-            tooltipText: "测试"
-            iconHeight: 16
-            iconWidth: 16
-            onClicked: console.log("按下")
-            onLeftClicked: console.log("L按下")
-            onRightClicked: console.log("R按下")
-        }
-
-        Rectangle{
-            id: textWrapper
-            height: parent.height
-            anchors.left: menuBtn.right
-            anchors.right: windowControls.left
-            anchors.leftMargin: 1
-            anchors.rightMargin: 1
-            color: "#1d1d1d"
-            clip: true
-            property alias text: titleText.text
-            MouseArea {
-                anchors.fill: parent
-                onPressed: mainWin.startSystemMove()
-                onDoubleClicked: mainWin.visibility = mainWin.visibility == Window.Windowed ? Window.Maximized : Window.Windowed
-            }
-            Text {
-                id: titleText
-                color: "white"
-                font.pixelSize: 12
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.leftMargin: 5
-                anchors.rightMargin: 5
-                wrapMode: Text.NoWrap
-                elide: Text.ElideRight
-            }
-        }
-
-        AZWindowControls{
-            id:windowControls
-            targetWindow: mainWin
-            height: parent.height
-            anchors.right: parent.right
-            width: 120
-        }
     }
 
     Item{
@@ -239,6 +251,41 @@ Window {
                     MediaCtrl.setVideoWindow(videoWindow)
                 }
             }
+
+            property bool spacePressed: false
+            property real lastMouseX: 0
+            property real lastMouseY: 0
+
+            onSpacePressedChanged: mainMouseArea.toggleVideoMoveCursorShape()
+
+            Keys.forwardTo : [angleDial]
+
+            Keys.onPressed: function(event){
+                if(event.isAutoRepeat) return
+                if (event.key === Qt.Key_Space) spacePressed = true
+
+                if (event.modifiers & Qt.AltModifier){
+                    angleDial.visible = true
+                }
+            }
+
+            Keys.onReleased:function(event) {
+                if(event.isAutoRepeat) return
+                if (event.key === Qt.Key_Space) spacePressed = false
+
+                if (event.key === Qt.Key_Alt) {
+                    angleDial.visible = false
+                }
+            }
+
+            AZDial{
+                id: angleDial
+                anchors.centerIn: parent
+                height: 150
+                width: 150
+                visible: false
+                onValueChanged: videoWindow.setAngle(value)
+            }
         }
 
         //底部控制栏
@@ -264,6 +311,8 @@ Window {
                 listView: fileTab
                 splitView: splitView
                 currentTime: progressBar.currentTime
+                videoWindow: videoWindow
+                angleDial: angleDial
                 z:1
                 anchors.left: parent.left
                 anchors.right: parent.right
@@ -362,12 +411,12 @@ Window {
                         listModel: fileDialog.listModel
 
                         onDelActive:{
-                            textWrapper.text = ""
+                            topBar.setTextWrapper("")
                             MediaCtrl.close()
                         }
 
                         onStopActive: {
-                            textWrapper.text = ""
+                            topBar.setTextWrapper("")
                             MediaCtrl.close()
                         }
 
@@ -375,13 +424,13 @@ Window {
                             target: fileDialog
                             function onOpenIndex(index) {
                                 fileTab.setHighlightIdx(index)
-                                textWrapper.text = fileDialog.listModel.get(index).text
+                                topBar.setTextWrapper(fileDialog.listModel.get(index).text)
                                 MediaCtrl.open(fileDialog.activeFilePath)
                             }
                         }
 
                         onOpenIndex:function(index){
-                            textWrapper.text = fileDialog.listModel.get(index).text
+                            topBar.setTextWrapper(fileDialog.listModel.get(index).text)
                             MediaCtrl.open(fileDialog.listModel.get(index).fileUrl)
                         }
                     }                   

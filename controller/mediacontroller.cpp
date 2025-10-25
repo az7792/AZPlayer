@@ -243,6 +243,14 @@ void MediaController::setVolume(double newVolume) {
     emit volumeChanged();
 }
 
+void MediaController::addVolum() {
+    setVolume(std::min(1.0, m_volume + 0.04));
+}
+
+void MediaController::subVolum() {
+    setVolume(std::max(0.0, m_volume - 0.04));
+}
+
 void MediaController::seekBySec(double ts, double rel) {
     if (!m_opened)
         return;

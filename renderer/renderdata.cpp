@@ -29,11 +29,11 @@ namespace {
     int getAlignment(const void *data, size_t originLen, size_t nowLen) {
         // alignment 只能是 1,2,4,8 之一
         int possibleAlignments[] = {8, 4, 2, 1};
-        unsigned long long dataVal = reinterpret_cast<unsigned long long>(data);
+        uintptr_t dataVal = reinterpret_cast<uintptr_t>(data);
         for (int align : possibleAlignments) {
             if (dataVal % align != 0 || nowLen % align != 0)
                 continue;
-            if (originLen + originLen % align == nowLen)
+            if (((originLen + align - 1) / align * align) == nowLen)
                 return align;
         }
         return 1; // fallback
@@ -152,7 +152,7 @@ void RenderData::updateFormat(AVFrmItem &newItem) {
         return;
     }
 
-    alignment = 1; // HACK: 剩下的情况用1也许，会损失一些性能，暂时先这样了
+    alignment = 1; // HACK: 剩下的情况用1也行，会损失一些性能，暂时先这样了
 
     int maxDepth = 0;
     for (int i = 0; i < desc->nb_components; ++i) {
