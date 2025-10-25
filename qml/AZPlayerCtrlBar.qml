@@ -215,13 +215,13 @@ Item{
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: inputX.right
             anchors.leftMargin: 10
-            onEditingFinished: videoWindow.setY(Number(text))
-            onWheelUp: videoWindow.addY()
-            onWheelDown: videoWindow.subY()
+            onEditingFinished: videoWindow.setY(-Number(text)) // QML坐标的Y轴与OpenGL的Y轴是相反的
+            onWheelUp: videoWindow.subY() // QML坐标的Y轴与OpenGL的Y轴是相反的
+            onWheelDown: videoWindow.addY() // QML坐标的Y轴与OpenGL的Y轴是相反的
             Connections {
                 target: videoWindow
                 function onVideoYChanged() {
-                    inputY.text = videoWindow.ty().toFixed(1)
+                    inputY.text = -videoWindow.ty().toFixed(1) // QML坐标的Y轴与OpenGL的Y轴是相反的
                 }
             }
         }
