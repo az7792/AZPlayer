@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Xuefei Ai
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "mediacontroller.h"
 #include "clock/globalclock.h"
 #include "renderer/videorenderer.h"

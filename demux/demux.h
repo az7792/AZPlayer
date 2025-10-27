@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Xuefei Ai
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #ifndef DEMUX_H
 #define DEMUX_H
 #include "utils.h"

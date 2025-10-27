@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Xuefei Ai
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15

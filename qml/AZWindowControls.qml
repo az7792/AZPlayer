@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Xuefei Ai
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import QtQuick
 import QtQuick.Layouts
 /*TODO: 目前Qt|Windows从FullScreen到Maximized的实际路线是FullScreen->Windowed->Maximized

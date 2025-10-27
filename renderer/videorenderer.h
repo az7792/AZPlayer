@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Xuefei Ai
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #ifndef VIDEORENDERER_H
 #define VIDEORENDERER_H
 
