@@ -9,6 +9,7 @@ set(FFMPEG_DIR D:/ffmpeg-8.0-full_build-shared)
 set(FFMPEG_INCLUDE_DIR ${FFMPEG_DIR}/include)
 set(FFMPEG_LIB_DIR ${FFMPEG_DIR}/lib)
 set(FFMPEG_BIN_DIR ${FFMPEG_DIR}/bin)
+set(app_icon_resource_windows "${CMAKE_CURRENT_SOURCE_DIR}/resource/icon/appico.rc")
 
 find_package(Qt6 6.4 REQUIRED COMPONENTS Quick)
 find_package(Qt6 REQUIRED COMPONENTS QuickControls2)
@@ -26,6 +27,7 @@ qt_standard_project_setup()
 
 qt_add_executable(appAZPlayer
     main.cpp
+    ${app_icon_resource_windows}
 )
 
 #qt_policy(SET QTP0001 NEW)

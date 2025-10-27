@@ -46,7 +46,7 @@ Dial {
         border.color: "#212222"
         width: 16
         height: 16
-        color: root.hovered ? "#f5dc00" : "white"
+        color: root.hovered ? "#a1cafe" : "white"
         radius: 8
         transform: [
             Translate {

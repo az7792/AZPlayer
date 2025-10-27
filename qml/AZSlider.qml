@@ -17,7 +17,7 @@ Slider {
         Rectangle {
             width: control.visualPosition * parent.width
             height: parent.height
-            color: "#f5dc00"
+            color: "#a1cafe"
         }
     }
 
@@ -27,6 +27,6 @@ Slider {
         implicitWidth: 10
         implicitHeight: 10
         radius: width / 2
-        color: control.hovered ? "#f5dc00" : "#ebebeb";
+        color: control.hovered ? "#a1cafe" : "#ebebeb";
     }
 }

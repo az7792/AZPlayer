@@ -28,7 +28,7 @@ Item {
         id: inputBg
         height: parent.height
         color: "#454545"
-        border.color: input.focus ? "#f5dc00" : "#626262"
+        border.color: input.focus ? "#a1cafe" : "#626262"
         border.width: 1
         anchors.left: label.right
         anchors.leftMargin: 4
