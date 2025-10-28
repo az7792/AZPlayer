@@ -2,7 +2,7 @@
 
 使用[Qt](https://www.qt.io/)开发的基于[FFmpeg](https://www.ffmpeg.org/)的音视频播放器。支持绝大多数的音频、视频、图形字幕的播放。支持对显示图像进行旋转、缩放、移动操作。支持音频流与字幕流的切换，以及从外部文件导入音频流或字幕流。
 
-## 界面
+## 界面/使用
 界面风格参考[Potplayer](https://potplayer.daum.net/)
 ![](./static/img1.png)
 
@@ -27,7 +27,7 @@
 - [ ] 加载B站弹幕
 - [ ] 硬解
 
-## 下载/使用
+## 下载
 
 目前仅支持Windows平台，可以通过本页面的[Releases](https://github.com/az7792/AZPlayer/releases)选项卡进行下载，下载解压后运行appAZPlayer.exe启动程序
 
