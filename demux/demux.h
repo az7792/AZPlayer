@@ -28,7 +28,7 @@ public:
     ~Demux();
 
     // 初始化
-    bool init(const std::string URL);
+    bool init(const std::string URL,bool isMainDemux = false);
     // 反初始化，恢复到未初始化之前的状态
     bool uninit();
 
@@ -91,6 +91,7 @@ private:
     std::atomic<bool> m_needSeek{false};
     double m_seekTs = 0.0;
     double m_seekRel = 0.0;
+    bool m_isMainDemux = false;
     bool m_isEOF = false;
 
 private:

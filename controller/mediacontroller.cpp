@@ -97,7 +97,7 @@ bool MediaController::open(const QUrl &URL) {
     static constexpr int defDemuxIdx = 0;
 
     bool ok = true;
-    ok &= m_demuxs[defDemuxIdx]->init(localFile.toUtf8().constData());
+    ok &= m_demuxs[defDemuxIdx]->init(localFile.toUtf8().constData(),true);
     if (!ok) {
         close();
         return false;

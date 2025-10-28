@@ -36,7 +36,7 @@ Demux::~Demux() {
     uninit();
 }
 
-bool Demux::init(const std::string URL) {
+bool Demux::init(const std::string URL, bool isMainDemux) {
     if (m_initialized) {
         uninit();
     }
@@ -80,6 +80,7 @@ bool Demux::init(const std::string URL) {
 
     m_initialized = true;
     m_isEOF = false;
+    m_isMainDemux = isMainDemux;
 
     return true;
 }
@@ -306,15 +307,16 @@ void Demux::demuxLoop() {
     AVPacket *pkt = nullptr;
     while (!m_stop.load(std::memory_order_relaxed)) {
 
-        std::pair<bool, double> emitRealSeekTs{false, 0.0}; //[是否发射信号，具体的time_base]
+        bool emitRealSeekTs{false}; //是否发射信号
 
         if (m_needSeek.load(std::memory_order_acquire)) {
             seekAllPktQueue();
-            int streamIdx = (m_usedVIdx != -1) ? m_usedVIdx :
-                             (m_usedAIdx != -1) ? m_usedAIdx :
-                              m_usedSIdx;
-            emitRealSeekTs.second = streamIdx == -1 ? 1.0 / AV_TIME_BASE : av_q2d(m_formatCtx->streams[streamIdx]->time_base);
-            double target = m_seekTs / emitRealSeekTs.second;
+            int streamIdx =  m_isMainDemux ? -1 :
+                            (m_usedVIdx != -1) ? m_usedVIdx.load() :
+                            (m_usedAIdx != -1) ? m_usedAIdx.load() : 
+                             m_usedSIdx.load();
+            double time_base = streamIdx == -1 ? 1.0 / AV_TIME_BASE : av_q2d(m_formatCtx->streams[streamIdx]->time_base);
+            double target = m_seekTs / time_base;
             int64_t seekMin = m_seekRel > 0.0 ? static_cast<int64_t>(target - m_seekRel * AV_TIME_BASE + 2) : INT64_MIN;
             int64_t seekMax = m_seekRel < 0.0 ? static_cast<int64_t>(target - m_seekRel * AV_TIME_BASE - 2) : INT64_MAX;
             int ret = avformat_seek_file(m_formatCtx, streamIdx, seekMin, target, seekMax,
@@ -322,7 +324,7 @@ void Demux::demuxLoop() {
             if (ret < 0) {
                 qDebug() << "seek出错";
             }
-            emitRealSeekTs.first = true;
+            emitRealSeekTs = m_isMainDemux;
             m_needSeek.store(false, std::memory_order_release);
         }
 
@@ -348,9 +350,9 @@ void Demux::demuxLoop() {
             m_isEOF = false;
         }
 
-        if (emitRealSeekTs.first) {
-            emit seeked(pkt->pts * emitRealSeekTs.second);
-            emitRealSeekTs.first = false;
+        if (emitRealSeekTs) {
+            emit seeked(pkt->pts * av_q2d(m_formatCtx->streams[pkt->stream_index]->time_base));
+            emitRealSeekTs = false;
         }
 
         // ret == 0
