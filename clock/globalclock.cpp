@@ -72,29 +72,12 @@ GlobalClock::GlobalClock()
       m_externalClk(ClockType::EXTERNAL), m_maxFrameDuration(10.0) {
 }
 
-double GlobalClock::seekTs() const {
-    return m_seekTs;
-}
-
-void GlobalClock::setSeekTs(double newSeekTs) {
-    m_seekTs = newSeekTs;
-}
-
-int GlobalClock::seekCnt() const {
-    return m_seekCnt;
-}
-
-void GlobalClock::addSeekCnt() {
-    m_seekCnt++;
-}
-
 void GlobalClock::reset() {
     m_videoClk.setClock(INVALID_DOUBLE);
     m_audioClk.setClock(INVALID_DOUBLE);
     m_externalClk.setClock(INVALID_DOUBLE);
     m_videoClk.m_speed = m_audioClk.m_speed = m_externalClk.m_speed = 1.0;
     m_videoClk.m_paused = m_audioClk.m_paused = m_externalClk.m_paused = false;
-    m_seekTs = 0.0;
 }
 
 GlobalClock &GlobalClock::instance() {

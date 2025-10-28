@@ -63,6 +63,8 @@ public:
 
     AVFormatContext *formatCtx();
 public slots:
+signals:
+    void seeked(double pts);
 
 private:
     weakPktQueue m_audioPktBuf;
@@ -87,6 +89,7 @@ private:
     std::mutex m_mutex; // 保护队列和流ID的更新
 
     std::atomic<bool> m_needSeek{false};
+    double m_seekTs = 0.0;
     double m_seekRel = 0.0;
     bool m_isEOF = false;
 

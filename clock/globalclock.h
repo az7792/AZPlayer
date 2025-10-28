@@ -84,20 +84,12 @@ public:
     // 将外部时钟同步到指定时钟
     void syncExternalClk(ClockType type);
 
-    int seekCnt() const;
-    void addSeekCnt();
-
-    double seekTs() const;
-    void setSeekTs(double newSeekTs);
-
 private:
     GlobalClock();
     ~GlobalClock() = default;
     ClockType m_mainClockType = ClockType::AUDIO;
     Clock m_audioClk, m_videoClk, m_externalClk;
     double m_maxFrameDuration;
-    int m_seekCnt = 0;
-    double m_seekTs = 0.0;
 };
 
 #endif // GLOBALCLOCK_H

@@ -45,6 +45,8 @@ MediaController::MediaController(QObject *parent)
 
     QObject::connect(m_audioPlayer, &AudioPlayer::seeked, this, &MediaController::seeked);
     QObject::connect(m_videoPlayer, &VideoPlayer::seeked, this, &MediaController::seeked);
+    // 如果是多个解复用器同时seek，需要使用第一个解复用器seek到的实际位置来seek剩余的解复用器
+    QObject::connect(m_demuxs[0], &Demux::seeked, this, &MediaController::seekAudioAndSubtitleDemux);
     QObject::connect(this, &MediaController::seeked, this, [&]() {
         m_played = false;
     });
@@ -257,11 +259,8 @@ void MediaController::subVolum() {
 void MediaController::seekBySec(double ts, double rel) {
     if (!m_opened)
         return;
-    // HACK: 视频和音频(字幕)实际seek到的位置并不一样
-    for (int i = 0; i < 3; ++i) {
-        if (m_demuxs[i])
-            m_demuxs[i]->seekBySec(ts, rel);
-    }
+
+    m_demuxs[0]->seekBySec(ts, rel);
 }
 
 void MediaController::fastForward() {
@@ -303,7 +302,7 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
         return true;
     }
     // 关闭旧的
-    if(m_streams[MediaIdx::AUDIO].first != -1)
+    if (m_streams[MediaIdx::AUDIO].first != -1)
         m_demuxs[m_streams[MediaIdx::AUDIO].first]->closeStream(MediaIdx::AUDIO);
     m_decodeAudio->uninit();
     m_audioPlayer->uninit(); // 音频设备需要重新设置
@@ -392,6 +391,12 @@ bool MediaController::openStreamByFile(const QUrl &URL, MediaIdx idx) {
         return false;
     }
     emit streamInfoUpdate();
+    return true;
+}
+
+bool MediaController::seekAudioAndSubtitleDemux(double pts) {
+    m_demuxs[1]->seekBySec(pts, 0.0);
+    m_demuxs[2]->seekBySec(pts, 0.0);
     return true;
 }
 

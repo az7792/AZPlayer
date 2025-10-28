@@ -138,7 +138,7 @@ void Demux::seekBySec(double ts, double rel) {
     if (!m_initialized || m_stop.load(std::memory_order_relaxed)) {
         return;
     }
-    GlobalClock::instance().setSeekTs(ts);
+    m_seekTs = ts;
     m_seekRel = rel;
     m_needSeek.store(true, std::memory_order_release);
 }
@@ -306,16 +306,23 @@ void Demux::demuxLoop() {
     AVPacket *pkt = nullptr;
     while (!m_stop.load(std::memory_order_relaxed)) {
 
+        std::pair<bool, double> emitRealSeekTs{false, 0.0}; //[是否发射信号，具体的time_base]
+
         if (m_needSeek.load(std::memory_order_acquire)) {
-            GlobalClock::instance().addSeekCnt();
             seekAllPktQueue();
-            double target = GlobalClock::instance().seekTs() * AV_TIME_BASE;
+            int streamIdx = (m_usedVIdx != -1) ? m_usedVIdx :
+                             (m_usedAIdx != -1) ? m_usedAIdx :
+                              m_usedSIdx;
+            emitRealSeekTs.second = streamIdx == -1 ? 1.0 / AV_TIME_BASE : av_q2d(m_formatCtx->streams[streamIdx]->time_base);
+            double target = m_seekTs / emitRealSeekTs.second;
             int64_t seekMin = m_seekRel > 0.0 ? static_cast<int64_t>(target - m_seekRel * AV_TIME_BASE + 2) : INT64_MIN;
             int64_t seekMax = m_seekRel < 0.0 ? static_cast<int64_t>(target - m_seekRel * AV_TIME_BASE - 2) : INT64_MAX;
-            int ret = avformat_seek_file(m_formatCtx, -1, seekMin, target, seekMax, 0);
+            int ret = avformat_seek_file(m_formatCtx, streamIdx, seekMin, target, seekMax,
+                                         m_usedVIdx == -1 ? AVSEEK_FLAG_ANY : 0);
             if (ret < 0) {
                 qDebug() << "seek出错";
             }
+            emitRealSeekTs.first = true;
             m_needSeek.store(false, std::memory_order_release);
         }
 
@@ -339,6 +346,11 @@ void Demux::demuxLoop() {
             continue;
         } else {
             m_isEOF = false;
+        }
+
+        if (emitRealSeekTs.first) {
+            emit seeked(pkt->pts * emitRealSeekTs.second);
+            emitRealSeekTs.first = false;
         }
 
         // ret == 0

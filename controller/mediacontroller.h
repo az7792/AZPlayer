@@ -120,6 +120,7 @@ private:
 private:
     QVariantList getStreamInfo(MediaIdx type) const;
     bool openStreamByFile(const QUrl &URL, MediaIdx idx);
+    bool seekAudioAndSubtitleDemux(double pts);
 };
 
 #endif // MEDIACONTROLLER_H
