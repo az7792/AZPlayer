@@ -335,6 +335,7 @@ bool VideoRenderer::updateSubTex() {
         if ((int)texFill().size() < h * w * 4) {
             texFill().assign(h * w * 4, 0);
         }
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
         glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
     }
 
@@ -387,6 +388,9 @@ void VideoRenderer::initTex(GLuint &tex, const QSize &size, const std::array<uns
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, size.width());
     glTexImage2D(GL_TEXTURE_2D, 0, para[0], size.width(), size.height(), 0, para[1], para[2], fill);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
