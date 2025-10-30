@@ -165,6 +165,11 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
         tmpSubPtr->mutex.unlock();
         subRenderData = tmpSubPtr;
     }
+    else if (subRenderData && subRenderData->uploaded == true
+        && GlobalClock::instance().videoPts() > subRenderData->frmItem.pts + subRenderData->frmItem.duration) {
+        subRenderData->frmItem.duration = 1e9;// HACK: 避免重复触发清理超时数据
+        subRenderData->forceRefresh = true;
+    }
 
     if (m_forceRefresh && subRenderData) {
         subRenderData->forceRefresh = true;
