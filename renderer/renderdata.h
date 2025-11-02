@@ -3,6 +3,7 @@
 
 #ifndef RENDERDATA_H
 #define RENDERDATA_H
+#include "assrender.h"
 #include "utils.h"
 #include <QMutex>
 #include <QOpenGLFunctions_3_3_Core>
@@ -116,6 +117,7 @@ struct RenderData {
 
 struct SubRenderData {
     AVFrmItem frmItem;
+    AVSubtitleType subtitleType = SUBTITLE_NONE;
     QMutex mutex; // 锁
     SwsContext *subSwsCtx = nullptr;
 
@@ -128,9 +130,13 @@ struct SubRenderData {
     bool uploaded = false;
     bool forceRefresh = false; // 用于通知videoRender强制清理旧数据
 
+    image_t assImage{};
+
     void reset();
     // 根据frm重新更新格式
     void updateFormat(AVFrmItem &newItem, int videoWidth, int videoHeight);
+
+    void updateASSImage(double pts);
 
     SubRenderData() : mutex() { reset(); }
     ~SubRenderData() {

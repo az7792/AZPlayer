@@ -175,6 +175,23 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
         subRenderData->forceRefresh = true;
     }
 
+    if (subRenderData && subRenderData->subtitleType == SUBTITLE_ASS) {
+        SubRenderData *tmpSubPtr = subRenderData == &subRenderData1 ? &subRenderData2 : &subRenderData1;
+        if (!subRenderData->mutex.try_lock_for(std::chrono::milliseconds(1))) {
+            std::swap(tmpSubPtr, subRenderData);
+            subRenderData->mutex.lock();
+        }
+        subRenderData->frmItem.width = tmpPtr->frmItem.frm->width;
+        subRenderData->frmItem.height = tmpPtr->frmItem.frm->height;
+
+        subRenderData->assImage.height = tmpPtr->frmItem.frm->height;
+        subRenderData->assImage.width = tmpPtr->frmItem.frm->width;
+        subRenderData->assImage.stride = tmpPtr->frmItem.frm->width * 4;
+
+        subRenderData->updateASSImage(tmpPtr->frmItem.pts);
+        subRenderData->mutex.unlock();
+    }
+
     d2 = getRelativeSeconds();
 
     // 上一帧持续时间

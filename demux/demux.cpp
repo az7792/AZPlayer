@@ -160,7 +160,7 @@ bool Demux::switchVideoStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq)
         double pts = GlobalClock::instance().getMainPts();
         if (!std::isnan(pts)) {
             int64_t target = pts / av_q2d(getVideoStream()->time_base);
-            ok = avformat_seek_file(m_formatCtx, m_videoIdx[streamIdx], target, target, target, 0);
+            ok = avformat_seek_file(m_formatCtx, m_videoIdx[streamIdx], INT64_MIN, target, INT64_MAX, 0);
             start();
         }
     } else {
@@ -186,7 +186,7 @@ bool Demux::switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue w
         double pts = GlobalClock::instance().getMainPts();
         if (!std::isnan(pts)) {
             int64_t target = pts / av_q2d(getSubtitleStream()->time_base);
-            ok = avformat_seek_file(m_formatCtx, m_subtitleIdx[streamIdx], target, target, target,
+            ok = avformat_seek_file(m_formatCtx, m_subtitleIdx[streamIdx], INT64_MIN, target, INT64_MAX,
                                     m_usedVIdx.load(std::memory_order_relaxed) == -1 ? AVSEEK_FLAG_ANY : 0);
             start();
         }
@@ -213,7 +213,7 @@ bool Demux::switchAudioStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq)
         double pts = GlobalClock::instance().getMainPts();
         if (!std::isnan(pts)) {
             int64_t target = pts / av_q2d(getAudioStream()->time_base);
-            ok = avformat_seek_file(m_formatCtx, m_usedAIdx.load(std::memory_order_relaxed), target, target, target,
+            ok = avformat_seek_file(m_formatCtx, m_usedAIdx.load(std::memory_order_relaxed), INT64_MIN, target, INT64_MAX,
                                     m_usedVIdx.load(std::memory_order_relaxed) == -1 ? AVSEEK_FLAG_ANY : 0);
             start();
         }

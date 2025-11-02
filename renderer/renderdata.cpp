@@ -41,6 +41,16 @@ namespace {
         }
         return 1; // fallback
     }
+
+    template <typename T>
+    void ensure_size(std::vector<T>& v, size_t n) {
+        if (v.size() < n) v.resize(n);
+    }
+
+    template <typename T>
+    void ensure_size(std::vector<T>& v, size_t n, T val) {
+        if (v.size() < n) v.assign(n, val);
+    }
 }
 
 bool RenderData::isEachComponentInSeparatePlane(const AVPixFmtDescriptor *desc) {
@@ -252,6 +262,7 @@ void SubRenderData::reset() {
         subSwsCtx = nullptr;
     }
     avsubtitle_free(&frmItem.sub);
+    subtitleType = SUBTITLE_NONE;
     frmItem.pts = std::numeric_limits<double>::quiet_NaN();
     frmItem.duration = std::numeric_limits<double>::quiet_NaN();
     x.clear();
@@ -267,7 +278,10 @@ void SubRenderData::reset() {
 
 void SubRenderData::updateFormat(AVFrmItem &newItem, int videoWidth, int videoHeight) {
     avsubtitle_free(&frmItem.sub);
-    uploaded = false;
+
+    if (subtitleType == SUBTITLE_BITMAP) { // 一些蓝光字幕会使用空白字幕来结束显示当前字幕
+        uploaded = false;
+    }
 
     AVSubtitle &sub = newItem.sub;
     frmItem = newItem;
@@ -281,6 +295,7 @@ void SubRenderData::updateFormat(AVFrmItem &newItem, int videoWidth, int videoHe
 
     for (unsigned i = 0; i < sub.num_rects; ++i) {
         AVSubtitleRect *subRect = sub.rects[i];
+        subtitleType = subRect->type;
         if (subRect->type == SUBTITLE_BITMAP) {
             subRect->x = std::clamp(subRect->x, 0, videoWidth);
             subRect->y = std::clamp(subRect->y, 0, videoHeight);
@@ -306,8 +321,35 @@ void SubRenderData::updateFormat(AVFrmItem &newItem, int videoWidth, int videoHe
             uint8_t *dst[1] = {dataArr[i].data()};
             sws_scale(subSwsCtx, (const uint8_t *const *)subRect->data, subRect->linesize, 0, subRect->h, dst, dstStride);
         } else if (subRect->type == SUBTITLE_TEXT) {
-
+            qDebug() << "TEXT:" << newItem.pts << newItem.duration << subRect->text;
         } else if (subRect->type == SUBTITLE_ASS) {
+            ASSRender::instance().addEvent(subRect->ass, strlen(subRect->ass), frmItem.pts, frmItem.duration);
+            assImage.height = videoHeight;
+            assImage.width = videoWidth;
+            assImage.stride = videoWidth * 4;
         }
     }
+}
+
+void SubRenderData::updateASSImage(double pts) {
+    if (subtitleType != SUBTITLE_ASS)
+        return;
+
+    ensure_size(dataArr, 1);
+    ensure_size(linesizeArr, 1);
+    ensure_size(x, 1);
+    ensure_size(y, 1);
+    ensure_size(w, 1);
+    ensure_size(h, 1);
+
+    ensure_size(dataArr.front(), assImage.height * assImage.stride, (uint8_t)0);
+
+    assImage.buffer = dataArr.front().data();
+
+    if (ASSRender::instance().renderFrame(assImage, pts) >= 1) {
+        linesizeArr[0] = assImage.width; // 在OpenGL中linesizeArr是像素个数
+        x[0] = y[0] = 0;
+        w[0] = assImage.width, h[0] = assImage.height;
+    }
+    uploaded = false;
 }

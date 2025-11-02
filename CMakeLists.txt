@@ -9,6 +9,11 @@ set(FFMPEG_DIR D:/ffmpeg-8.0-full_build-shared)
 set(FFMPEG_INCLUDE_DIR ${FFMPEG_DIR}/include)
 set(FFMPEG_LIB_DIR ${FFMPEG_DIR}/lib)
 set(FFMPEG_BIN_DIR ${FFMPEG_DIR}/bin)
+# 设置 libass 路径
+set(ASS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libass)
+set(ASS_INCLUDE_DIR ${ASS_DIR}/include)
+set(ASS_LIB_DIR ${ASS_DIR}/lib)
+set(ASS_BIN_DIR ${ASS_DIR}/bin)
 set(app_icon_resource_windows "${CMAKE_CURRENT_SOURCE_DIR}/resource/icon/appico.rc")
 
 find_package(Qt6 6.4 REQUIRED COMPONENTS Quick)
@@ -66,6 +71,7 @@ qt_add_qml_module(appAZPlayer
             controller/mediacontroller.cpp controller/mediacontroller.h
             decode/decodesubtitle.h decode/decodesubtitle.cpp
     RESOURCES resource.qrc
+    SOURCES renderer/assrender.h renderer/assrender.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -83,12 +89,14 @@ set_target_properties(appAZPlayer PROPERTIES
 target_include_directories(appAZPlayer
     PRIVATE
         ${FFMPEG_INCLUDE_DIR}
+        ${ASS_INCLUDE_DIR}
 )
 
 # 添加库文件搜索路径
 target_link_directories(appAZPlayer
     PRIVATE
         ${FFMPEG_LIB_DIR}
+        ${ASS_LIB_DIR}
 )
 
 target_link_libraries(appAZPlayer
@@ -105,6 +113,17 @@ target_link_libraries(appAZPlayer
         avfilter
         swscale
         swresample
+        ass
+        brotlicommon
+        brotlidec
+        brotlienc
+        bz2
+        freetype
+        fribidi
+        harfbuzz-subset
+        harfbuzz
+        libpng16
+        zlib
 )
 
 add_custom_command(TARGET appAZPlayer POST_BUILD
@@ -116,6 +135,17 @@ add_custom_command(TARGET appAZPlayer POST_BUILD
             ${FFMPEG_BIN_DIR}/avfilter-11.dll
             ${FFMPEG_BIN_DIR}/swscale-9.dll
             ${FFMPEG_BIN_DIR}/swresample-6.dll
+            ${ASS_BIN_DIR}/ass.dll
+            ${ASS_BIN_DIR}/brotlicommon.dll
+            ${ASS_BIN_DIR}/brotlidec.dll
+            ${ASS_BIN_DIR}/brotlienc.dll
+            ${ASS_BIN_DIR}/bz2.dll
+            ${ASS_BIN_DIR}/freetype.dll
+            ${ASS_BIN_DIR}/fribidi-0.dll
+            ${ASS_BIN_DIR}/harfbuzz-subset.dll
+            ${ASS_BIN_DIR}/harfbuzz.dll
+            ${ASS_BIN_DIR}/libpng16.dll
+            ${ASS_BIN_DIR}/zlib1.dll
             $<TARGET_FILE_DIR:appAZPlayer>
         COMMENT "Copying FFmpeg DLLs to output directory"
     )

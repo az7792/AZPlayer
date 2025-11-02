@@ -322,40 +322,58 @@ bool VideoRenderer::updateSubTex() {
              lastSubTexX().size() == lastSubTexH().size() &&
              lastSubTexX().size() == lastSubTexW().size());
 
-    // 清理纹理上的旧字幕
-    for (size_t i = 0; i < lastSubTexX().size(); ++i) {
-        int x = std::clamp(lastSubTexX()[i], 0, (int)m_width);
-        int y = std::clamp(lastSubTexY()[i], 0, (int)m_height);
-        int w = std::clamp(lastSubTexW()[i], 0, (int)m_width - x);
-        int h = std::clamp(lastSubTexH()[i], 0, (int)m_height - y);
-
-        if (w == 0 || h == 0)
-            continue;
-
-        if ((int)texFill().size() < h * w * 4) {
-            texFill().assign(h * w * 4, 0);
+    auto clearSubTex = [&]() {
+        if ((int)texFill().size() < m_widthSub * m_heightSub * 4) {
+            texFill().assign(m_widthSub * m_heightSub * 4, 0);
         }
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
-    }
-
-    if (!m_subRenderData || m_subRenderData->forceRefresh) {
-        if (m_subRenderData) {
-            m_subRenderData->forceRefresh = false;
-        }
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, m_widthSub);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_widthSub, m_heightSub, GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
         lastSubTexX().clear();
         lastSubTexY().clear();
         lastSubTexW().clear();
         lastSubTexH().clear();
+    };
+
+    static AVSubtitleType lastSubType = SUBTITLE_NONE;
+    if (!m_subRenderData || m_subRenderData->forceRefresh) {
+        clearSubTex();
+        if (m_subRenderData)
+            m_subRenderData->forceRefresh = false;
         return true;
     }
 
+    Q_ASSERT(m_subRenderData);
+    if (m_subRenderData->subtitleType != lastSubType) {
+        clearSubTex();
+        lastSubType = m_subRenderData->subtitleType;
+    }
+
+    if (m_subRenderData->subtitleType == SUBTITLE_BITMAP) {
+        // 清理纹理上的旧字幕
+        for (size_t i = 0; i < lastSubTexX().size(); ++i) {
+            int x = std::clamp(lastSubTexX()[i], 0, (int)m_width);
+            int y = std::clamp(lastSubTexY()[i], 0, (int)m_height);
+            int w = std::clamp(lastSubTexW()[i], 0, (int)m_width - x);
+            int h = std::clamp(lastSubTexH()[i], 0, (int)m_height - y);
+
+            if (w == 0 || h == 0)
+                continue;
+
+            if ((int)texFill().size() < h * w * 4) {
+                texFill().assign(h * w * 4, 0);
+            }
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
+        }
+
+        // 保存当前字幕区域
+        lastSubTexX() = m_subRenderData->x;
+        lastSubTexY() = m_subRenderData->y;
+        lastSubTexH() = m_subRenderData->h;
+        lastSubTexW() = m_subRenderData->w;
+    }
+
     m_subRenderData->mutex.lock();
-    // 保存当前字幕区域
-    lastSubTexX() = m_subRenderData->x;
-    lastSubTexY() = m_subRenderData->y;
-    lastSubTexH() = m_subRenderData->h;
-    lastSubTexW() = m_subRenderData->w;
 
     // 绘制新字幕
     for (size_t i = 0; i < m_subRenderData->dataArr.size(); ++i) {

@@ -22,7 +22,7 @@ Rectangle{
         hoverColor: "#252525"
         pressedColor:"#161616"
         text: "AZPlayer"
-        tooltipText: "测试"
+        tooltipText: "v0.1.0-beta.1"
         iconHeight: 16
         iconWidth: 16
         onClicked: console.log("按下")

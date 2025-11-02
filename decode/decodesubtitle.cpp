@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "decodesubtitle.h"
+#include "renderer/assrender.h"
 #include <QDebug>
 
 bool DecodeSubtitle::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
@@ -11,6 +12,11 @@ bool DecodeSubtitle::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueu
     }
 
     m_initialized = true;
+
+    std::string subtitleHeader((char *)m_codecCtx->subtitle_header, m_codecCtx->subtitle_header_size);
+    if (!subtitleHeader.empty())
+        ASSRender::instance().init(subtitleHeader);
+
     return true;
 }
 
