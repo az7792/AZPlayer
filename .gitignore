@@ -80,3 +80,4 @@ out/
 .vs
 CMakePresets.json
 CMakeUserPresets.json
+libass/
