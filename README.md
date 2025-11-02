@@ -1,6 +1,6 @@
 # AZPlayer
 
-使用[Qt](https://www.qt.io/)开发的基于[FFmpeg](https://www.ffmpeg.org/)的音视频播放器。支持绝大多数的音频、视频、图形字幕的播放。支持对显示图像进行旋转、缩放、移动操作。支持音频流与字幕流的切换，以及从外部文件导入音频流或字幕流。
+使用[Qt](https://www.qt.io/)开发的基于[FFmpeg](https://www.ffmpeg.org/)的音视频播放器。支持绝大多数的音频、视频、字幕的播放。支持对显示图像进行旋转、缩放、移动操作。支持音频流与字幕流的切换，以及从外部文件导入音频流或字幕流。
 
 ## 界面/使用
 界面风格参考[Potplayer](https://potplayer.daum.net/)
@@ -16,7 +16,7 @@
 - [x] 字幕流、音频流切换
 - [x] 从外部文件加载字幕流、音频流
 - [x] 对显示画面进行旋转、缩放、移动操作
-- [ ] 播放文本字幕
+- [x] 播放文本字幕(已支持ASS字幕)
 - [ ] 章节显示
 - [ ] 倍速
 - [ ] 截图
@@ -34,7 +34,7 @@
 ## 编译
 
 1. 准备环境：Qt 6.6.3（可能需要额外安装Multimedia模块）， CMake 3.16， [FFmpeg 8.0](https://www.gyan.dev/ffmpeg/builds/), MinGW / MSVC
-2. 修改CMakeLists.txt，需要修改 `FFMPEG_DIR` 指向本地自己准备的FFmpeg发行包路径，确保 bin/lib/include 完整，并检查动态链接库版本是否一致，若不一致需要根据实际情况进行修改
+2. 修改CMakeLists.txt，需要修改 `FFMPEG_DIR` 指向本地自己准备的FFmpeg发行包路径，还需要修改`libass`的路径，可以从[libass](https://github.com/az7792/AZPlayer/releases/tag/v0.1.0-beta.1)下载或者自己准备，确保 bin/lib/include 完整，并检查动态链接库版本是否一致，若不一致需要根据实际情况进行修改
 
 ```cmake
 ...
@@ -44,10 +44,15 @@ set(FFMPEG_DIR D:/ffmpeg-8.0-full_build-shared)
 set(FFMPEG_INCLUDE_DIR ${FFMPEG_DIR}/include)
 set(FFMPEG_LIB_DIR ${FFMPEG_DIR}/lib)
 set(FFMPEG_BIN_DIR ${FFMPEG_DIR}/bin)
+# 在这儿设置 libass 路径，可以直接放项目根目录下
+set(ASS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libass)
+set(ASS_INCLUDE_DIR ${ASS_DIR}/include)
+set(ASS_LIB_DIR ${ASS_DIR}/lib)
+set(ASS_BIN_DIR ${ASS_DIR}/bin)
 
 ...
 
-# 在这儿设置FFmpeg 的动态链接库（注意版本是否一致）
+# 在这儿设置FFmpeg 和 libass及其依赖 的动态链接库
 add_custom_command(TARGET appAZPlayer POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${FFMPEG_BIN_DIR}/avutil-60.dll
@@ -57,6 +62,17 @@ add_custom_command(TARGET appAZPlayer POST_BUILD
             ${FFMPEG_BIN_DIR}/avfilter-11.dll
             ${FFMPEG_BIN_DIR}/swscale-9.dll
             ${FFMPEG_BIN_DIR}/swresample-6.dll
+            ${ASS_BIN_DIR}/ass.dll
+            ${ASS_BIN_DIR}/brotlicommon.dll
+            ${ASS_BIN_DIR}/brotlidec.dll
+            ${ASS_BIN_DIR}/brotlienc.dll
+            ${ASS_BIN_DIR}/bz2.dll
+            ${ASS_BIN_DIR}/freetype.dll
+            ${ASS_BIN_DIR}/fribidi-0.dll
+            ${ASS_BIN_DIR}/harfbuzz-subset.dll
+            ${ASS_BIN_DIR}/harfbuzz.dll
+            ${ASS_BIN_DIR}/libpng16.dll
+            ${ASS_BIN_DIR}/zlib1.dll
             $<TARGET_FILE_DIR:appAZPlayer>
         COMMENT "Copying FFmpeg DLLs to output directory"
     )
