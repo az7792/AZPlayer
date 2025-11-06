@@ -41,16 +41,6 @@ namespace {
         }
         return 1; // fallback
     }
-
-    template <typename T>
-    void ensure_size(std::vector<T>& v, size_t n) {
-        if (v.size() < n) v.resize(n);
-    }
-
-    template <typename T>
-    void ensure_size(std::vector<T>& v, size_t n, T val) {
-        if (v.size() < n) v.assign(n, val);
-    }
 }
 
 bool RenderData::isEachComponentInSeparatePlane(const AVPixFmtDescriptor *desc) {
@@ -279,11 +269,12 @@ void SubRenderData::reset() {
 void SubRenderData::updateFormat(AVFrmItem &newItem, int videoWidth, int videoHeight) {
     avsubtitle_free(&frmItem.sub);
 
-    if (subtitleType == SUBTITLE_BITMAP) { // 一些蓝光字幕会使用空白字幕来结束显示当前字幕
+    AVSubtitle &sub = newItem.sub;
+
+    if (sub.format == 0) { // 一些蓝光字幕会使用空白字幕来结束显示当前字幕
         uploaded = false;
     }
 
-    AVSubtitle &sub = newItem.sub;
     frmItem = newItem;
 
     linesizeArr.resize(sub.num_rects);
@@ -335,14 +326,12 @@ void SubRenderData::updateASSImage(double pts) {
     if (subtitleType != SUBTITLE_ASS)
         return;
 
-    ensure_size(dataArr, 1);
-    ensure_size(linesizeArr, 1);
-    ensure_size(x, 1);
-    ensure_size(y, 1);
-    ensure_size(w, 1);
-    ensure_size(h, 1);
+    dataArr.resize(1);
+    linesizeArr.resize(1);
+    x.resize(1), y.resize(1);
+    w.resize(1), h.resize(1);
 
-    ensure_size(dataArr.front(), assImage.height * assImage.stride, (uint8_t)0);
+    dataArr.front().assign(assImage.height * assImage.stride, (uint8_t)0);
 
     assImage.buffer = dataArr.front().data();
 

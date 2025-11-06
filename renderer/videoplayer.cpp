@@ -162,13 +162,14 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
             tmpSubPtr->mutex.lock();
         }
         tmpSubPtr->updateFormat(subFrmItem, tmpPtr->frmItem.frm->width, tmpPtr->frmItem.frm->height);
+        if (tmpSubPtr->subtitleType == SUBTITLE_ASS) {
+            subRenderData->subtitleType = SUBTITLE_ASS;
+        }
         tmpSubPtr->mutex.unlock();
         subRenderData = tmpSubPtr;
-    }
-    else if (subRenderData && subRenderData->uploaded == true
-        && GlobalClock::instance().videoPts() > subRenderData->frmItem.pts + subRenderData->frmItem.duration) {
-        subRenderData->frmItem.duration = 1e9;// HACK: 避免重复触发清理超时数据
-        subRenderData->forceRefresh = true;
+    } else if (subRenderData && subRenderData->uploaded == true && GlobalClock::instance().videoPts() > subRenderData->frmItem.pts + subRenderData->frmItem.duration) {
+        subRenderData->frmItem.duration = 1e9; // HACK: 避免重复触发清理超时数据
+        subRenderData->forceRefresh = subRenderData->subtitleType == SUBTITLE_BITMAP;
     }
 
     if (m_forceRefresh && subRenderData) {
