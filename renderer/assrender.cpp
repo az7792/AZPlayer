@@ -47,6 +47,10 @@ bool ASSRender::uninit() {
     return true;
 }
 
+bool ASSRender::initialized() {
+    return m_initialized.load(std::memory_order_relaxed);
+}
+
 bool ASSRender::addEvent(const char *data, int size, double startTime, double duration) {
     if (!m_initialized.load(std::memory_order_relaxed))
         return false;

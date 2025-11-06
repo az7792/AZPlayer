@@ -133,10 +133,12 @@ struct SubRenderData {
     image_t assImage{};
 
     void reset();
-    // 根据frm重新更新格式
-    void updateFormat(AVFrmItem &newItem, int videoWidth, int videoHeight);
+    void clear();
+    // 更新图形字幕
+    void updateBitmapImage(AVFrmItem &newItem, int videoWidth, int videoHeight);
 
-    void updateASSImage(double pts);
+    // 更新ASS字幕
+    void updateASSImage(double pts, int videoWidth, int videoHeight);
 
     SubRenderData() : mutex() { reset(); }
     ~SubRenderData() {

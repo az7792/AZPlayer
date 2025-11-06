@@ -38,6 +38,8 @@ bool VideoPlayer::init(sharedFrmQueue frmBuf, sharedFrmQueue subFrmBuf) {
     renderData = &renderData1;
     subRenderData = &subRenderData1;
     m_serial = 0;
+    m_width = 0;
+    m_height = 0;
     return true;
 }
 
@@ -135,6 +137,10 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
         return false;
     }
 
+    // 更新视频宽高
+    m_width = videoFrmitem.frm->width;
+    m_height = videoFrmitem.frm->height;
+
     // 在渲染之前准备好数据
     RenderData *tmpPtr = renderData == &renderData1 ? &renderData2 : &renderData1;
     // Qt信号会使用事件队列，可能导致渲染线程使用的renderData与tmpPtr是同一个
@@ -153,7 +159,7 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
         m_forceRefresh = true;
     }
 
-    // 尝试读取字幕
+    // 尝试读取图形字幕
     if (m_subFrmBuf->peekFirst(subFrmItem) && GlobalClock::instance().videoPts() >= subFrmItem.pts) {
         m_subFrmBuf->pop(subFrmItem);
         SubRenderData *tmpSubPtr = subRenderData == &subRenderData1 ? &subRenderData2 : &subRenderData1;
@@ -161,10 +167,7 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
             std::swap(tmpSubPtr, subRenderData);
             tmpSubPtr->mutex.lock();
         }
-        tmpSubPtr->updateFormat(subFrmItem, tmpPtr->frmItem.frm->width, tmpPtr->frmItem.frm->height);
-        if (tmpSubPtr->subtitleType == SUBTITLE_ASS) {
-            subRenderData->subtitleType = SUBTITLE_ASS;
-        }
+        tmpSubPtr->updateBitmapImage(subFrmItem, m_width, m_height);
         tmpSubPtr->mutex.unlock();
         subRenderData = tmpSubPtr;
     } else if (subRenderData && subRenderData->uploaded == true && GlobalClock::instance().videoPts() > subRenderData->frmItem.pts + subRenderData->frmItem.duration) {
@@ -176,20 +179,16 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
         subRenderData->forceRefresh = true;
     }
 
-    if (subRenderData && subRenderData->subtitleType == SUBTITLE_ASS) {
+    if (subRenderData && ASSRender::instance().initialized()) {
         SubRenderData *tmpSubPtr = subRenderData == &subRenderData1 ? &subRenderData2 : &subRenderData1;
         if (!subRenderData->mutex.try_lock_for(std::chrono::milliseconds(1))) {
             std::swap(tmpSubPtr, subRenderData);
             subRenderData->mutex.lock();
         }
-        subRenderData->frmItem.width = tmpPtr->frmItem.frm->width;
-        subRenderData->frmItem.height = tmpPtr->frmItem.frm->height;
+        subRenderData->frmItem.width = m_width;
+        subRenderData->frmItem.height = m_height;
 
-        subRenderData->assImage.height = tmpPtr->frmItem.frm->height;
-        subRenderData->assImage.width = tmpPtr->frmItem.frm->width;
-        subRenderData->assImage.stride = tmpPtr->frmItem.frm->width * 4;
-
-        subRenderData->updateASSImage(tmpPtr->frmItem.pts);
+        subRenderData->updateASSImage(tmpPtr->frmItem.pts, m_width, m_height);
         subRenderData->mutex.unlock();
     }
 

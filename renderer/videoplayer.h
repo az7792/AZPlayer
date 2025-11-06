@@ -64,6 +64,9 @@ private:
     std::thread m_thread;
     bool m_initialized = false; // 是否已经初始化
 
+    int m_width{0};  // 视频宽
+    int m_height{0}; // 视频高
+
 private:
     /**
      * 写入一帧数据

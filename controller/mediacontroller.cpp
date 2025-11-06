@@ -195,6 +195,7 @@ bool MediaController::close() {
     DeviceStatus::instance().setHaveAudio(false);
     DeviceStatus::instance().setHaveVideo(false);
     GlobalClock::instance().reset();
+    ASSRender::instance().uninit();
     m_opened = false;
     m_streams.fill({-1, -1});
     setPaused(true);
@@ -282,6 +283,7 @@ bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
     if (m_streams[MediaIdx::SUBTITLE].first != -1)
         m_demuxs[m_streams[MediaIdx::SUBTITLE].first]->closeStream(MediaIdx::SUBTITLE);
     m_decodeSubtitl->uninit();
+    ASSRender::instance().uninit();
     m_videoPlayer->forceRefreshSubtitle(); // 切换后需要一定时间才会解码到新字幕，因此提前强制清掉旧字幕
 
     clearPktQ(m_pktSubtitleBuf);

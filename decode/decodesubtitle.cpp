@@ -5,6 +5,20 @@
 #include "renderer/assrender.h"
 #include <QDebug>
 
+namespace {
+    void handleTextSub(AVFrmItem &frmItem) {
+        for (unsigned i = 0; i < frmItem.sub.num_rects; ++i) {
+            AVSubtitleRect *subRect = frmItem.sub.rects[i];
+            if (subRect->type == SUBTITLE_ASS) {
+                ASSRender::instance().addEvent(subRect->ass, strlen(subRect->ass), frmItem.pts, frmItem.duration);
+            } else if (subRect->type == SUBTITLE_TEXT) {
+                // TODO
+            }
+        }
+        avsubtitle_free(&frmItem.sub);
+    }
+}
+
 bool DecodeSubtitle::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
     bool initok = DecodeBase::init(stream, pktBuf, frmBuf);
     if (!initok) {
@@ -57,12 +71,17 @@ void DecodeSubtitle::decodingLoop() {
                 frmItem.pts = sub.pts == AV_NOPTS_VALUE ? 0.0
                                                         : sub.pts / (double)AV_TIME_BASE + sub.start_display_time / 1000.0;
                 frmItem.duration = (sub.end_display_time - sub.start_display_time) / 1000.0;
-                // qDebug() << frmItem.pts << " " << sub.end_display_time / 1000.0 << sub.start_display_time / 1000.0 << frmItem.duration;
-                while (!m_frmBuf->push(frmItem)) {
-                    if (m_stop.load(std::memory_order_relaxed)) {
-                        goto end;
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+                if (sub.format == 0) { // 图形字幕
+                    while (!m_frmBuf->push(frmItem)) {
+                        if (m_stop.load(std::memory_order_relaxed)) {
+                            goto end;
+                        }
+                        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                    }                    
+                }
+                else {
+                    handleTextSub(frmItem);
                 }
             } else if (pktItem.pkt->data == nullptr && pktItem.pkt->size == 0) {
                 avcodec_flush_buffers(m_codecCtx);

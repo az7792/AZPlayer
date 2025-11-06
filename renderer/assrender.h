@@ -28,6 +28,8 @@ public:
     bool init(const std::string &subtitleHeader);
     bool uninit();
 
+    bool initialized();
+
     /**
      * 添加一条事件
      * @note data的格式为：ReadOrder,Layer,Style,Name,MarginL,MarginR,MarginV,Effect,Text
