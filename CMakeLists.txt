@@ -58,6 +58,7 @@ qt_add_qml_module(appAZPlayer
               qml/AZTopBar.qml
               qml/AZDial.qml
               qml/AZTextInput.qml
+              qml/AZPlayerAbout.qml
     SOURCES demux/demux.h demux/demux.cpp
             decode/decodebase.h decode/decodebase.cpp
             decode/decodeaudio.h decode/decodeaudio.cpp
@@ -109,8 +110,6 @@ target_link_libraries(appAZPlayer
         avcodec
         avformat
         avutil
-        avdevice
-        avfilter
         swscale
         swresample
         ass
@@ -131,8 +130,6 @@ add_custom_command(TARGET appAZPlayer POST_BUILD
             ${FFMPEG_BIN_DIR}/avutil-60.dll
             ${FFMPEG_BIN_DIR}/avcodec-62.dll
             ${FFMPEG_BIN_DIR}/avformat-62.dll
-            ${FFMPEG_BIN_DIR}/avdevice-62.dll
-            ${FFMPEG_BIN_DIR}/avfilter-11.dll
             ${FFMPEG_BIN_DIR}/swscale-9.dll
             ${FFMPEG_BIN_DIR}/swresample-6.dll
             ${ASS_BIN_DIR}/ass.dll
@@ -146,8 +143,11 @@ add_custom_command(TARGET appAZPlayer POST_BUILD
             ${ASS_BIN_DIR}/harfbuzz.dll
             ${ASS_BIN_DIR}/libpng16.dll
             ${ASS_BIN_DIR}/zlib1.dll
-            $<TARGET_FILE_DIR:appAZPlayer>
-        COMMENT "Copying FFmpeg DLLs to output directory"
+            $<TARGET_FILE_DIR:appAZPlayer>        
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/LICENSES
+            $<TARGET_FILE_DIR:appAZPlayer>/LICENSES
+        COMMENT "拷贝DLL和LICENSES"
     )
 
 include(GNUInstallDirs)

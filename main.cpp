@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
     QQmlApplicationEngine engine;
     qmlRegisterType<VideoWindow>("VideoWindow", 1, 0, "VideoWindow");
     engine.rootContext()->setContextProperty("MediaCtrl", &mc);
+    engine.rootContext()->setContextProperty("appDirPath", QCoreApplication::applicationDirPath());
     const QUrl url(QStringLiteral("qrc:/qml/Main.qml"));
     QObject::connect(
         &engine,

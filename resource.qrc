@@ -22,6 +22,7 @@
         <file alias="repeat_one.png">resource/icon/repeat_one.png</file>
         <file alias="shuffle.png">resource/icon/shuffle.png</file>
         <file alias="list.png">resource/icon/list.png</file>
+        <file alias="AZPlayer.ico">resource/icon/AZPlayer.ico</file>
     </qresource>
     <qresource prefix="/">
         <file>qml/AZButton.qml</file>
@@ -38,5 +39,6 @@
         <file>qml/AZTopBar.qml</file>
         <file>qml/AZDial.qml</file>
         <file>qml/AZTextInput.qml</file>
+        <file>qml/AZPlayerAbout.qml</file>
     </qresource>
 </RCC>

@@ -13,21 +13,18 @@ Rectangle{
         titleText.text = str
     }
 
+    AZPlayerAbout{
+        id:appAbout
+    }
+
     AZButton{
         id:menuBtn
         height: parent.height
         width: 2.5 * height
         anchors.left: parent.left
-        defaultColor: "#1c1c1c"
-        hoverColor: "#252525"
-        pressedColor:"#161616"
         text: "AZPlayer"
-        tooltipText: "v0.1.0-beta.1"
-        iconHeight: 16
-        iconWidth: 16
-        onClicked: console.log("按下")
-        onLeftClicked: console.log("L按下")
-        onRightClicked: console.log("R按下")
+        tooltipText: "关于"
+        onClicked: appAbout.show();
     }
 
     Rectangle{
