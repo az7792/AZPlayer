@@ -338,6 +338,7 @@ void Demux::demuxLoop() {
                 pushSubtitlePkt(pkt);
                 pkt = av_packet_alloc();
                 pushAudioPkt(pkt);
+                pkt = nullptr;
                 qDebug() << "解复用EOF";
                 m_isEOF = true;
             } else if (ret != AVERROR_EOF) { // error
