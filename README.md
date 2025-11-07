@@ -81,7 +81,7 @@ add_custom_command(TARGET appAZPlayer POST_BUILD
 ...
 ```
 
-## 文件结构
+## 文件/程序结构
 
 ```
 .
@@ -101,7 +101,7 @@ add_custom_command(TARGET appAZPlayer POST_BUILD
     ├─icon # 图标
     └─shaderSource # OpenGL的顶点着色器和片段着色器
 ```
-
+![](./static/img2.png)
 ## 图标
 
 本项目图标来自[material-design-icons](https://fonts.google.com/icons)
