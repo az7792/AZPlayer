@@ -42,7 +42,7 @@ Window {
             anchors.bottom: parent.bottom
             anchors.margins: 10
             color: "white"
-            text: "<b>AZPlayer v0.1.0</b><br><br>" +
+            text: "<b>AZPlayer v0.1.1</b><br><br>" +
                   "本项目开源地址: <a href=\"https://github.com/az7792/AZPlayer\">GitHub</a><br><br>" +
                   "开放源代码许可: <a href='" + appDirPath + "/LICENSES'>开源许可</a>"
             textFormat: Text.RichText

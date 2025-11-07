@@ -243,7 +243,7 @@ Window {
             anchors.left: parent.left
             anchors.right: splitView.isLeftExpanded ? parent.right : splitter.left
             anchors.bottom: mainWin.visibility === Window.FullScreen ? parent.bottom : bottomBar.top
-            anchors.bottomMargin: 1
+            anchors.bottomMargin: mainWin.visibility === Window.FullScreen ? 0 : 1
             z:0
 
             VideoWindow{
