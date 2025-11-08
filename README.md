@@ -3,7 +3,7 @@
 使用[Qt](https://www.qt.io/)开发的基于[FFmpeg](https://www.ffmpeg.org/)的音视频播放器。支持绝大多数的音频、视频、字幕的播放。支持对显示图像进行旋转、缩放、移动操作。支持音频流与字幕流的切换，以及从外部文件导入音频流或字幕流。
 
 ## 界面/使用
-界面风格参考[Potplayer](https://potplayer.daum.net/)
+界面风格参考[Potplayer](https://potplayer.daum.net/)，[功能演示](https://www.bilibili.com/video/BV11M1mBHEMC)
 ![](./static/img1.png)
 
 ## 功能 / 可能的开发计划
