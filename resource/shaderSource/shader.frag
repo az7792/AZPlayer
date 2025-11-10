@@ -22,7 +22,8 @@ uniform sampler2D uTex;// U | G
 uniform sampler2D vTex;// V | B
 uniform sampler2D aTex;// A
 uniform sampler2D subTex;// 字幕RGBA
-uniform bool haveSubTex = false;
+uniform bool haveSubTex = false; // 是否有字幕纹理
+uniform bool showSub = true;    // 是否渲染字幕
 
 
 out vec4 FragColor;
@@ -68,7 +69,7 @@ void main()
         FragColor = vec4(1.0, 0.0, 0.0, 1.0); // 未知格式
     }
 
-    if(haveSubTex) {
+    if(haveSubTex && showSub) {
         vec4 subColor = texture(subTex, TexCoord);
         FragColor = mix(FragColor, subColor, subColor.a);
     }

@@ -71,6 +71,9 @@ private:
     bool m_needInitVideoTex = true;
     bool m_needInitSubtitleTex = true;
 
+    bool m_lastShowSubtitle = true;
+    bool m_showSubtitle = true;
+
     RenderData *m_renderData = nullptr; // 渲染需要的数据
     SubRenderData *m_subRenderData = nullptr;
 
@@ -85,6 +88,9 @@ class VideoWindow : public QQuickFramebufferObject {
     Q_OBJECT
 public:
     Renderer *createRenderer() const override;
+
+    Q_INVOKABLE void setShowSubtitle(bool val) { m_showSubtitle = val; }
+
     Q_INVOKABLE void setXY(float newX, float newY) {
         float oldTx = m_tx, oldTy = m_ty; // 值的实际更新必须在发射信号前完成
         m_tx = newX;
@@ -174,6 +180,7 @@ private:
     float m_tx{0.f}, m_ty{0.f}; // 移动(像素)
     float m_angle{0.f};         // 顺时针旋转(角度)
     int m_scale{100};           // 缩放(100为不缩放)
+    bool m_showSubtitle = true; // 是否显示字幕
     friend VideoRenderer;
 };
 #endif // VIDEORENDERER_H

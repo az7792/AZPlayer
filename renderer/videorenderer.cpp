@@ -220,6 +220,12 @@ void VideoRenderer::render() {
         glClear(GL_COLOR_BUFFER_BIT);
         m_program.bind();
 
+        if (m_showSubtitle != m_lastShowSubtitle) {
+            m_lastShowSubtitle = m_showSubtitle;
+            int loc = m_program.uniformLocation("showSub"); // 是否显示字幕
+            m_program.setUniformValue(loc, m_showSubtitle);
+        }
+
         QMatrix4x4 mat;
         mat.setToIdentity();
 
@@ -273,6 +279,7 @@ void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
     m_ty = 2.f * videoWindow->m_ty / m_heightFBO;
     m_angle = videoWindow->m_angle;
     m_scale = videoWindow->m_scale / 100.f;
+    m_showSubtitle = videoWindow->m_showSubtitle;
 }
 
 bool VideoRenderer::updateTex(RenderData::PixFormat fmt) {
