@@ -3,6 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import "../controls"
 Rectangle{
     id:progressBar
     height: 20

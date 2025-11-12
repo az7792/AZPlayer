@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Dialogs
 import VideoWindow 1.0
+import "../controls"
 Item{
     id:playerCtrlBar
     height: 40

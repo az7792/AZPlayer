@@ -25,20 +25,26 @@
         <file alias="AZPlayer.ico">resource/icon/AZPlayer.ico</file>
     </qresource>
     <qresource prefix="/">
-        <file>qml/AZButton.qml</file>
+        <file>qml/bottomBar/AZBottomBar.qml</file>
         <file>qml/Main.qml</file>
-        <file>qml/AZTooltip.qml</file>
-        <file>qml/AZWindowControls.qml</file>
-        <file>qml/AZSlider.qml</file>
-        <file>qml/AZProgressBar.qml</file>
-        <file>qml/AZPlayerCtrlBar.qml</file>
-        <file>qml/AZListView.qml</file>
-        <file>qml/AZFileDialog.qml</file>
-        <file>qml/AZStreamView.qml</file>
-        <file>qml/AZTextButton.qml</file>
-        <file>qml/AZTopBar.qml</file>
-        <file>qml/AZDial.qml</file>
-        <file>qml/AZTextInput.qml</file>
-        <file>qml/AZPlayerAbout.qml</file>
+        <file>qml/topBar/AZPlayerAbout.qml</file>
+        <file>qml/topBar/AZTopBar.qml</file>
+        <file>qml/topBar/AZWindowControls.qml</file>
+        <file>qml/sideBar/AZStreamView.qml</file>
+        <file>qml/fileDialog/AZFileDialog.qml</file>
+        <file>qml/controls/AZButton.qml</file>
+        <file>qml/controls/AZDial.qml</file>
+        <file>qml/controls/AZListView.qml</file>
+        <file>qml/controls/AZSlider.qml</file>
+        <file>qml/controls/AZTabBar.qml</file>
+        <file>qml/controls/AZTextButton.qml</file>
+        <file>qml/controls/AZTextInput.qml</file>
+        <file>qml/controls/AZTooltip.qml</file>
+        <file>qml/bottomBar/AZPlayerCtrlBar.qml</file>
+        <file>qml/bottomBar/AZProgressBar.qml</file>
+        <file>qml/sideBar/AZFileSideBar.qml</file>
+        <file>qml/sideBar/AZFileTab.qml</file>
+        <file>qml/sideBar/AZSubtitleTab.qml</file>
+        <file>qml/sideBar/AZAudioTab.qml</file>
     </qresource>
 </RCC>

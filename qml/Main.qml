@@ -292,40 +292,19 @@ Window {
         }
 
         //底部控制栏
-        Rectangle{
+        AZBottomBar{
             id:bottomBar
             anchors.left: parent.left
             anchors.right: splitView.showed ? splitter.left : parent.right
             anchors.bottom: parent.bottom
             visible: mainWin.visibility !== Window.FullScreen || forceShowBottomBar
-            height: progressBar.height + playerCtrlBar.height + 1
             z:1
-            color: "black"
-
-            AZProgressBar{
-                id:progressBar
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-            }
-
-            AZPlayerCtrlBar{
-                id:playerCtrlBar
-                listView: fileTab
-                splitView: splitView
-                currentTime: progressBar.currentTime
-                videoWindow: videoWindow
-                angleDial: angleDial
-                z:1
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: progressBar.bottom
-                anchors.topMargin: 1
-                onOpenFileBtnClicked: fileDialog.openFile()
-            }
-
+            listView: fileListBar.fileTab
+            splitView: splitView
+            videoWindow: videoWindow
+            angleDial: angleDial
+            fileDialog: fileDialog
         }
-
 
         Rectangle {
             id: splitter
@@ -356,7 +335,7 @@ Window {
             }
         }
 
-        ColumnLayout {
+        AZFileSideBar {
             id:fileListBar
             anchors.right: parent.right
             anchors.bottom: parent.bottom
@@ -364,178 +343,9 @@ Window {
             anchors.left: splitter.right
             visible: splitView.showed
             spacing: 1
-
-            TabBar {
-                id:tabBar
-                Layout.fillWidth: true
-                background: Rectangle{
-                    color:"black"
-                }
-                position:TabBar.Header
-
-                Repeater {
-                    model: ListModel {
-                        ListElement { label: "文件" }
-                        ListElement { label: "字幕" }
-                        ListElement { label: "音频" }
-                    }
-
-                    TabButton {
-                        id: tabBtn
-                        background: Rectangle {
-                            color: (tabBtn.pressed || tabBtn.checked) ? "#3b3b3b" : "#333333"
-                        }
-                        contentItem: Text {
-                            text: label
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            color: tabBtn.checked ? "white" : "#747474"
-                        }
-                    }
-                }
-
-            }
-
-            StackLayout {
-                id: stackView
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                currentIndex: tabBar.currentIndex
-
-                ColumnLayout{
-                    Layout.fillHeight: true
-                    Layout.fillWidth: true
-                    spacing: 1
-                    AZListView{
-                        id: fileTab
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                        color: "#3b3b3b"
-                        listModel: fileDialog.listModel
-
-                        onDelActive:{
-                            topBar.setTextWrapper("")
-                            MediaCtrl.close()
-                        }
-
-                        onStopActive: {
-                            topBar.setTextWrapper("")
-                            MediaCtrl.close()
-                        }
-
-                        Connections {
-                            target: fileDialog
-                            function onOpenIndex(index) {
-                                fileTab.setHighlightIdx(index)
-                                topBar.setTextWrapper(fileDialog.listModel.get(index).text)
-                                MediaCtrl.open(fileDialog.activeFilePath)
-                            }
-                        }
-
-                        onOpenIndex:function(index){
-                            topBar.setTextWrapper(fileDialog.listModel.get(index).text)
-                            MediaCtrl.open(fileDialog.listModel.get(index).fileUrl)
-                        }
-                    }                   
-
-                    Rectangle{
-                        Layout.fillWidth: true
-                        Layout.minimumHeight: 30
-                        Layout.maximumHeight: 30
-                        color: "#323232"
-                        AZTextButton{
-                            id:addFileBtn
-                            width: 60
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-                            anchors.left: parent.left
-                            anchors.topMargin: 3
-                            anchors.bottomMargin: 3
-                            anchors.leftMargin: 3
-                            text: "添加文件"
-                            onClicked: fileDialog.addFile()
-                        }
-                    }
-                }
-
-                ColumnLayout{
-                    Layout.fillHeight: true
-                    Layout.fillWidth: true
-                    spacing: 1
-                    AZStreamView {
-                        id: subtitleTab
-                        streamType: "SUBTITLE"
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                    }
-                    Rectangle{
-                        Layout.fillWidth: true
-                        Layout.minimumHeight: 30
-                        Layout.maximumHeight: 30
-                        color: "#323232"
-                        AZTextButton{
-                            id:addSubtitleBtn
-                            width: 60
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-                            anchors.left: parent.left
-                            anchors.topMargin: 3
-                            anchors.bottomMargin: 3
-                            anchors.leftMargin: 3
-                            text: "添加字幕"
-                            onClicked: fileDialog.openSubtitleStreamFile()
-                        }
-
-                        AZTextButton{
-                            id:showSubtitleBtn
-                            property bool showSub: true
-                            width: 60
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-                            anchors.left: addSubtitleBtn.right
-                            anchors.topMargin: 3
-                            anchors.bottomMargin: 3
-                            anchors.leftMargin: 3
-                            text: showSub ? "关闭字幕" : "显示字幕"
-                            onClicked: {
-                                showSub = !showSub
-                                videoWindow.setShowSubtitle(showSub)
-                            }
-                        }
-                    }
-
-                }
-                ColumnLayout{
-                    Layout.fillHeight: true
-                    Layout.fillWidth: true
-                    spacing: 1
-                    AZStreamView {
-                        id: audioTab
-                        streamType: "AUDIO"
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                    }
-                    Rectangle{
-                        Layout.fillWidth: true
-                        Layout.minimumHeight: 30
-                        Layout.maximumHeight: 30
-                        color: "#323232"
-                        AZTextButton{
-                            id:addAudioBtn
-                            width: 60
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-                            anchors.left: parent.left
-                            anchors.topMargin: 3
-                            anchors.bottomMargin: 3
-                            anchors.leftMargin: 3
-                            text: "添加音轨"
-                            onClicked: fileDialog.openAudioStreamFile()
-                        }
-                    }
-                }// end ColumnLayout
-            }// end StackLayout
-
+            fileDialog:fileDialog
+            topBar: topBar
+            videoWindow: videoWindow
         }
 
         onWidthChanged: {

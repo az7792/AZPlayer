@@ -3,6 +3,7 @@
 
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
 /*TODO: 目前Qt|Windows从FullScreen到Maximized的实际路线是FullScreen->Windowed->Maximized
         从Minimized到Maximized或FullScreen（这儿指从dock栏点击图标从最小化还原到之前的状态）的实际路线都是Minimized->Windowed
         且直接使用窗口自带的控件没有上述问题
