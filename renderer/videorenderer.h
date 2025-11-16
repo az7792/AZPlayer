@@ -62,7 +62,8 @@ private:
 
     float m_tx{0.f}, m_ty{0.f}; // 移动(OpenGL的裁剪空间-1.0到1.0为可视范围)
     float m_angle{0.f};         // 顺时针旋转(角度)
-    float m_scale{1.f};         // 缩放(1为不缩放)
+    float m_scaleX{1.f};        // 缩放(1为不缩放)
+    float m_scaleY{1.f};        // 缩放(1为不缩放)
 
     /**
      * 是否需要重新初始化纹理
@@ -80,7 +81,9 @@ private:
     bool updateTex(RenderData::PixFormat fmt);
     bool updateSubTex();
 
+private:
     void initTex(GLuint &tex, const QSize &size, const std::array<unsigned int, 3> &para, uint8_t *fill = nullptr);
+    QMatrix4x4 getTransformMat(); // 获取当前的变换矩阵
 };
 
 // QML控件
@@ -145,6 +148,16 @@ public:
     Q_INVOKABLE void addScale() { setScale(m_scale + 2); }
     Q_INVOKABLE void subScale() { setScale(m_scale - 2); }
 
+    // 镜像
+    Q_INVOKABLE void setHorizontalMirror(bool val) {
+        m_horizontalMirror = val;
+        update();
+    }
+    Q_INVOKABLE void setVerticalMirror(bool val) {
+        m_verticalMirror = val;
+        update();
+    }
+
     // 角度
     Q_INVOKABLE void setAngle(float angle) {
         float tmpAngle = std::fmod(angle, 360.0f);
@@ -181,6 +194,8 @@ private:
     float m_angle{0.f};         // 顺时针旋转(角度)
     int m_scale{100};           // 缩放(100为不缩放)
     bool m_showSubtitle = true; // 是否显示字幕
+    bool m_horizontalMirror{false};
+    bool m_verticalMirror{false};
     friend VideoRenderer;
 };
 #endif // VIDEORENDERER_H

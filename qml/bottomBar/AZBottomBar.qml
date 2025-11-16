@@ -7,11 +7,21 @@ Rectangle{
 
     property alias listView: playerCtrlBar.listView
     property alias splitView: playerCtrlBar.splitView
-    property alias videoWindow: playerCtrlBar.videoWindow
-    property alias angleDial: playerCtrlBar.angleDial
+    property alias videoWindow: playerSetting.videoWindow
+    property alias angleDial: playerSetting.angleDial
     property AZFileDialog fileDialog:null
+    property alias playerSettingOpened: playerCtrlBar.playerSettingOpened
 
-    color: "black"
+    color: "black"    
+
+    AZPlayerSetting{
+        id:playerSetting
+        visible: playerCtrlBar.playerSettingOpened
+        height: 250
+        width: 400
+        anchors.right: parent.right
+        anchors.bottom: progressBar.top
+    }
 
     AZProgressBar{
         id:progressBar

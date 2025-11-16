@@ -226,38 +226,7 @@ void VideoRenderer::render() {
             m_program.setUniformValue(loc, m_showSubtitle);
         }
 
-        QMatrix4x4 mat;
-        mat.setToIdentity();
-
-        mat.translate(m_tx, m_ty, 0.0f); // 移动 #step5
-
-        // 视频等比例缩放到[-1,1]的正方形里时视频右上角的坐标
-        float scaleX0 = 1.0f, scaleY0 = 1.0f;
-        if (m_width > m_height) {
-            scaleY0 = 1.f * m_height / m_width;
-        } else {
-            scaleX0 = 1.f * m_width / m_height;
-        }
-
-        // 将视频等比例填充满FBO并将FBO缩放到[-1,1]时视频右上角的坐标
-        float scaleX = 1.0f, scaleY = 1.0f;
-        float videoAspect = 1.f * m_width / m_height, fboAspect = 1.f * m_widthFBO / m_heightFBO;
-        if (videoAspect > fboAspect) {
-            // 视频比FBO宽，宽撑满，高缩放
-            scaleY = fboAspect / videoAspect;
-        } else {
-            // 视频比FBO高，高撑满，宽缩放
-            scaleX = videoAspect / fboAspect;
-        }
-        mat.scale(scaleX / scaleX0, scaleY / scaleY0, 1.0f); // 调整画面比例，将step1的原始比例映射到新的比例 #step4
-
-        mat.scale(m_scale, m_scale, 1.0f); // 缩放 #step3
-        mat.rotate(m_angle, 0, 0, 1);      // 旋转 #step2
-
-        // 按视频比例将顶点在[-1,1]的正方形里先保持比例正确 #step1
-        mat.scale(scaleX0, scaleY0, 1.f);
-
-        m_program.setUniformValue(m_program.uniformLocation("transform"), mat);
+        m_program.setUniformValue(m_program.uniformLocation("transform"), getTransformMat());
         // 绘制视频画面
         glBindVertexArray(m_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -277,8 +246,13 @@ void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
     m_subRenderData = videoWindow->m_subRenderData;
     m_tx = 2.f * videoWindow->m_tx / m_widthFBO;
     m_ty = 2.f * videoWindow->m_ty / m_heightFBO;
-    m_angle = videoWindow->m_angle;
-    m_scale = videoWindow->m_scale / 100.f;
+
+    m_angle = videoWindow->m_angle * (videoWindow->m_horizontalMirror ^ videoWindow->m_verticalMirror ? -1.f : 1.f);
+
+    m_scaleX = m_scaleY = videoWindow->m_scale / 100.f;
+    m_scaleX *= videoWindow->m_horizontalMirror ? -1.f : 1.f;
+    m_scaleY *= videoWindow->m_verticalMirror ? -1.f : 1.f;
+
     m_showSubtitle = videoWindow->m_showSubtitle;
 }
 
@@ -418,6 +392,41 @@ void VideoRenderer::initTex(GLuint &tex, const QSize &size, const std::array<uns
     glPixelStorei(GL_UNPACK_ROW_LENGTH, size.width());
     glTexImage2D(GL_TEXTURE_2D, 0, para[0], size.width(), size.height(), 0, para[1], para[2], fill);
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+QMatrix4x4 VideoRenderer::getTransformMat() {
+    QMatrix4x4 mat;
+    mat.setToIdentity();
+
+    mat.translate(m_tx, m_ty, 0.0f); // 移动 #step5
+
+    // 视频等比例缩放到[-1,1]的正方形里时视频右上角的坐标
+    float scaleX0 = 1.0f, scaleY0 = 1.0f;
+    if (m_width > m_height) {
+        scaleY0 = 1.f * m_height / m_width;
+    } else {
+        scaleX0 = 1.f * m_width / m_height;
+    }
+
+    // 将视频等比例填充满FBO并将FBO缩放到[-1,1]时视频右上角的坐标
+    float scaleX = 1.0f, scaleY = 1.0f;
+    float videoAspect = 1.f * m_width / m_height, fboAspect = 1.f * m_widthFBO / m_heightFBO;
+    if (videoAspect > fboAspect) {
+        // 视频比FBO宽，宽撑满，高缩放
+        scaleY = fboAspect / videoAspect;
+    } else {
+        // 视频比FBO高，高撑满，宽缩放
+        scaleX = videoAspect / fboAspect;
+    }
+    mat.scale(scaleX / scaleX0, scaleY / scaleY0, 1.0f); // 调整画面比例，将step1的原始比例映射到新的比例 #step4
+
+    mat.scale(m_scaleX, m_scaleY, 1.0f); // 缩放 #step3
+    mat.rotate(m_angle, 0, 0, 1);        // 旋转 #step2
+
+    // 按视频比例将顶点在[-1,1]的正方形里先保持比例正确 #step1
+    mat.scale(scaleX0, scaleY0, 1.f);
+
+    return mat;
 }
 
 //===========VideoWindow===========//

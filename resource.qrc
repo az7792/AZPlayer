@@ -23,6 +23,9 @@
         <file alias="shuffle.png">resource/icon/shuffle.png</file>
         <file alias="list.png">resource/icon/list.png</file>
         <file alias="AZPlayer.ico">resource/icon/AZPlayer.ico</file>
+        <file alias="player_settings_closed.png">resource/icon/player_settings_closed.png</file>
+        <file alias="player_settings_opened.png">resource/icon/player_settings_opened.png</file>
+        <file alias="check_box_checked.png">resource/icon/check_box_checked.png</file>
     </qresource>
     <qresource prefix="/">
         <file>qml/bottomBar/AZBottomBar.qml</file>
@@ -46,5 +49,7 @@
         <file>qml/sideBar/AZFileTab.qml</file>
         <file>qml/sideBar/AZSubtitleTab.qml</file>
         <file>qml/sideBar/AZAudioTab.qml</file>
+        <file>qml/bottomBar/AZPlayerSetting.qml</file>
+        <file>qml/controls/AZCheckBox.qml</file>
     </qresource>
 </RCC>

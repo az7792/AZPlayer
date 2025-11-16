@@ -175,7 +175,7 @@ Window {
                 return
             }
             forceShowTopBar = (y <= topBar.height && (!fileListBar.visible || x <= fileListBar.x))
-            forceShowBottomBar = (y >= mainWin.height - bottomBar.height && x <= bottomBar.width)
+            forceShowBottomBar = bottomBar.playerSettingOpened || (y >= mainWin.height - bottomBar.height && x <= bottomBar.width)
         }
 
         onPositionChanged:function(mouse) {
