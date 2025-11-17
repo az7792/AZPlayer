@@ -42,7 +42,6 @@ ColumnLayout {
             Layout.fillWidth: true
             spacing: 1
             fileDialog: root.fileDialog
-            videoWindow: root.videoWindow
         }
 
         AZAudioTab{

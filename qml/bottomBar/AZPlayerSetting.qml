@@ -175,7 +175,18 @@ Rectangle{
         }
     }
 
-    component MySubtitleCtrl:Item{}
+    component MySubtitleCtrl:Column{
+        spacing: 5
+        AZCheckBox {
+            id: showSubtitleCheckBox
+            height: 20
+            width: 80
+            text:"显示字幕"
+            checked: true
+            textColor: "#ebebeb"
+            onCheckedChanged: videoWindow.setShowSubtitle(checked)
+        }
+    }
 
     component MyAudioCtrl:Item{}
 }
