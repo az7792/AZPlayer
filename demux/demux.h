@@ -21,6 +21,11 @@ extern "C" {
 }
 #endif
 
+struct ChapterInfo {
+    double pts;        // 秒
+    std::string title; // 描述
+};
+
 class Demux : public QObject {
     Q_OBJECT
 public:
@@ -60,6 +65,7 @@ public:
     std::array<size_t,3> getStreamsCount() const;
 
     const std::array<std::vector<QString>, 3> &streamInfo() { return m_stringInfo; }
+    const std::vector<ChapterInfo> &chaptersInfo() { return m_chaptersInfo; }
 
     AVFormatContext *formatCtx();
 public slots:
@@ -81,6 +87,7 @@ private:
     std::vector<int> m_videoIdx, m_audioIdx, m_subtitleIdx;          // 各个流的ID
     std::atomic<int> m_usedVIdx{-1}, m_usedAIdx{-1}, m_usedSIdx{-1}; // 当前使用的流ID
     std::array<std::vector<QString>, 3> m_stringInfo;                // 流描述
+    std::vector<ChapterInfo> m_chaptersInfo;
 
     char errBuf[512];
     std::atomic<bool> m_stop{true};
@@ -101,6 +108,7 @@ private:
     void pushSubtitlePkt(AVPacket *pkt);
     void pushPkt(weakPktQueue wq, AVPacket *pkt);
     void fillStreamInfo();
+    void fillChaptersInfo();
 };
 
 #endif // DEMUX_H

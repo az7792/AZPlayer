@@ -160,6 +160,7 @@ bool MediaController::open(const QUrl &URL) {
     m_played = false;
     qDebug() << "打开成功";
     emit streamInfoUpdate();
+    emit chaptersInfoUpdate();
     return true;
 }
 
@@ -202,6 +203,7 @@ bool MediaController::close() {
     setDuration(0);
     qDebug() << "关闭";
     emit streamInfoUpdate();
+    emit chaptersInfoUpdate();
     return ok;
 }
 
@@ -413,6 +415,43 @@ QVariantList MediaController::getSubtitleInfo() const {
 
 QVariantList MediaController::getAudioInfo() const {
     return getStreamInfo(MediaIdx::AUDIO);
+}
+
+QVariantList MediaController::getChaptersInfo() const {
+    Demux *demux = m_demuxs[MediaIdx::VIDEO];
+    QVariantList list;
+
+    if (demux == nullptr)
+        return list;
+
+    const std::vector<ChapterInfo> &chapters = demux->chaptersInfo();
+    for (auto &v : chapters) {
+        int total = static_cast<int>(v.pts * 1000.0 + 0.5);
+
+        int ms = total % 1000;
+        total /= 1000;
+
+        int sec = total % 60;
+        total /= 60;
+
+        int min = total % 60;
+        int hour = total / 60;
+
+        QString timeStr = QString("[%1:%2:%3:%4]")
+                              .arg(hour, 2, 10, QLatin1Char('0'))
+                              .arg(min, 2, 10, QLatin1Char('0'))
+                              .arg(sec, 2, 10, QLatin1Char('0'))
+                              .arg(ms, 3, 10, QLatin1Char('0'));
+
+        QString title = QString::fromStdString(v.title);
+
+        QVariantMap item;
+        item["pts"] = QVariant(v.pts);
+        item["text"] = timeStr + " " + title;
+
+        list.push_back(item);
+    }
+    return list;
 }
 
 int MediaController::getSubtitleIdx() const {

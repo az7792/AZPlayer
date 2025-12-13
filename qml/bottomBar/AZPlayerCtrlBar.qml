@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick
+import QtQuick.Controls
 import "../controls"
 Item{
     id:playerCtrlBar
@@ -158,6 +159,27 @@ Item{
             anchors.left: mediaDurationText1.right
             wrapMode: Text.NoWrap
             elide: Text.ElideNone
+        }
+
+        AZComboBox{
+            id: chapterComboBox
+            displayText: "章节"
+            width: 45
+            height: 20
+            anchors.left: mediaDurationText2.right
+            anchors.leftMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            popupWidth: 180
+            textRole:"text"
+            Connections{
+                target: MediaCtrl
+                function onChaptersInfoUpdate(){
+                    chapterComboBox.model = MediaCtrl.getChaptersInfo();
+                }
+            }
+            onActivated: function(index){
+                MediaCtrl.seekBySec(chapterComboBox.model[index]["pts"],0.0);
+            }
         }
     }
 

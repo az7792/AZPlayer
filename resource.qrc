@@ -51,5 +51,6 @@
         <file>qml/sideBar/AZAudioTab.qml</file>
         <file>qml/bottomBar/AZPlayerSetting.qml</file>
         <file>qml/controls/AZCheckBox.qml</file>
+        <file>qml/controls/AZComboBox.qml</file>
     </qresource>
 </RCC>

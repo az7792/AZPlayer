@@ -39,6 +39,7 @@ public:
     Q_INVOKABLE int getCurrentTime() const;
     Q_INVOKABLE QVariantList getSubtitleInfo() const;
     Q_INVOKABLE QVariantList getAudioInfo() const;
+    Q_INVOKABLE QVariantList getChaptersInfo() const;
     Q_INVOKABLE int getSubtitleIdx() const; // 获取当前使用的流在所有同类流中的索引，-1为未使用
     Q_INVOKABLE int getAudioIdx() const;    // 获取当前使用的流在所有同类流中的索引，-1为未使用
 
@@ -71,7 +72,8 @@ signals:
     void pausedChanged();
     void volumeChanged();
     void mutedChanged();
-    void streamInfoUpdate(); // 流信息已更新
+    void streamInfoUpdate();   // 流信息已更新
+    void chaptersInfoUpdate(); // 章节信息已更新
 
     void durationChanged();
     void seeked(); // 通知前端seek完成，主要用于防止进度条鬼畜

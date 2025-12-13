@@ -54,6 +54,7 @@ qt_add_qml_module(appAZPlayer
               qml/controls/AZTextInput.qml
               qml/controls/AZTooltip.qml
               qml/controls/AZCheckBox.qml
+              qml/controls/AZComboBox.qml
               qml/fileDialog/AZFileDialog.qml
               qml/bottomBar/AZPlayerCtrlBar.qml
               qml/bottomBar/AZProgressBar.qml

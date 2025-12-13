@@ -72,7 +72,8 @@ bool Demux::init(const std::string URL, bool isMainDemux) {
             m_subtitleIdx.push_back(i);
     }
 
-    fillStreamInfo(); // 填充流的描述信息
+    fillStreamInfo();   // 填充流的描述信息
+    fillChaptersInfo(); // 填充章节的描述信息
 
     m_usedVIdx.store(-1, std::memory_order_relaxed);
     m_usedAIdx.store(-1, std::memory_order_relaxed);
@@ -100,6 +101,8 @@ bool Demux::uninit() {
     for (auto &v : m_stringInfo) {
         v.clear();
     }
+
+    m_chaptersInfo.clear();
 
     m_usedVIdx.store(-1, std::memory_order_relaxed);
     m_usedAIdx.store(-1, std::memory_order_relaxed);
@@ -414,5 +417,23 @@ void Demux::fillStreamInfo() {
     for (auto v : m_audioIdx) {
         AVStream *st = m_formatCtx->streams[v];
         audioArr.emplace_back(getStringInfo(st));
+    }
+}
+
+void Demux::fillChaptersInfo() {
+    for (unsigned int i = 0; i < m_formatCtx->nb_chapters; ++i) {
+        AVChapter *ch = m_formatCtx->chapters[i];
+        m_chaptersInfo.push_back(ChapterInfo());
+
+        m_chaptersInfo.back().pts = ch->start != AV_NOPTS_VALUE ? ch->start * av_q2d(ch->time_base) : 0.0;
+
+        AVDictionaryEntry *e = av_dict_get(ch->metadata, "title", NULL, 0);
+        if (!e) {
+            e = av_dict_get(ch->metadata, "NAME", NULL, 0);
+        }
+
+        if (e) {
+            m_chaptersInfo.back().title = std::string(e->value);
+        }
     }
 }
