@@ -1,10 +1,10 @@
 # AZPlayer
 
-使用[Qt](https://www.qt.io/)开发的基于[FFmpeg](https://www.ffmpeg.org/)的音视频播放器。支持绝大多数的音频、视频、字幕的播放。支持对显示图像进行旋转、缩放、移动操作。支持音频流与字幕流的切换，以及从外部文件导入音频流或字幕流。
+使用[Qt](https://www.qt.io/)开发的基于[FFmpeg](https://www.ffmpeg.org/)的音视频播放器。支持主流音视频格式、ASS与图形字幕的播放。支持对显示图像进行旋转、缩放、移动、镜像操作。支持音频流与字幕流的切换，以及从外部文件导入音频流或字幕流。
 
 ## 界面/使用
 界面风格参考[Potplayer](https://potplayer.daum.net/)，[功能演示](https://www.bilibili.com/video/BV11M1mBHEMC)
-![](./static/img1.png)
+![一图流](./static/img1.png)
 
 ## 功能 / 可能的开发计划
 
@@ -18,7 +18,7 @@
 - [x] 对显示画面进行旋转、缩放、移动操作
 - [x] 播放文本字幕(已支持ASS字幕)
 - [x] 镜像
-- [ ] 章节显示
+- [x] 章节显示
 - [ ] 倍速
 - [ ] 截图
 - [ ] 单帧播放
