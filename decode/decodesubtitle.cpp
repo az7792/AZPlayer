@@ -83,11 +83,11 @@ void DecodeSubtitle::decodingLoop() {
                 else {
                     handleTextSub(frmItem);
                 }
-            } else if (pktItem.pkt->data == nullptr && pktItem.pkt->size == 0) {
-                avcodec_flush_buffers(m_codecCtx);
+            } else {
+                av_packet_unref(pktItem.pkt);
                 break;
             }
-            av_packet_unref(pktItem.pkt); // 清理旧数据并尝试刷新解码器
+            av_packet_unref(pktItem.pkt);
         }
     }
 end:

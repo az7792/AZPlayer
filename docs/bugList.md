@@ -15,3 +15,10 @@
 - [x] `008`: ASS字幕有时会闪烁
 - [x] `009`: ASS字幕有时会~~seek无效~~无法显示
           - 部分复杂ASS字幕的事件刷新速率大于视频帧率导致事件的最晚结束时间小于当前视频时间，例如当前3s,而事件最晚到2s,因此自然渲染不出3s时的字幕
+- [ ] `010`: SRT字幕seek时同一条字幕解码出的readorder序号可能不同，导致某些时候字幕不显示
+          - 观察发现SRT字幕解码的序号跟实际解码的顺序有关以及字幕本身的时间有关
+          - 建议ass，srt这种文本字幕建议改为一次性加载一次，通过类似于下面的内容进行判断是否为文本字幕
+```
+          dec_desc = avcodec_descriptor_get(st->codecpar->codec_id);
+          if (dec_desc && !(dec_desc->props & AV_CODEC_PROP_TEXT_SUB))
+```
