@@ -3,6 +3,7 @@
 
 #include "demux.h"
 #include "clock/globalclock.h"
+#include "renderer/assrender.h"
 #include <QDebug>
 namespace {
     char _infoBuf[512];
@@ -79,6 +80,7 @@ bool Demux::init(const std::string URL, bool isMainDemux) {
     m_usedAIdx.store(-1, std::memory_order_relaxed);
     m_usedSIdx.store(-1, std::memory_order_relaxed);
 
+    m_URL = URL;
     m_initialized = true;
     m_isEOF = false;
     m_isMainDemux = isMainDemux;
@@ -173,17 +175,25 @@ bool Demux::switchVideoStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq)
     return ok;
 }
 
-bool Demux::switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq) {
+bool Demux::switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq, bool &isAssSub) {
     if (m_usedSIdx != -1) {
         closeStream(1);
     }
     Q_ASSERT(streamIdx < m_subtitleIdx.size());
+
+    isAssSub = ASSRender::instance().init(m_URL, streamIdx);
+    if (isAssSub) {
+        std::lock_guard<std::mutex> mtx(m_mutex);
+        m_subtitlePktBuf.reset(), m_subtitleFrmBuf.reset();
+        m_usedSIdx.store(-1, std::memory_order_release);
+        return true;
+    }
+
     {
         std::lock_guard<std::mutex> mtx(m_mutex);
         m_subtitlePktBuf = wpq, m_subtitleFrmBuf = wfq;
         m_usedSIdx.store(m_subtitleIdx[streamIdx], std::memory_order_release);
     }
-
     bool ok = 1;
     if (m_stop.load(std::memory_order_relaxed)) {
         double pts = GlobalClock::instance().getMainPts();

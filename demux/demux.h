@@ -46,7 +46,7 @@ public:
     void seekBySec(double ts, double rel);
 
     bool switchVideoStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
-    bool switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
+    bool switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq, bool &isAssSub);
     bool switchAudioStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
 
     // 0视频 1字幕 2音频

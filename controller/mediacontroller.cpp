@@ -122,8 +122,10 @@ bool MediaController::open(const QUrl &URL) {
     if (haveVideo && m_demuxs[defDemuxIdx]->haveSubtitleStream()) {
         const int subtitleIdx = 0;
         m_streams[MediaIdx::SUBTITLE] = {defDemuxIdx, subtitleIdx};
-        m_demuxs[defDemuxIdx]->switchSubtitleStream(subtitleIdx, m_pktSubtitleBuf, m_frmSubtitleBuf);
-        ok &= m_decodeSubtitl->init(m_demuxs[defDemuxIdx]->getSubtitleStream(), m_pktSubtitleBuf, m_frmSubtitleBuf);
+        bool isAssSub;
+        m_demuxs[defDemuxIdx]->switchSubtitleStream(subtitleIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub);
+        if (!isAssSub)
+            ok &= m_decodeSubtitl->init(m_demuxs[defDemuxIdx]->getSubtitleStream(), m_pktSubtitleBuf, m_frmSubtitleBuf);
     }
 
     DeviceStatus::instance().setHaveAudio(haveAudio);
@@ -292,9 +294,12 @@ bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
     m_pktSubtitleBuf->addSerial();
     m_frmSubtitleBuf->addSerial(); // videoPlayer可能还在使用，不需要清空，仅修改序号即可
     // 打开新的
-    m_demuxs[demuxIdx]->switchSubtitleStream(streamIdx, m_pktSubtitleBuf, m_frmSubtitleBuf);
-    m_decodeSubtitl->init(m_demuxs[demuxIdx]->getSubtitleStream(), m_pktSubtitleBuf, m_frmSubtitleBuf);
-    m_decodeSubtitl->start();
+    bool isAssSub;
+    m_demuxs[demuxIdx]->switchSubtitleStream(streamIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub);
+    if (!isAssSub) {
+        m_decodeSubtitl->init(m_demuxs[demuxIdx]->getSubtitleStream(), m_pktSubtitleBuf, m_frmSubtitleBuf);
+        m_decodeSubtitl->start();
+    }
 
     m_streams[MediaIdx::SUBTITLE] = {demuxIdx, streamIdx}; // 更新
 

@@ -8,6 +8,18 @@
 #include <atomic>
 #include <string>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
+
+#ifdef __cplusplus
+}
+#endif
+
 struct image_t {
     int width, height, stride; // 宽度，高度，每行字节数(注意不是每行像素数)
     unsigned char *buffer;     // RGBA32
@@ -25,7 +37,11 @@ class ASSRender : public QObject {
 public:
     static ASSRender &instance();
 
-    bool init(const std::string &subtitleHeader);
+    bool init(const std::string &subFile); // 通过字幕文件加载
+    /**
+     * @param subStreamIdx 流ID，-1表示自动选中最佳字幕流
+     */
+    bool init(const std::string &mediaFile, int subStreamIdx);
     bool uninit();
 
     bool initialized();
@@ -51,6 +67,7 @@ private:
     ASS_Renderer *m_assRenderer{nullptr};
     ASS_Track *m_track{nullptr};
     std::atomic<bool> m_initialized{false};
+    bool init_from_demux(AVFormatContext *fmt, int subStreamIdx);
 
 private:
     static int blend(image_t *frame, ASS_Image *img);
