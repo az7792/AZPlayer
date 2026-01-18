@@ -3,23 +3,19 @@
 
 #ifndef DEMUX_H
 #define DEMUX_H
-#include "utils.h"
+#include "compat/compat.h"
+#include "types/ptrs.h"
 #include <QObject>
 #include <atomic>
 #include <mutex>
 #include <string>
 #include <thread>
-#ifdef __cplusplus
-extern "C" {
-#endif
 
+AZ_EXTERN_C_BEGIN
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
-
-#ifdef __cplusplus
-}
-#endif
+AZ_EXTERN_C_END
 
 struct ChapterInfo {
     double pts;        // 秒
@@ -33,7 +29,7 @@ public:
     ~Demux();
 
     // 初始化
-    bool init(const std::string URL,bool isMainDemux = false);
+    bool init(const std::string URL, bool isMainDemux = false);
     // 反初始化，恢复到未初始化之前的状态
     bool uninit();
 
@@ -62,9 +58,9 @@ public:
     bool haveAudioStream() { return !m_audioIdx.empty(); }
     bool haveSubtitleStream() { return !m_subtitleIdx.empty(); }
 
-    std::array<size_t,3> getStreamsCount() const;
+    std::array<size_t, to_index(MediaIdx::Count)> getStreamsCount() const;
 
-    const std::array<std::vector<QString>, 3> &streamInfo() { return m_stringInfo; }
+    const std::array<std::vector<QString>, to_index(MediaIdx::Count)> &streamInfo() { return m_stringInfo; }
     const std::vector<ChapterInfo> &chaptersInfo() { return m_chaptersInfo; }
 
     AVFormatContext *formatCtx();
@@ -83,10 +79,10 @@ private:
     void seekAllPktQueue();
 
     AVFormatContext *m_formatCtx = nullptr;
-    std::string m_URL;                                               // 媒体URL
-    std::vector<int> m_videoIdx, m_audioIdx, m_subtitleIdx;          // 各个流的ID
-    std::atomic<int> m_usedVIdx{-1}, m_usedAIdx{-1}, m_usedSIdx{-1}; // 当前使用的流ID
-    std::array<std::vector<QString>, 3> m_stringInfo;                // 流描述
+    std::string m_URL;                                                        // 媒体URL
+    std::vector<int> m_videoIdx, m_audioIdx, m_subtitleIdx;                   // 各个流的ID
+    std::atomic<int> m_usedVIdx{-1}, m_usedAIdx{-1}, m_usedSIdx{-1};          // 当前使用的流ID
+    std::array<std::vector<QString>, to_index(MediaIdx::Count)> m_stringInfo; // 流描述
     std::vector<ChapterInfo> m_chaptersInfo;
 
     char errBuf[512];

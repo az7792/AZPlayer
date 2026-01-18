@@ -6,26 +6,18 @@
 #endif
 #ifndef UTILS_H
 #define UTILS_H
+#include "types/types.h"
 #include <QAudioFormat>
 #include <atomic>
 #include <deque>
-#include <limits>
 #include <mutex>
 #include <vector>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#ifdef __cplusplus
+// 枚举转idx
+template <typename E>
+constexpr auto to_index(E e) -> std::underlying_type_t<E> {
+    return static_cast<std::underlying_type_t<E>>(e);
 }
-#endif
-enum MediaIdx {
-    VIDEO = 0,
-    SUBTITLE,
-    AUDIO
-};
 
 class DeviceStatus {
 public:
@@ -58,20 +50,6 @@ private:
     DeviceStatus &operator=(const DeviceStatus &) = delete;
 
     DeviceStatus() : m_audioInitialized(false), m_videoInitialized(false) {}
-};
-
-struct AVPktItem {
-    AVPacket *pkt = nullptr;
-    int serial = 0;
-};
-
-struct AVFrmItem {
-    AVFrame *frm = nullptr;
-    AVSubtitle sub{};
-    int width{0}, height{0}; // HACK 目前仅用于表示字幕的分辨率大小
-    int serial = 0;
-    double pts = std::numeric_limits<double>::quiet_NaN();
-    double duration = std::numeric_limits<double>::quiet_NaN();
 };
 
 /**
@@ -244,31 +222,6 @@ private:
     const size_t m_maxBytes; // 总字节上限
     size_t m_currentBytes;   // 当前总字节数
     std::atomic<int> m_serial{0};
-};
-
-using sharedPktQueue = std::shared_ptr<AVPktQueue>;
-using weakPktQueue = std::weak_ptr<AVPktQueue>;
-using sharedFrmQueue = std::shared_ptr<SPSCQueue<AVFrmItem>>;
-using weakFrmQueue = std::weak_ptr<SPSCQueue<AVFrmItem>>;
-
-struct AudioPar {
-    int sampleRate = 0;                               // 采样率
-    AVSampleFormat sampleFormat = AV_SAMPLE_FMT_NONE; // 采样格式
-    AVChannelLayout ch_layout;                        // 通道布局
-
-    AudioPar() {
-        av_channel_layout_default(&ch_layout, 0);
-    }
-
-    ~AudioPar() {
-        av_channel_layout_uninit(&ch_layout);
-    }
-
-    void reset() {
-        sampleRate = 0;
-        sampleFormat = AV_SAMPLE_FMT_NONE;
-        av_channel_layout_default(&ch_layout, 0);
-    }
 };
 
 #endif // UTILS_H

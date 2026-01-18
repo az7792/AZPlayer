@@ -4,7 +4,8 @@
 #ifndef AUDIOPLAYER_H
 #define AUDIOPLAYER_H
 
-#include "utils.h"
+#include "compat/compat.h"
+#include "types/ptrs.h"
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <QAudioSink>
@@ -12,17 +13,11 @@
 #include <QObject>
 #include <QThread>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+AZ_EXTERN_C_BEGIN
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswresample/swresample.h>
-
-#ifdef __cplusplus
-}
-#endif
+AZ_EXTERN_C_END
 
 class AudioPlayer : public QObject {
     Q_OBJECT
@@ -65,7 +60,7 @@ private:
     AudioPar m_oldPar; // 原始音频参数
     AudioPar m_swrPar; // 重采样音频参数，未进行重采样时与m_oldPar一致
 
-    bool m_initialized = false;  // 是否已经初始化
+    bool m_initialized = false; // 是否已经初始化
     int m_serial = 0;
     QThread *m_thread = nullptr; // AudioSink需要使用QTimer，这而不能用std::thread
     std::atomic<bool> m_stop{true};

@@ -4,19 +4,15 @@
 #ifndef DECODEBASE_H
 #define DECODEBASE_H
 
-#include "utils.h"
+#include "types/ptrs.h"
 #include <QObject>
 #include <atomic>
 #include <thread>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+AZ_EXTERN_C_BEGIN
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#ifdef __cplusplus
-}
-#endif
+AZ_EXTERN_C_END
 
 class DecodeBase : public QObject {
     Q_OBJECT

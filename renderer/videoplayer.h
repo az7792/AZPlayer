@@ -4,22 +4,17 @@
 #ifndef VIDEOPLAYER_H
 #define VIDEOPLAYER_H
 
+#include "compat/compat.h"
 #include "renderdata.h"
-#include "utils.h"
+#include "types/ptrs.h"
 #include <QObject>
 #include <atomic>
 #include <thread>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+AZ_EXTERN_C_BEGIN
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-
-#ifdef __cplusplus
-}
-#endif
+AZ_EXTERN_C_END
 
 class VideoPlayer : public QObject {
     Q_OBJECT

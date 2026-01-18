@@ -4,21 +4,16 @@
 #define ASSRENDER_H
 
 #include "ass/ass.h"
+#include "compat/compat.h"
 #include <QObject>
 #include <atomic>
 #include <string>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+AZ_EXTERN_C_BEGIN
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
-
-#ifdef __cplusplus
-}
-#endif
+AZ_EXTERN_C_END
 
 struct image_t {
     int width, height, stride; // 宽度，高度，每行字节数(注意不是每行像素数)

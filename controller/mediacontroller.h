@@ -10,7 +10,7 @@
 #include "demux/demux.h"
 #include "renderer/audioplayer.h"
 #include "renderer/videoplayer.h"
-#include "utils.h"
+#include "types/ptrs.h"
 #include <QObject>
 #include <QTimer>
 #include <QUrl>
@@ -94,8 +94,8 @@ private:
     sharedFrmQueue m_frmSubtitleBuf = std::make_shared<SPSCQueue<AVFrmItem>>(16); // max(16frames)
 
     // 解复用器
-    std::array<Demux *, 3> m_demuxs{nullptr, nullptr, nullptr}; // 0文件 1字幕 2音轨
-    std::array<std::pair<int, int>, 3> m_streams;               // 当前的视频流/字幕流/音频流所使用的{demuxIdx,streamIdx}
+    std::array<Demux *, to_index(MediaIdx::Count)> m_demuxs{nullptr, nullptr, nullptr}; // 0文件 1字幕 2音轨
+    std::array<std::pair<int, int>, to_index(MediaIdx::Count)> m_streams;               // 当前的视频流/字幕流/音频流所使用的{demuxIdx,streamIdx}
     // 音视频解码器
     DecodeAudio *m_decodeAudio = nullptr;
     DecodeVideo *m_decodeVideo = nullptr;

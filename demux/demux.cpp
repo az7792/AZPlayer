@@ -279,9 +279,8 @@ AVStream *Demux::getSubtitleStream() {
     return m_formatCtx->streams[m_usedSIdx.load(std::memory_order_relaxed)];
 }
 
-std::array<size_t, 3> Demux::getStreamsCount() const
-{
-    return { m_videoIdx.size(),m_subtitleIdx.size(),m_audioIdx.size() };
+std::array<size_t, to_index(MediaIdx::Count)> Demux::getStreamsCount() const {
+    return {m_videoIdx.size(), m_subtitleIdx.size(), m_audioIdx.size()};
 }
 
 AVFormatContext *Demux::formatCtx() {
@@ -320,14 +319,13 @@ void Demux::demuxLoop() {
     AVPacket *pkt = nullptr;
     while (!m_stop.load(std::memory_order_relaxed)) {
 
-        bool emitRealSeekTs{false}; //是否发射信号
+        bool emitRealSeekTs{false}; // 是否发射信号
 
         if (m_needSeek.load(std::memory_order_acquire)) {
             seekAllPktQueue();
-            int streamIdx =  m_isMainDemux ? -1 :
-                            (m_usedVIdx != -1) ? m_usedVIdx.load() :
-                            (m_usedAIdx != -1) ? m_usedAIdx.load() : 
-                             m_usedSIdx.load();
+            int streamIdx = m_isMainDemux ? -1 : (m_usedVIdx != -1) ? m_usedVIdx.load()
+                                             : (m_usedAIdx != -1)   ? m_usedAIdx.load()
+                                                                    : m_usedSIdx.load();
             double time_base = streamIdx == -1 ? 1.0 / AV_TIME_BASE : av_q2d(m_formatCtx->streams[streamIdx]->time_base);
             double target = m_seekTs / time_base;
             int64_t seekMin = m_seekRel > 0.0 ? static_cast<int64_t>(target - m_seekRel * AV_TIME_BASE + 2) : INT64_MIN;
@@ -402,8 +400,9 @@ void Demux::pushSubtitlePkt(AVPacket *pkt) {
 
 void Demux::pushPkt(weakPktQueue wq, AVPacket *pkt) {
     while (auto q = wq.lock()) {
-        bool ok = q->push({ pkt, q->serial() });
-        if (ok) return;
+        bool ok = q->push({pkt, q->serial()});
+        if (ok)
+            return;
         if (m_needSeek.load(std::memory_order_acquire) || m_stop.load(std::memory_order_relaxed)) {
             av_packet_free(&pkt);
             return;
@@ -416,14 +415,14 @@ void Demux::pushPkt(weakPktQueue wq, AVPacket *pkt) {
 void Demux::fillStreamInfo() {
     // Video
     // Subtitle
-    auto &subArr = m_stringInfo[MediaIdx::SUBTITLE];
+    auto &subArr = m_stringInfo[to_index(MediaIdx::Subtitle)];
     for (auto v : m_subtitleIdx) {
         AVStream *st = m_formatCtx->streams[v];
         subArr.emplace_back(getStringInfo(st));
     }
 
     // Audio
-    auto &audioArr = m_stringInfo[MediaIdx::AUDIO];
+    auto &audioArr = m_stringInfo[to_index(MediaIdx::Audio)];
     for (auto v : m_audioIdx) {
         AVStream *st = m_formatCtx->streams[v];
         audioArr.emplace_back(getStringInfo(st));

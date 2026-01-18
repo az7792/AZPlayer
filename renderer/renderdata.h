@@ -4,7 +4,8 @@
 #ifndef RENDERDATA_H
 #define RENDERDATA_H
 #include "assrender.h"
-#include "utils.h"
+#include "compat/compat.h"
+#include "types/types.h"
 #include <QMutex>
 #include <QOpenGLFunctions_3_3_Core>
 #include <QSize>
@@ -12,18 +13,13 @@
 #include <map>
 #include <qopenglext.h>
 #include <vector>
-#ifdef __cplusplus
-extern "C" {
-#endif
 
+AZ_EXTERN_C_BEGIN
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/pixdesc.h>
 #include <libswscale/swscale.h>
-
-#ifdef __cplusplus
-}
-#endif
+AZ_EXTERN_C_END
 
 struct RenderData {
     enum PixFormat {

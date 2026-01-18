@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "videorenderer.h"
+#include "utils/utils.h"
 #include "clock/globalclock.h"
 #include <QOpenGLFramebufferObjectFormat>
 namespace {

@@ -4,18 +4,15 @@
 #ifndef VIDEORENDERER_H
 #define VIDEORENDERER_H
 
+#include "compat/compat.h"
 #include "renderdata.h"
 #include <QOpenGLFunctions_3_3_Core>
 #include <QOpenGLShaderProgram>
 #include <QQuickFramebufferObject>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+AZ_EXTERN_C_BEGIN
 #include <libavutil/frame.h>
-#ifdef __cplusplus
-}
-#endif
+AZ_EXTERN_C_END
 
 class VideoRenderer : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions_3_3_Core {
 public:
