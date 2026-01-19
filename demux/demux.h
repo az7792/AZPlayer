@@ -24,6 +24,8 @@ struct ChapterInfo {
 
 class Demux : public QObject {
     Q_OBJECT
+    static constexpr std::size_t kMediaIdxCount = to_index(MediaIdx::Count);
+
 public:
     explicit Demux(QObject *parent = nullptr);
     ~Demux();
@@ -38,34 +40,40 @@ public:
     // 退出解复用线程
     void stop();
 
-    // seek
+    // 基于秒进行seek
     void seekBySec(double ts, double rel);
 
+    // 切换视频流
     bool switchVideoStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
+    /**
+     * 切换字幕流
+     * 如果该字幕流是文本字幕则使用ASSRender初始化，后续请通过ASSRender::renderFrame获取字幕帧
+     */
     bool switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq, bool &isAssSub);
+    // 切换音频流
     bool switchAudioStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
 
-    // 0视频 1字幕 2音频
-    void closeStream(int streamType);
+    // 关闭流
+    void closeStream(MediaType type);
 
+    // 获取时长
     int getDuration();
 
-    AVStream *getVideoStream();
-    AVStream *getAudioStream();
-    AVStream *getSubtitleStream();
+    // 获取当前播放的流，没有返回nullptr
+    AVStream *getStream(MediaType type);
 
-    bool haveVideoStream() { return !m_videoIdx.empty(); }
-    bool haveAudioStream() { return !m_audioIdx.empty(); }
-    bool haveSubtitleStream() { return !m_subtitleIdx.empty(); }
+    // 该媒体文件是否拥有某种类型的流
+    bool haveStream(MediaType type);
 
-    std::array<size_t, to_index(MediaIdx::Count)> getStreamsCount() const;
+    std::array<size_t, kMediaIdxCount> getStreamsCount() const;
 
-    const std::array<std::vector<QString>, to_index(MediaIdx::Count)> &streamInfo() { return m_stringInfo; }
+    const std::array<std::vector<QString>, kMediaIdxCount> &streamInfo() { return m_stringInfo; }
     const std::vector<ChapterInfo> &chaptersInfo() { return m_chaptersInfo; }
 
     AVFormatContext *formatCtx();
 public slots:
 signals:
+    // 当前解复用器seek完成
     void seeked(double pts);
 
 private:
@@ -76,14 +84,12 @@ private:
     weakFrmQueue m_videoFrmBuf;    // 只用与修改队列序号用
     weakFrmQueue m_subtitleFrmBuf; // 只用与修改队列序号用
 
-    void seekAllPktQueue();
-
     AVFormatContext *m_formatCtx = nullptr;
-    std::string m_URL;                                                        // 媒体URL
-    std::vector<int> m_videoIdx, m_audioIdx, m_subtitleIdx;                   // 各个流的ID
-    std::atomic<int> m_usedVIdx{-1}, m_usedAIdx{-1}, m_usedSIdx{-1};          // 当前使用的流ID
-    std::array<std::vector<QString>, to_index(MediaIdx::Count)> m_stringInfo; // 流描述
-    std::vector<ChapterInfo> m_chaptersInfo;
+    std::string m_URL;                                               // 媒体URL
+    std::vector<int> m_videoIdx, m_audioIdx, m_subtitleIdx;          // 各个流的ID
+    std::atomic<int> m_usedVIdx{-1}, m_usedAIdx{-1}, m_usedSIdx{-1}; // 当前使用的流ID
+    std::array<std::vector<QString>, kMediaIdxCount> m_stringInfo;   // 流描述
+    std::vector<ChapterInfo> m_chaptersInfo;                         // 章节描述
 
     char errBuf[512];
     std::atomic<bool> m_stop{true};
@@ -98,13 +104,19 @@ private:
     bool m_isEOF = false;
 
 private:
-    void demuxLoop();
+    void seekAllPktQueue(); // 为所有pkyQueue增加序号
+
+    void demuxLoop(); // 主循环
+
     void pushVideoPkt(AVPacket *pkt);
     void pushAudioPkt(AVPacket *pkt);
     void pushSubtitlePkt(AVPacket *pkt);
     void pushPkt(weakPktQueue wq, AVPacket *pkt);
-    void fillStreamInfo();
-    void fillChaptersInfo();
+
+    void fillStreamInfo();   // 填充流消息
+    void fillChaptersInfo(); // 填充章节消息
+
+    bool switchStream(MediaType type, int streamIdx, weakPktQueue wpq, weakFrmQueue wfq); // 切换流
 };
 
 #endif // DEMUX_H

@@ -117,7 +117,7 @@ int ASSRender::renderFrame(image_t &image, double pts) {
             qDebug() << "ASS字幕渲染器创建失败";
             return 0;
         }
-
+        // TODO: size不一致是否要重新初始化(在正确调用init与uninit的情况下应该不会出现不一致的问题)
         ass_set_storage_size(m_assRenderer, image.width, image.height);
         ass_set_frame_size(m_assRenderer, image.width, image.height);
         ass_set_fonts(m_assRenderer, NULL, "sans-serif", ASS_FONTPROVIDER_AUTODETECT, NULL, 1);

@@ -6,7 +6,7 @@
 #include "renderer/assrender.h"
 #include <QDebug>
 namespace {
-    char _infoBuf[512];
+    static char _infoBuf[512];
 
     QString getStringInfo(AVStream *st) {
         const AVDictionaryEntry *lang = av_dict_get(st->metadata, "language", NULL, 0);
@@ -150,36 +150,13 @@ void Demux::seekBySec(double ts, double rel) {
 }
 
 bool Demux::switchVideoStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq) {
-    if (m_usedVIdx != -1) {
-        closeStream(0);
-    }
-    Q_ASSERT(streamIdx < m_videoIdx.size());
-    {
-        std::lock_guard<std::mutex> mtx(m_mutex);
-        m_videoPktBuf = wpq, m_videoFrmBuf = wfq;
-        m_usedVIdx.store(m_videoIdx[streamIdx], std::memory_order_release);
-    }
-
-    bool ok = 1;
-    if (m_stop.load(std::memory_order_relaxed)) {
-        double pts = GlobalClock::instance().getMainPts();
-        if (!std::isnan(pts)) {
-            int64_t target = pts / av_q2d(getVideoStream()->time_base);
-            ok = avformat_seek_file(m_formatCtx, m_videoIdx[streamIdx], INT64_MIN, target, INT64_MAX, 0);
-            start();
-        }
-    } else {
-        seekBySec(GlobalClock::instance().getMainPts(), 0);
-    }
-
-    return ok;
+    return switchStream(MediaType::Video, streamIdx, wpq, wfq);
 }
 
 bool Demux::switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq, bool &isAssSub) {
     if (m_usedSIdx != -1) {
-        closeStream(1);
+        closeStream(MediaType::Subtitle);
     }
-    Q_ASSERT(streamIdx < m_subtitleIdx.size());
 
     isAssSub = ASSRender::instance().init(m_URL, streamIdx);
     if (isAssSub) {
@@ -189,62 +166,21 @@ bool Demux::switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue w
         return true;
     }
 
-    {
-        std::lock_guard<std::mutex> mtx(m_mutex);
-        m_subtitlePktBuf = wpq, m_subtitleFrmBuf = wfq;
-        m_usedSIdx.store(m_subtitleIdx[streamIdx], std::memory_order_release);
-    }
-    bool ok = 1;
-    if (m_stop.load(std::memory_order_relaxed)) {
-        double pts = GlobalClock::instance().getMainPts();
-        if (!std::isnan(pts)) {
-            int64_t target = pts / av_q2d(getSubtitleStream()->time_base);
-            ok = avformat_seek_file(m_formatCtx, m_subtitleIdx[streamIdx], INT64_MIN, target, INT64_MAX,
-                                    m_usedVIdx.load(std::memory_order_relaxed) == -1 ? AVSEEK_FLAG_ANY : 0);
-            start();
-        }
-    } else {
-        seekBySec(GlobalClock::instance().getMainPts(), 0);
-    }
-
-    return ok;
+    return switchStream(MediaType::Subtitle, streamIdx, wpq, wfq);
 }
 
 bool Demux::switchAudioStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq) {
-    if (m_usedAIdx != -1) {
-        closeStream(2);
-    }
-    Q_ASSERT(streamIdx < m_audioIdx.size());
-
-    {
-        std::lock_guard<std::mutex> mtx(m_mutex);
-        m_audioPktBuf = wpq, m_audioFrmBuf = wfq;
-        m_usedAIdx.store(m_audioIdx[streamIdx], std::memory_order_release);
-    }
-    bool ok = 1;
-    if (m_stop.load(std::memory_order_relaxed)) {
-        double pts = GlobalClock::instance().getMainPts();
-        if (!std::isnan(pts)) {
-            int64_t target = pts / av_q2d(getAudioStream()->time_base);
-            ok = avformat_seek_file(m_formatCtx, m_usedAIdx.load(std::memory_order_relaxed), INT64_MIN, target, INT64_MAX,
-                                    m_usedVIdx.load(std::memory_order_relaxed) == -1 ? AVSEEK_FLAG_ANY : 0);
-            start();
-        }
-    } else {
-        seekBySec(GlobalClock::instance().getMainPts(), 0);
-    }
-
-    return ok;
+    return switchStream(MediaType::Audio, streamIdx, wpq, wfq);
 }
 
-void Demux::closeStream(int streamType) {
+void Demux::closeStream(MediaType type) {
     {
         std::lock_guard<std::mutex> mtx(m_mutex);
-        if (streamType == 0) {
+        if (type == MediaType::Video) {
             m_videoPktBuf.reset(), m_videoFrmBuf.reset(), m_usedVIdx = -1;
-        } else if (streamType == 1) {
+        } else if (type == MediaType::Subtitle) {
             m_subtitlePktBuf.reset(), m_subtitleFrmBuf.reset(), m_usedSIdx = -1;
-        } else if (streamType == 2) {
+        } else if (type == MediaType::Audio) {
             m_audioPktBuf.reset(), m_audioFrmBuf.reset(), m_usedAIdx = -1;
         }
     }
@@ -261,25 +197,43 @@ int Demux::getDuration() {
     return 0;
 }
 
-AVStream *Demux::getVideoStream() {
-    if (m_usedVIdx.load(std::memory_order_relaxed) == -1)
+AVStream *Demux::getStream(MediaType type) {
+    int idx = -1;
+
+    switch (type) {
+    case MediaType::Video:
+        idx = m_usedVIdx.load(std::memory_order_relaxed);
+        break;
+    case MediaType::Audio:
+        idx = m_usedAIdx.load(std::memory_order_relaxed);
+        break;
+    case MediaType::Subtitle:
+        idx = m_usedSIdx.load(std::memory_order_relaxed);
+        break;
+    default:
         return nullptr;
-    return m_formatCtx->streams[m_usedVIdx.load(std::memory_order_relaxed)];
+    }
+
+    if (idx < 0 || !m_formatCtx)
+        return nullptr;
+
+    return m_formatCtx->streams[idx];
 }
 
-AVStream *Demux::getAudioStream() {
-    if (m_usedAIdx.load(std::memory_order_relaxed) == -1)
-        return nullptr;
-    return m_formatCtx->streams[m_usedAIdx.load(std::memory_order_relaxed)];
+bool Demux::haveStream(MediaType type) {
+    switch (type) {
+    case MediaType::Video:
+        return !m_videoIdx.empty();
+    case MediaType::Audio:
+        return !m_audioIdx.empty();
+    case MediaType::Subtitle:
+        return !m_subtitleIdx.empty();
+    default:
+        return false;
+    }
 }
 
-AVStream *Demux::getSubtitleStream() {
-    if (m_usedSIdx.load(std::memory_order_relaxed) == -1)
-        return nullptr;
-    return m_formatCtx->streams[m_usedSIdx.load(std::memory_order_relaxed)];
-}
-
-std::array<size_t, to_index(MediaIdx::Count)> Demux::getStreamsCount() const {
+std::array<size_t, Demux::kMediaIdxCount> Demux::getStreamsCount() const {
     return {m_videoIdx.size(), m_subtitleIdx.size(), m_audioIdx.size()};
 }
 
@@ -445,4 +399,65 @@ void Demux::fillChaptersInfo() {
             m_chaptersInfo.back().title = std::string(e->value);
         }
     }
+}
+
+bool Demux::switchStream(MediaType type, int streamIdx, weakPktQueue wpq, weakFrmQueue wfq) {
+    std::vector<int> *idxVec = nullptr;
+    std::atomic<int> *usedIdx = nullptr;
+    weakPktQueue *pktBuf = nullptr;
+    weakFrmQueue *frmBuf = nullptr;
+
+    switch (type) {
+    case MediaType::Video:
+        idxVec = &m_videoIdx;
+        usedIdx = &m_usedVIdx;
+        pktBuf = &m_videoPktBuf;
+        frmBuf = &m_videoFrmBuf;
+        break;
+    case MediaType::Audio:
+        idxVec = &m_audioIdx;
+        usedIdx = &m_usedAIdx;
+        pktBuf = &m_audioPktBuf;
+        frmBuf = &m_audioFrmBuf;
+        break;
+    case MediaType::Subtitle:
+        idxVec = &m_subtitleIdx;
+        usedIdx = &m_usedSIdx;
+        pktBuf = &m_subtitlePktBuf;
+        frmBuf = &m_subtitleFrmBuf;
+        break;
+    default:
+        return false;
+    }
+
+    // 如果已有流，先关闭
+    if (usedIdx->load(std::memory_order_relaxed) != -1) {
+        closeStream(type);
+    }
+
+    Q_ASSERT(streamIdx < idxVec->size());
+
+    // 更新队列和当前流
+    {
+        std::lock_guard<std::mutex> mtx(m_mutex);
+        *pktBuf = wpq, *frmBuf = wfq;
+        usedIdx->store((*idxVec)[streamIdx], std::memory_order_release);
+    }
+
+    bool ok = true;
+    // seek 或启动线程
+    if (m_stop.load(std::memory_order_relaxed)) {
+        double pts = GlobalClock::instance().getMainPts();
+        if (!std::isnan(pts)) {
+            int64_t target = pts / av_q2d(getStream(type)->time_base);
+            int streamIndex = (*idxVec)[streamIdx];
+            int flags = (m_usedVIdx.load(std::memory_order_relaxed) == -1) ? AVSEEK_FLAG_ANY : 0;
+            ok = avformat_seek_file(m_formatCtx, streamIndex, INT64_MIN, target, INT64_MAX, flags);
+            start();
+        }
+    } else {
+        seekBySec(GlobalClock::instance().getMainPts(), 0);
+    }
+
+    return ok;
 }

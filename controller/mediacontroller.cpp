@@ -103,29 +103,29 @@ bool MediaController::open(const QUrl &URL) {
         return false;
     }
 
-    bool haveAudio = m_demuxs[defDemuxIdx]->haveAudioStream(), haveVideo = m_demuxs[defDemuxIdx]->haveVideoStream();
+    bool haveAudio = m_demuxs[defDemuxIdx]->haveStream(MediaType::Audio), haveVideo = m_demuxs[defDemuxIdx]->haveStream(MediaType::Video);
     if (haveAudio) {
         const int audioIdx = 0;
         m_demuxs[defDemuxIdx]->switchAudioStream(audioIdx, m_pktAudioBuf, m_frmAudioBuf);
         m_streams[to_index(MediaIdx::Audio)] = {defDemuxIdx, audioIdx};
-        ok &= m_decodeAudio->init(m_demuxs[defDemuxIdx]->getAudioStream(), m_pktAudioBuf, m_frmAudioBuf);
-        ok &= m_audioPlayer->init(m_demuxs[defDemuxIdx]->getAudioStream()->codecpar, m_frmAudioBuf);
+        ok &= m_decodeAudio->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Audio), m_pktAudioBuf, m_frmAudioBuf);
+        ok &= m_audioPlayer->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Audio)->codecpar, m_frmAudioBuf);
     }
 
     if (haveVideo) {
         const int videoIdx = 0;
         m_streams[to_index(MediaIdx::Video)] = {defDemuxIdx, videoIdx};
         m_demuxs[defDemuxIdx]->switchVideoStream(videoIdx, m_pktVideoBuf, m_frmVideoBuf);
-        ok &= m_decodeVideo->init(m_demuxs[defDemuxIdx]->getVideoStream(), m_pktVideoBuf, m_frmVideoBuf);
+        ok &= m_decodeVideo->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Video), m_pktVideoBuf, m_frmVideoBuf);
     }
 
-    if (haveVideo && m_demuxs[defDemuxIdx]->haveSubtitleStream()) {
+    if (haveVideo && m_demuxs[defDemuxIdx]->haveStream(MediaType::Subtitle)) {
         const int subtitleIdx = 0;
         m_streams[to_index(MediaIdx::Subtitle)] = {defDemuxIdx, subtitleIdx};
         bool isAssSub;
         m_demuxs[defDemuxIdx]->switchSubtitleStream(subtitleIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub);
         if (!isAssSub)
-            ok &= m_decodeSubtitl->init(m_demuxs[defDemuxIdx]->getSubtitleStream(), m_pktSubtitleBuf, m_frmSubtitleBuf);
+            ok &= m_decodeSubtitl->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf);
     }
 
     DeviceStatus::instance().setHaveAudio(haveAudio);
@@ -266,6 +266,7 @@ void MediaController::seekBySec(double ts, double rel) {
         return;
 
     m_demuxs[0]->seekBySec(ts, rel);
+    // NOTE: 另外两个解复用器需要等拥有视频的解复用器seek完成后再进行seek，这儿是通过信号的方式触发另外两个解复用器seek的
 }
 
 void MediaController::fastForward() {
@@ -285,7 +286,7 @@ bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
     }
     // 关闭旧的
     if (m_streams[to_index(MediaIdx::Subtitle)].first != -1)
-        m_demuxs[m_streams[to_index(MediaIdx::Subtitle)].first]->closeStream(to_index(MediaIdx::Subtitle));
+        m_demuxs[m_streams[to_index(MediaIdx::Subtitle)].first]->closeStream(MediaIdx::Subtitle);
     m_decodeSubtitl->uninit();
     ASSRender::instance().uninit();
     m_videoPlayer->forceRefreshSubtitle(); // 切换后需要一定时间才会解码到新字幕，因此提前强制清掉旧字幕
@@ -297,7 +298,7 @@ bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
     bool isAssSub;
     m_demuxs[demuxIdx]->switchSubtitleStream(streamIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub);
     if (!isAssSub) {
-        m_decodeSubtitl->init(m_demuxs[demuxIdx]->getSubtitleStream(), m_pktSubtitleBuf, m_frmSubtitleBuf);
+        m_decodeSubtitl->init(m_demuxs[demuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf);
         m_decodeSubtitl->start();
     }
 
@@ -312,7 +313,7 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
     }
     // 关闭旧的
     if (m_streams[to_index(MediaIdx::Audio)].first != -1)
-        m_demuxs[m_streams[to_index(MediaIdx::Audio)].first]->closeStream(to_index(MediaIdx::Audio));
+        m_demuxs[m_streams[to_index(MediaIdx::Audio)].first]->closeStream(MediaIdx::Audio);
     m_decodeAudio->uninit();
     m_audioPlayer->uninit(); // 音频设备需要重新设置
 
@@ -323,8 +324,8 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
 
     // 打开新的
     m_demuxs[demuxIdx]->switchAudioStream(streamIdx, m_pktAudioBuf, m_frmAudioBuf);
-    m_decodeAudio->init(m_demuxs[demuxIdx]->getAudioStream(), m_pktAudioBuf, m_frmAudioBuf);
-    m_audioPlayer->init(m_demuxs[demuxIdx]->getAudioStream()->codecpar, m_frmAudioBuf);
+    m_decodeAudio->init(m_demuxs[demuxIdx]->getStream(MediaType::Audio), m_pktAudioBuf, m_frmAudioBuf);
+    m_audioPlayer->init(m_demuxs[demuxIdx]->getStream(MediaType::Audio)->codecpar, m_frmAudioBuf);
     m_decodeAudio->start();
     m_audioPlayer->start();
 
@@ -341,9 +342,7 @@ bool MediaController::loopOnEnd() const { return m_loopOnEnd; }
 
 void MediaController::setLoopOnEnd(bool newLoopOnEnd) { m_loopOnEnd = newLoopOnEnd; }
 
-bool MediaController::opened() const {
-    return m_opened;
-}
+bool MediaController::opened() const { return m_opened; }
 
 void MediaController::setOpened(bool newOpened) {
     if (m_opened == newOpened)
