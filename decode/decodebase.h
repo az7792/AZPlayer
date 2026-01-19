@@ -49,7 +49,7 @@ protected:
     AVRational m_time_base;
 
 protected:
-    virtual void decodingLoop(){};
+    virtual void decodingLoop() = 0;
     bool getPkt(AVPktItem &pktItem, bool &needFlushBuffers);
 };
 
