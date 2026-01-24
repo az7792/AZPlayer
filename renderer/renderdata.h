@@ -8,6 +8,7 @@
 #include "types/types.h"
 #include <QMutex>
 #include <QOpenGLFunctions_3_3_Core>
+#include <QRect>
 #include <QSize>
 #include <array>
 #include <map>
@@ -117,19 +118,20 @@ struct SubRenderData {
     QMutex mutex; // 锁
     SwsContext *subSwsCtx = nullptr;
 
-    std::vector<std::vector<uint8_t>> dataArr;
-    std::vector<int> linesizeArr; // 每行实际存储的像素数 = [有效 + 填充]
-    std::vector<int> x;
-    std::vector<int> y;
-    std::vector<int> w;
-    std::vector<int> h;
-    bool uploaded = false;
-    bool forceRefresh = false; // 用于通知videoRender强制清理旧数据
+    std::vector<std::vector<uint8_t>> dataArr; // 每个小矩形的数据
+    std::vector<int> linesizeArr;              // 每行实际存储的像素数 = [有效 + 填充]
+    std::vector<QRect> rects;                   // 单个字幕的区域
+    bool uploaded = false;                     // 是否以更新（对于图形字幕而言一帧可能需要显示很久，不需要重复上传）
+    bool forceRefresh = false;                 // 用于通知videoRender强制清理旧数据（只是清理数据，不会上传和渲染）
 
     image_t assImage{};
 
+    // 重置整个数据结构
     void reset();
+
+    // 清空
     void clear();
+
     // 更新图形字幕
     void updateBitmapImage(AVFrmItem &newItem, int videoWidth, int videoHeight);
 
@@ -137,9 +139,7 @@ struct SubRenderData {
     void updateASSImage(double pts, int videoWidth, int videoHeight);
 
     SubRenderData() : mutex() { reset(); }
-    ~SubRenderData() {
-        avsubtitle_free(&frmItem.sub);
-    }
+    ~SubRenderData() { reset(); }
 };
 
 #endif // RENDERDATA_H

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "videorenderer.h"
-#include "utils/utils.h"
 #include "clock/globalclock.h"
+#include "utils/utils.h"
 #include <QOpenGLFramebufferObjectFormat>
 namespace {
     // 为了避免 非 POD 静态对象 导致的初始化顺序问题
@@ -11,20 +11,8 @@ namespace {
         static std::vector<uint8_t> instance;
         return instance;
     }
-    std::vector<int> &lastSubTexX() {
-        static std::vector<int> instance;
-        return instance;
-    }
-    std::vector<int> &lastSubTexY() {
-        static std::vector<int> instance;
-        return instance;
-    }
-    std::vector<int> &lastSubTexW() {
-        static std::vector<int> instance;
-        return instance;
-    }
-    std::vector<int> &lastSubTexH() {
-        static std::vector<int> instance;
+    std::vector<QRect> &lastSubTexRect() {
+        static std::vector<QRect> instance;
         return instance;
     }
 }
@@ -85,6 +73,8 @@ VideoRenderer::VideoRenderer() {
     glBindVertexArray(0);             // 解绑VAO
     glBindBuffer(GL_ARRAY_BUFFER, 0); // 解绑VBO
     // 不要解绑EBO
+
+    // 视频显示设备已准备就绪
     DeviceStatus::instance().setVideoInitialized(true);
 }
 
@@ -106,49 +96,49 @@ void VideoRenderer::initVideoTex(RenderData *renderData) {
         return;
 
     AVFrame *frm = renderData->frmItem.frm;
-    if (m_needInitVideoTex && frm) {
-        // 初始化像素格式与上传方式
-        m_width = frm->width, m_height = frm->height;
-        m_AVPixelFormat = (AVPixelFormat)frm->format;
+    if (!m_needInitVideoTex || !frm)
+        return;
 
-        m_program.bind();
-        int loc = m_program.uniformLocation("pixFormat");
-        m_program.setUniformValue(loc, (int)renderData->pixFormat);
-        loc = m_program.uniformLocation("yTex");
-        m_program.setUniformValue(loc, 0);
-        loc = m_program.uniformLocation("uTex");
-        m_program.setUniformValue(loc, 1);
-        loc = m_program.uniformLocation("vTex");
-        m_program.setUniformValue(loc, 2);
-        loc = m_program.uniformLocation("aTex");
-        m_program.setUniformValue(loc, 3);
+    // 初始化像素格式与上传方式
+    m_width = frm->width, m_height = frm->height;
+    m_AVPixelFormat = (AVPixelFormat)frm->format; // FFmpeg 的像素格式
 
-        // 拷贝一些参数方便使用
-        RenderData::PixFormat tmpFmt = renderData->pixFormat;
-        for (int i = 0; i < 4; ++i) {
-            GLParaArr[i] = renderData->GLParaArr[i];
-            // dataArr[i] = renderData->dataArr[i];
-            linesizeArr[i] = renderData->linesizeArr[i];
-            componentSizeArr[i] = renderData->componentSizeArr[i];
-            alignment = renderData->alignment;
-        }
+    m_program.bind();
+    int loc = m_program.uniformLocation("pixFormat");
+    m_program.setUniformValue(loc, (int)renderData->pixFormat);
+    loc = m_program.uniformLocation("yTex");
+    m_program.setUniformValue(loc, 0);
+    loc = m_program.uniformLocation("uTex");
+    m_program.setUniformValue(loc, 1);
+    loc = m_program.uniformLocation("vTex");
+    m_program.setUniformValue(loc, 2);
+    loc = m_program.uniformLocation("aTex");
+    m_program.setUniformValue(loc, 3);
 
-        if (tmpFmt == RenderData::RGB_PACKED || tmpFmt == RenderData::RGBA_PACKED ||
-            tmpFmt == RenderData::Y || tmpFmt == RenderData::YA) {
-            initTex(m_texArr[0], componentSizeArr[0], GLParaArr[0]);
-            if (tmpFmt == RenderData::YA) {
-                initTex(m_texArr[3], componentSizeArr[1], GLParaArr[1]); // A
-            }
-        } else {
-            for (int i = 0; i < 3; ++i) {
-                initTex(m_texArr[i], componentSizeArr[i], GLParaArr[i]); // RGB | YUV
-            }
-            if (tmpFmt == RenderData::RGBA_PLANAR || tmpFmt == RenderData::YUVA) {
-                initTex(m_texArr[3], componentSizeArr[3], GLParaArr[3]); // A
-            }
-        }
-        m_needInitVideoTex = false;
+    // 拷贝一些参数方便使用
+    RenderData::PixFormat tmpFmt = renderData->pixFormat;
+    for (int i = 0; i < 4; ++i) {
+        GLParaArr[i] = renderData->GLParaArr[i];
+        linesizeArr[i] = renderData->linesizeArr[i];
+        componentSizeArr[i] = renderData->componentSizeArr[i];
+        alignment = renderData->alignment;
     }
+
+    if (tmpFmt == RenderData::RGB_PACKED || tmpFmt == RenderData::RGBA_PACKED ||
+        tmpFmt == RenderData::Y || tmpFmt == RenderData::YA) {
+        initTex(m_texArr[0], componentSizeArr[0], GLParaArr[0]);
+        if (tmpFmt == RenderData::YA) {
+            initTex(m_texArr[3], componentSizeArr[1], GLParaArr[1]); // A
+        }
+    } else {
+        for (int i = 0; i < 3; ++i) {
+            initTex(m_texArr[i], componentSizeArr[i], GLParaArr[i]); // RGB | YUV
+        }
+        if (tmpFmt == RenderData::RGBA_PLANAR || tmpFmt == RenderData::YUVA) {
+            initTex(m_texArr[3], componentSizeArr[3], GLParaArr[3]); // A
+        }
+    }
+    m_needInitVideoTex = false;
 }
 
 void VideoRenderer::initSubtitleTex(SubRenderData *subRenderData) {
@@ -300,23 +290,19 @@ bool VideoRenderer::updateSubTex() {
     glBindTexture(GL_TEXTURE_2D, m_subTex);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
-    Q_ASSERT(lastSubTexX().size() == lastSubTexY().size() &&
-             lastSubTexX().size() == lastSubTexH().size() &&
-             lastSubTexX().size() == lastSubTexW().size());
-
+    // 清空字幕，和矩形列表
     auto clearSubTex = [&]() {
         if ((int)texFill().size() < m_widthSub * m_heightSub * 4) {
             texFill().assign(m_widthSub * m_heightSub * 4, 0);
         }
         glPixelStorei(GL_UNPACK_ROW_LENGTH, m_widthSub);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_widthSub, m_heightSub, GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
-        lastSubTexX().clear();
-        lastSubTexY().clear();
-        lastSubTexW().clear();
-        lastSubTexH().clear();
+        lastSubTexRect().clear();
     };
 
     static AVSubtitleType lastSubType = SUBTITLE_NONE;
+
+    // 清理旧数据
     if (!m_subRenderData || m_subRenderData->forceRefresh) {
         clearSubTex();
         if (m_subRenderData)
@@ -330,40 +316,37 @@ bool VideoRenderer::updateSubTex() {
         lastSubType = m_subRenderData->subtitleType;
     }
 
-    if (m_subRenderData->subtitleType == SUBTITLE_BITMAP) {
-        // 清理纹理上的旧字幕
-        for (size_t i = 0; i < lastSubTexX().size(); ++i) {
-            int x = std::clamp(lastSubTexX()[i], 0, (int)m_width);
-            int y = std::clamp(lastSubTexY()[i], 0, (int)m_height);
-            int w = std::clamp(lastSubTexW()[i], 0, (int)m_width - x);
-            int h = std::clamp(lastSubTexH()[i], 0, (int)m_height - y);
+    // 清理纹理上的旧字幕
+    for (size_t i = 0; i < lastSubTexRect().size(); ++i) {
+        const QRect &rect = lastSubTexRect()[i];
+        int x = std::clamp(rect.x(), 0, (int)m_width);
+        int y = std::clamp(rect.y(), 0, (int)m_height);
+        int w = std::clamp(rect.width(), 0, (int)m_width - x);
+        int h = std::clamp(rect.height(), 0, (int)m_height - y);
 
-            if (w == 0 || h == 0)
-                continue;
+        if (w == 0 || h == 0)
+            continue;
 
-            if ((int)texFill().size() < h * w * 4) {
-                texFill().assign(h * w * 4, 0);
-            }
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
+        if ((int)texFill().size() < h * w * 4) {
+            texFill().assign(h * w * 4, 0);
         }
-
-        // 保存当前字幕区域
-        lastSubTexX() = m_subRenderData->x;
-        lastSubTexY() = m_subRenderData->y;
-        lastSubTexH() = m_subRenderData->h;
-        lastSubTexW() = m_subRenderData->w;
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
     }
+
+    // 保存当前字幕区域
+    lastSubTexRect() = m_subRenderData->rects;
 
     m_subRenderData->mutex.lock();
 
     // 绘制新字幕
     for (size_t i = 0; i < m_subRenderData->dataArr.size(); ++i) {
         int len = m_subRenderData->linesizeArr[i];
-        int x = m_subRenderData->x[i];
-        int y = m_subRenderData->y[i];
-        int h = m_subRenderData->h[i];
-        int w = m_subRenderData->w[i];
+        const QRect &rect = m_subRenderData->rects[i];
+        int x = rect.x();
+        int y = rect.y();
+        int h = rect.height();
+        int w = rect.width();
         if (h == 0 || w == 0) {
             continue;
         }
@@ -390,7 +373,7 @@ void VideoRenderer::initTex(GLuint &tex, const QSize &size, const std::array<uns
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, size.width());
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, size.width()); // 设置一行的像素个数
     glTexImage2D(GL_TEXTURE_2D, 0, para[0], size.width(), size.height(), 0, para[1], para[2], fill);
     glBindTexture(GL_TEXTURE_2D, 0);
 }

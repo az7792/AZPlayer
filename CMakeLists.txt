@@ -86,6 +86,7 @@ qt_add_qml_module(appAZPlayer
     SOURCES types/types.h
     SOURCES types/ptrs.h
     SOURCES utils/utils.h
+    SOURCES utils/dirtyrectmanager.h utils/dirtyrectmanager.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

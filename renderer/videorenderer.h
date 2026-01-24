@@ -19,14 +19,8 @@ public:
     VideoRenderer();
     ~VideoRenderer();
 
-    // 初始化视频纹理
-    void initVideoTex(RenderData *renderData);
-    // 初始化字幕纹理
-    void initSubtitleTex(SubRenderData *subRenderData);
-
     QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) override;
     void render() override;
-
     void synchronize(QQuickFramebufferObject *item) override;
 
 private:
@@ -49,11 +43,11 @@ private:
      * A
      * @warning 与RenderData的排列顺序不同，单分量A永远在3号栏位
      */
-    GLuint m_texArr[4]{0, 0, 0, 0};
-    GLuint m_subTex = 0;
+    GLuint m_texArr[4]{0, 0, 0, 0}; // 视频纹理
+    GLuint m_subTex = 0;            // 字幕纹理，固定RGBA格式
     std::array<unsigned int, 3> GLParaArr[4]{};
     QSize componentSizeArr[4]{};
-    uint8_t *dataArr[4]{};
+    const uint8_t *dataArr[4]{};
     int linesizeArr[4]{};
     int alignment = 1;
 
@@ -69,17 +63,44 @@ private:
     bool m_needInitVideoTex = true;
     bool m_needInitSubtitleTex = true;
 
-    bool m_lastShowSubtitle = true;
-    bool m_showSubtitle = true;
+    bool m_lastShowSubtitle = true; // 上一次是否显示字幕，主要是为了防止频繁更新 shader的showSub变量
+    bool m_showSubtitle = true;     // 是否显示字幕
 
-    RenderData *m_renderData = nullptr; // 渲染需要的数据
-    SubRenderData *m_subRenderData = nullptr;
-
-    bool updateTex(RenderData::PixFormat fmt);
-    bool updateSubTex();
+    RenderData *m_renderData = nullptr;       // 渲染需要的视频数据
+    SubRenderData *m_subRenderData = nullptr; // 渲染需要的字幕数据
 
 private:
+    // 初始化视频纹理
+    void initVideoTex(RenderData *renderData);
+    // 初始化字幕纹理
+    void initSubtitleTex(SubRenderData *subRenderData);
+
+    bool updateTex(RenderData::PixFormat fmt);
+    // 字幕纹理固定 RGBA_PACKED 格式
+    bool updateSubTex();
+
+    /**
+     * @brief 初始化或重建一个 2D OpenGL 纹理
+     *
+     * @param[in,out] tex
+     *        OpenGL 纹理对象 ID。
+     *        - 若为 0：创建新的纹理对象
+     *        - 若不为 0：先删除旧纹理，再重新创建
+     *
+     * @param[in] size 纹理尺寸（宽高，单位：像素）。
+     *
+     * @param[in] para
+     *        纹理像素格式参数数组：
+     *        - para[0]：纹理内部格式（internalFormat，例如 GL_RGB、GL_RGBA、GL_R8）
+     *        - para[1]：外部像素格式（format，例如 GL_RGB、GL_RGBA、GL_RED）
+     *        - para[2]：像素数据类型（type，例如 GL_UNSIGNED_BYTE）
+     *
+     * @param[in] fill
+     *        - 非 nullptr：立即将数据上传到 GPU
+     *        - nullptr：仅分配纹理存储空间，不上传数据
+     */
     void initTex(GLuint &tex, const QSize &size, const std::array<unsigned int, 3> &para, uint8_t *fill = nullptr);
+
     QMatrix4x4 getTransformMat(); // 获取当前的变换矩阵
 };
 

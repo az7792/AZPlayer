@@ -262,10 +262,7 @@ void SubRenderData::reset() {
 }
 
 void SubRenderData::clear() {
-    x.clear();
-    y.clear();
-    w.clear();
-    h.clear();
+    rects.clear();
     linesizeArr.clear();
     dataArr.clear();
 }
@@ -274,17 +271,13 @@ void SubRenderData::updateBitmapImage(AVFrmItem &newItem, int videoWidth, int vi
     avsubtitle_free(&frmItem.sub);
 
     AVSubtitle &sub = newItem.sub;
-    Q_ASSERT(sub.format == 0);
+    Q_ASSERT(sub.format == 0); // 图形字幕
 
     uploaded = false;
-
     frmItem = newItem;
 
     linesizeArr.resize(sub.num_rects);
-    x.resize(sub.num_rects);
-    y.resize(sub.num_rects);
-    w.resize(sub.num_rects);
-    h.resize(sub.num_rects);
+    rects.resize(sub.num_rects);
     dataArr.resize(sub.num_rects);
 
     subtitleType = SUBTITLE_BITMAP;
@@ -297,10 +290,8 @@ void SubRenderData::updateBitmapImage(AVFrmItem &newItem, int videoWidth, int vi
         subRect->w = std::clamp(subRect->w, 0, videoWidth - subRect->x);
         subRect->h = std::clamp(subRect->h, 0, videoHeight - subRect->y);
 
-        x[i] = subRect->x;
-        y[i] = subRect->y;
-        w[i] = subRect->w;
-        h[i] = subRect->h;
+        rects[i].setRect(subRect->x, subRect->y, subRect->w, subRect->h);
+
         if (subRect->h == 0 || subRect->w == 0) {
             continue;
         }
@@ -320,20 +311,12 @@ void SubRenderData::updateBitmapImage(AVFrmItem &newItem, int videoWidth, int vi
 
 void SubRenderData::updateASSImage(double pts, int videoWidth, int videoHeight) {
     subtitleType = SUBTITLE_ASS;
-
-    dataArr.resize(1);
-    linesizeArr.resize(1);
-    x.resize(1), y.resize(1);
-    w.resize(1), h.resize(1);
-
-    assImage.height = videoHeight, assImage.width = videoWidth, assImage.stride = videoWidth * 4;
-    dataArr.front().assign(assImage.height * assImage.stride, (uint8_t)0);
-    assImage.buffer = dataArr.front().data();
-
-    if (ASSRender::instance().renderFrame(assImage, pts) >= 1) {
-        linesizeArr[0] = assImage.width; // 在OpenGL中linesizeArr是像素个数
-        x[0] = y[0] = 0;
-        w[0] = assImage.width, h[0] = assImage.height;
+    if (ASSRender::instance().renderFrame(dataArr, rects, QSize{videoWidth, videoHeight}, pts) >= 1) {
+        linesizeArr.resize(rects.size());
+        for (size_t i = 0; i < rects.size(); ++i) {
+            linesizeArr[i] = rects[i].width(); // 在OpenGL中linesizeArr是像素个数
+        }
     }
+    // ASS每帧都要刷新屏幕
     uploaded = false;
 }

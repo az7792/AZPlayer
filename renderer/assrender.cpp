@@ -71,7 +71,7 @@ bool ASSRender::init(const std::string &mediaFile, int subStreamIdx) {
         if (subStreamIdx < 0)
             goto fail;
     }
-    if (!init_from_demux(fmt, subStreamIdx))
+    if (!initFromDemux(fmt, subStreamIdx))
         goto fail;
 
     avformat_close_input(&fmt);
@@ -107,7 +107,7 @@ bool ASSRender::addEvent(const char *data, int size, double startTime, double du
     return true;
 }
 
-int ASSRender::renderFrame(image_t &image, double pts) {
+int ASSRender::renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const QSize &videoSize, double pts) {
     if (!m_initialized.load(std::memory_order_relaxed))
         return 0;
 
@@ -118,18 +118,47 @@ int ASSRender::renderFrame(image_t &image, double pts) {
             return 0;
         }
         // TODO: size不一致是否要重新初始化(在正确调用init与uninit的情况下应该不会出现不一致的问题)
-        ass_set_storage_size(m_assRenderer, image.width, image.height);
-        ass_set_frame_size(m_assRenderer, image.width, image.height);
+        ass_set_storage_size(m_assRenderer, videoSize.width(), videoSize.height());
+        ass_set_frame_size(m_assRenderer, videoSize.width(), videoSize.height());
         ass_set_fonts(m_assRenderer, NULL, "sans-serif", ASS_FONTPROVIDER_AUTODETECT, NULL, 1);
     }
-    memset(image.buffer, 0, image.height * image.stride); // HACK: ass也是多个小矩形叠加在一个图上的，这儿先全部清空了
-    ASS_Image *img = ass_render_frame(m_assRenderer, m_track, (int)(pts * 1000), NULL);
-    int blendedNum = blend(&image, img);
 
-    return blendedNum;
+    const ASS_Image *img = ass_render_frame(m_assRenderer, m_track, (int)(pts * 1000), NULL);
+    const ASS_Image *ptr = img;
+
+    m_dirtyRectManager.init();
+    while (ptr) {
+        m_dirtyRectManager.addRect(QRect(ptr->dst_x, ptr->dst_y, ptr->w, ptr->h));
+        ptr = ptr->next;
+    }
+
+    // 清空 / 重置
+    rects = m_dirtyRectManager.getRects();
+    dataArr.resize(m_dirtyRectManager.size());
+
+    if (m_dirtyRectManager.size() <= 0) {
+        return 0;
+    }
+
+    for (size_t i = 0; i < dataArr.size(); ++i) {
+        const QRect &rect = rects[i];
+        rect.size();
+        dataArr[i].assign(rect.width() * rect.height() * 4, 0);
+    }
+
+    while (img) {
+        blendSingleOnly(dataArr, rects, img);
+        img = img->next;
+    }
+
+    for (auto &buffer : dataArr) {
+        unpremultiplyAlpha(buffer); // 反预乘
+    }
+
+    return rects.size();
 }
 
-bool ASSRender::init_from_demux(AVFormatContext *fmt, int subStreamIdx) {
+bool ASSRender::initFromDemux(AVFormatContext *fmt, int subStreamIdx) {
     int ret;
     AVStream *st = fmt->streams[subStreamIdx];
     const AVCodecDescriptor *dec_desc = nullptr;
@@ -197,65 +226,69 @@ fail:
     return false;
 }
 
-//=====================image_t=====================
-// for https://github.com/libass/libass/blob/master/test/test.c
+// from https://github.com/libass/libass/blob/master/test/test.c
 
-int ASSRender::blend(image_t *frame, ASS_Image *img) {
-    int cnt = 0;
-    while (img) {
-        blend_single(frame, img);
-        ++cnt;
-        img = img->next;
-    }
-    // printf("%d images blended\n", cnt);
-    if (cnt == 0) {
-        return 0;
-    }
-
-    // Convert from pre-multiplied to straight alpha
-    // (not needed for fully-opaque output)
-    for (int y = 0; y < frame->height; y++) {
-        unsigned char *row = frame->buffer + y * frame->stride;
-        for (int x = 0; x < frame->width; x++) {
-            const unsigned char alpha = row[4 * x + 3];
-            if (alpha) {
-                // For each color channel c:
-                //   c = c / (255.0 / alpha)
-                // but only using integers and a biased rounding offset
-                const uint32_t offs = (uint32_t)1 << 15;
-                uint32_t inv = ((uint32_t)255 << 16) / alpha + 1;
-                row[x * 4 + 0] = (row[x * 4 + 0] * inv + offs) >> 16;
-                row[x * 4 + 1] = (row[x * 4 + 1] * inv + offs) >> 16;
-                row[x * 4 + 2] = (row[x * 4 + 2] * inv + offs) >> 16;
-            }
+void ASSRender::unpremultiplyAlpha(std::vector<uint8_t> &buffer) {
+    unsigned char *data = buffer.data();
+    size_t pixelCount = buffer.size() / 4;
+    Q_ASSERT(buffer.size() % 4 == 0);
+    for (size_t i = 0; i < pixelCount; ++i) {
+        size_t idx = i * 4;
+        const unsigned char alpha = data[idx + 3];
+        if (alpha && alpha < 255) {
+            // For each color channel c:
+            //   c = c / (255.0 / alpha)
+            // but only using integers and a biased rounding offset
+            const uint32_t offs = (uint32_t)1 << 15;
+            uint32_t inv = ((uint32_t)255 << 16) / alpha + 1;
+            data[idx + 0] = (data[idx + 0] * inv + offs) >> 16;
+            data[idx + 1] = (data[idx + 1] * inv + offs) >> 16;
+            data[idx + 2] = (data[idx + 2] * inv + offs) >> 16;
         }
     }
-    return cnt;
 }
 
-void ASSRender::blend_single(image_t *frame, ASS_Image *img) {
+void ASSRender::blendSingleOnly(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const ASS_Image *img) {
+    QRect rect(img->dst_x, img->dst_y, img->w, img->h);
+    int rect_idx = m_dirtyRectManager.findFirstIntersect(rect);
+    if (rect_idx < 0)
+        return;
     unsigned char r = img->color >> 24;
     unsigned char g = (img->color >> 16) & 0xFF;
     unsigned char b = (img->color >> 8) & 0xFF;
     unsigned char a = 255 - (img->color & 0xFF);
 
+    const QRect &targetRect = rects[rect_idx];
+    Q_ASSERT(targetRect.contains(rect, false)); // img 位于targetRect内，包括边缘
+
+    // 计算局部偏移
+    // img 在 targetRect 内部的起点坐标
+    int offsetX = img->dst_x - targetRect.x();
+    int offsetY = img->dst_y - targetRect.y();
+
     unsigned char *src = img->bitmap;
-    unsigned char *dst = frame->buffer + img->dst_y * frame->stride + img->dst_x * 4;
+    unsigned char *dst = dataArr[rect_idx].data();
+    int targetW = targetRect.width();
 
     for (int y = 0; y < img->h; ++y) {
+        // 计算当前行在目标 buffer 中的起始位置
+        // (y + offsetY) 是行索引，乘以 targetW 得到行首，再加上 offsetX 得到像素起点
+        int dst_row_start = ((y + offsetY) * targetW + offsetX) * 4;
+
         for (int x = 0; x < img->w; ++x) {
+            int idx = dst_row_start + (x * 4);
+
             unsigned k = ((unsigned)src[x]) * a;
             // For high-quality output consider using dithering instead;
             // this static offset results in biased rounding but is faster
             unsigned rounding_offset = 255 * 255 / 2;
             // If the original frame is not in premultiplied alpha, convert it beforehand or adjust
             // the blending code. For fully-opaque output frames there's no difference either way.
-            dst[x * 4 + 0] = (k * r + (255 * 255 - k) * dst[x * 4 + 0] + rounding_offset) / (255 * 255);
-            dst[x * 4 + 1] = (k * g + (255 * 255 - k) * dst[x * 4 + 1] + rounding_offset) / (255 * 255);
-            dst[x * 4 + 2] = (k * b + (255 * 255 - k) * dst[x * 4 + 2] + rounding_offset) / (255 * 255);
-            dst[x * 4 + 3] = (k * 255 + (255 * 255 - k) * dst[x * 4 + 3] + rounding_offset) / (255 * 255);
+            dst[idx + 0] = (k * r + (255 * 255 - k) * dst[idx + 0] + rounding_offset) / (255 * 255);
+            dst[idx + 1] = (k * g + (255 * 255 - k) * dst[idx + 1] + rounding_offset) / (255 * 255);
+            dst[idx + 2] = (k * b + (255 * 255 - k) * dst[idx + 2] + rounding_offset) / (255 * 255);
+            dst[idx + 3] = (k * 255 + (255 * 255 - k) * dst[idx + 3] + rounding_offset) / (255 * 255);
         }
         src += img->stride;
-        dst += frame->stride;
     }
 }

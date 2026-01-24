@@ -5,7 +5,10 @@
 
 #include "ass/ass.h"
 #include "compat/compat.h"
+#include "utils/dirtyrectmanager.h"
 #include <QObject>
+#include <QRect>
+#include <QSize>
 #include <atomic>
 #include <string>
 
@@ -50,11 +53,10 @@ public:
     bool addEvent(const char *data, int size, double startTime, double duration);
 
     /**
-     * 渲染一帧到image里
-     * 请确保image内的参数设置正确
-     * @return 实际渲染的帧数,>=1为有效帧
+     * 渲染一帧到dataArr里
+     * @return 实际渲染的矩形个数,>=1为有效帧
      */
-    int renderFrame(image_t &image, double pts);
+    int renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const QSize &videoSize, double pts);
 signals:
 
 private:
@@ -62,11 +64,12 @@ private:
     ASS_Renderer *m_assRenderer{nullptr};
     ASS_Track *m_track{nullptr};
     std::atomic<bool> m_initialized{false};
-    bool init_from_demux(AVFormatContext *fmt, int subStreamIdx);
+    DirtyRectManager m_dirtyRectManager; // 用于脏矩阵合成
 
 private:
-    static int blend(image_t *frame, ASS_Image *img);
-    static void blend_single(image_t *frame, ASS_Image *img);
+    bool initFromDemux(AVFormatContext *fmt, int subStreamIdx);
+    void unpremultiplyAlpha(std::vector<uint8_t> &buffer);
+    void blendSingleOnly(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const ASS_Image *img);
 };
 
 #endif // ASSRENDER_H
