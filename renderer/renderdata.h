@@ -114,14 +114,16 @@ struct RenderData {
 
 struct SubRenderData {
     AVFrmItem frmItem;
-    AVSubtitleType subtitleType = SUBTITLE_NONE;
-    QMutex mutex; // 锁
+    AVSubtitleType subtitleType = SUBTITLE_NONE; // 无字幕
+    QMutex mutex;                                // 锁
     SwsContext *subSwsCtx = nullptr;
 
+    size_t size; // 矩形可用个数，避免频繁清空分配dataArr
+    // *请不要直接使用 vector::size()
     std::vector<std::vector<uint8_t>> dataArr; // 每个小矩形的数据
     std::vector<int> linesizeArr;              // 每行实际存储的像素数 = [有效 + 填充]
-    std::vector<QRect> rects;                   // 单个字幕的区域
-    bool uploaded = false;                     // 是否以更新（对于图形字幕而言一帧可能需要显示很久，不需要重复上传）
+    std::vector<QRect> rects;                  // 单个字幕的区域
+    bool uploaded = false;                     // 是否已更新（对于图形字幕而言一帧可能需要显示很久，不需要重复上传）
     bool forceRefresh = false;                 // 用于通知videoRender强制清理旧数据（只是清理数据，不会上传和渲染）
 
     image_t assImage{};
@@ -137,6 +139,9 @@ struct SubRenderData {
 
     // 更新ASS字幕
     void updateASSImage(double pts, int videoWidth, int videoHeight);
+
+    // 准备缓冲区
+    void prepareBuffers(size_t newSize);
 
     SubRenderData() : mutex() { reset(); }
     ~SubRenderData() { reset(); }

@@ -262,9 +262,7 @@ void SubRenderData::reset() {
 }
 
 void SubRenderData::clear() {
-    rects.clear();
-    linesizeArr.clear();
-    dataArr.clear();
+    size = 0;
 }
 
 void SubRenderData::updateBitmapImage(AVFrmItem &newItem, int videoWidth, int videoHeight) {
@@ -276,9 +274,7 @@ void SubRenderData::updateBitmapImage(AVFrmItem &newItem, int videoWidth, int vi
     uploaded = false;
     frmItem = newItem;
 
-    linesizeArr.resize(sub.num_rects);
-    rects.resize(sub.num_rects);
-    dataArr.resize(sub.num_rects);
+    prepareBuffers(sub.num_rects);
 
     subtitleType = SUBTITLE_BITMAP;
 
@@ -312,12 +308,24 @@ void SubRenderData::updateBitmapImage(AVFrmItem &newItem, int videoWidth, int vi
 
 void SubRenderData::updateASSImage(double pts, int videoWidth, int videoHeight) {
     subtitleType = SUBTITLE_ASS;
-    if (ASSRender::instance().renderFrame(dataArr, rects, QSize{videoWidth, videoHeight}, pts) >= 1) {
-        linesizeArr.resize(rects.size());
-        for (size_t i = 0; i < rects.size(); ++i) {
-            linesizeArr[i] = rects[i].width(); // 在OpenGL中linesizeArr是像素个数
-        }
+    size_t rectsSize;
+    const ASS_Image *assImg = ASSRender::instance().getASSImage(rectsSize, QSize{videoWidth, videoHeight}, pts);
+    prepareBuffers(rectsSize);
+
+    ASSRender::instance().renderFrame(dataArr, rects, assImg);
+    for (size_t i = 0; i < rectsSize; ++i) {
+        linesizeArr[i] = rects[i].width(); // 在OpenGL中linesizeArr是像素个数
     }
+
     // ASS每帧都要刷新屏幕
     uploaded = false;
+}
+
+void SubRenderData::prepareBuffers(size_t newSize) {
+    size = newSize;
+    rects.resize(size);
+    linesizeArr.resize(size);
+    if (size > dataArr.size()) {
+        dataArr.resize(size);
+    }
 }

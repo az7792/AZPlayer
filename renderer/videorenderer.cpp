@@ -344,7 +344,7 @@ bool VideoRenderer::updateSubTex() {
     m_subRenderData->mutex.lock();
 
     // 绘制新字幕
-    for (size_t i = 0; i < m_subRenderData->dataArr.size(); ++i) {
+    for (size_t i = 0; i < m_subRenderData->size; ++i) {
         int len = m_subRenderData->linesizeArr[i];
         const QRect &rect = m_subRenderData->rects[i];
         int x = rect.x();

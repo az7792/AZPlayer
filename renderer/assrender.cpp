@@ -107,15 +107,18 @@ bool ASSRender::addEvent(const char *data, int size, double startTime, double du
     return true;
 }
 
-int ASSRender::renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const QSize &videoSize, double pts) {
-    if (!m_initialized.load(std::memory_order_relaxed))
-        return 0;
+const ASS_Image *ASSRender::getASSImage(size_t &size, const QSize &videoSize, double pts) {
+    if (!m_initialized.load(std::memory_order_relaxed)) {
+        size = 0;
+        return nullptr;
+    }
 
     if (!m_assRenderer) { // 初始化渲染器
         m_assRenderer = ass_renderer_init(m_assLibrary);
         if (!m_assRenderer) {
             qDebug() << "ASS字幕渲染器创建失败";
-            return 0;
+            size = 0;
+            return nullptr;
         }
         // TODO: size不一致是否要重新初始化(在正确调用init与uninit的情况下应该不会出现不一致的问题)
         ass_set_storage_size(m_assRenderer, videoSize.width(), videoSize.height());
@@ -132,23 +135,31 @@ int ASSRender::renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vect
         ptr = ptr->next;
     }
 
-    // 清空 / 重置
-    rects = m_dirtyRectManager.getRects();
-    dataArr.resize(m_dirtyRectManager.size());
+    size = m_dirtyRectManager.size();
+    return img;
+}
 
-    if (m_dirtyRectManager.size() <= 0) {
+int ASSRender::renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const ASS_Image *assImg) {
+    if (!m_initialized.load(std::memory_order_relaxed))
+        return 0;
+
+    if (m_dirtyRectManager.size() <= 0 || assImg == nullptr) {
         return 0;
     }
 
-    for (size_t i = 0; i < dataArr.size(); ++i) {
-        const QRect &rect = rects[i];
-        rect.size();
+    size_t size = m_dirtyRectManager.size();
+    Q_ASSERT(size <= dataArr.size());
+    Q_ASSERT(size <= rects.size());
+
+    for (size_t i = 0; i < size; ++i) {
+        const QRect &rect = m_dirtyRectManager[i];
+        rects[i] = rect;
         dataArr[i].assign(rect.width() * rect.height() * 4, 0);
     }
 
-    while (img) {
-        blendSingleOnly(dataArr, rects, img);
-        img = img->next;
+    while (assImg) {
+        blendSingleOnly(dataArr, assImg);
+        assImg = assImg->next;
     }
 
     for (auto &buffer : dataArr) {
@@ -248,7 +259,7 @@ void ASSRender::unpremultiplyAlpha(std::vector<uint8_t> &buffer) {
     }
 }
 
-void ASSRender::blendSingleOnly(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const ASS_Image *img) {
+void ASSRender::blendSingleOnly(std::vector<std::vector<uint8_t>> &dataArr, const ASS_Image *img) {
     QRect rect(img->dst_x, img->dst_y, img->w, img->h);
     int rect_idx = m_dirtyRectManager.findFirstIntersect(rect);
     if (rect_idx < 0)
@@ -258,7 +269,7 @@ void ASSRender::blendSingleOnly(std::vector<std::vector<uint8_t>> &dataArr, std:
     unsigned char b = (img->color >> 8) & 0xFF;
     unsigned char a = 255 - (img->color & 0xFF);
 
-    const QRect &targetRect = rects[rect_idx];
+    const QRect &targetRect = m_dirtyRectManager[rect_idx];
     Q_ASSERT(targetRect.contains(rect, false)); // img 位于targetRect内，包括边缘
 
     // 计算局部偏移

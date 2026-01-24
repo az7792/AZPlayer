@@ -52,11 +52,15 @@ public:
      */
     bool addEvent(const char *data, int size, double startTime, double duration);
 
+    // 渲染一帧并获取矩形个数
+    const ASS_Image *getASSImage(size_t &size, const QSize &videoSize, double pts);
+
     /**
      * 渲染一帧到dataArr里
+     * @warning 请确保assImg是最后一次通过getASSImage()获取的
      * @return 实际渲染的矩形个数,>=1为有效帧
      */
-    int renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const QSize &videoSize, double pts);
+    int renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const ASS_Image *assImg);
 signals:
 
 private:
@@ -69,7 +73,7 @@ private:
 private:
     bool initFromDemux(AVFormatContext *fmt, int subStreamIdx);
     void unpremultiplyAlpha(std::vector<uint8_t> &buffer);
-    void blendSingleOnly(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const ASS_Image *img);
+    void blendSingleOnly(std::vector<std::vector<uint8_t>> &dataArr, const ASS_Image *img);
 };
 
 #endif // ASSRENDER_H
