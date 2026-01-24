@@ -285,6 +285,7 @@ void SubRenderData::updateBitmapImage(AVFrmItem &newItem, int videoWidth, int vi
     for (unsigned i = 0; i < sub.num_rects; ++i) {
         AVSubtitleRect *subRect = sub.rects[i];
         subtitleType = subRect->type;
+        Q_ASSERT(subtitleType == SUBTITLE_BITMAP);
         subRect->x = std::clamp(subRect->x, 0, videoWidth);
         subRect->y = std::clamp(subRect->y, 0, videoHeight);
         subRect->w = std::clamp(subRect->w, 0, videoWidth - subRect->x);

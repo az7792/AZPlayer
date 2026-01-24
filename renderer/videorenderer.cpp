@@ -194,7 +194,8 @@ void VideoRenderer::render() {
         initVideoTex(m_renderData);
     }
 
-    if (m_subRenderData && (m_subRenderData->frmItem.width != m_widthSub || m_subRenderData->frmItem.height != m_heightSub)) {
+    if (m_subRenderData && m_subRenderData->subtitleType != SUBTITLE_NONE &&
+        (m_subRenderData->frmItem.width != m_widthSub || m_subRenderData->frmItem.height != m_heightSub)) {
         m_needInitSubtitleTex = true;
         initSubtitleTex(m_subRenderData);
     }
@@ -283,6 +284,9 @@ bool VideoRenderer::updateTex(RenderData::PixFormat fmt) {
 
 bool VideoRenderer::updateSubTex() {
     if (m_subRenderData && m_subRenderData->uploaded && !m_subRenderData->forceRefresh) {
+        return true;
+    }
+    if (m_subTex == 0) {
         return true;
     }
 
