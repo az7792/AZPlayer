@@ -13,16 +13,16 @@ namespace {
     }
 
     // 该函数用于辅助updateFrm函数，使用时确保排除了RGB_PACKED,RGBA_PACKED，每个平面都是独立的
-    RenderData::PixFormat desc2PixFormat(const AVPixFmtDescriptor *desc) {
+    VideoRenderData::PixFormat desc2PixFormat(const AVPixFmtDescriptor *desc) {
         if (desc->flags & AV_PIX_FMT_FLAG_RGB) {
-            return (desc->flags & AV_PIX_FMT_FLAG_ALPHA) ? RenderData::RGBA_PLANAR : RenderData::RGB_PLANAR;
+            return (desc->flags & AV_PIX_FMT_FLAG_ALPHA) ? VideoRenderData::RGBA_PLANAR : VideoRenderData::RGB_PLANAR;
         }
 
         if (desc->flags & AV_PIX_FMT_FLAG_ALPHA) {
-            return desc->nb_components == 2 ? RenderData::YA : RenderData::YUVA;
+            return desc->nb_components == 2 ? VideoRenderData::YA : VideoRenderData::YUVA;
         }
 
-        return desc->nb_components == 1 ? RenderData::Y : RenderData::YUV;
+        return desc->nb_components == 1 ? VideoRenderData::Y : VideoRenderData::YUV;
     }
     /**
      * @param data 数据首地址
@@ -43,7 +43,7 @@ namespace {
     }
 }
 
-bool RenderData::isEachComponentInSeparatePlane(const AVPixFmtDescriptor *desc) {
+bool VideoRenderData::isEachComponentInSeparatePlane(const AVPixFmtDescriptor *desc) {
     if (!desc)
         return false;
 
@@ -55,7 +55,7 @@ bool RenderData::isEachComponentInSeparatePlane(const AVPixFmtDescriptor *desc) 
     return std::count(planes.begin(), planes.end(), 1) == desc->nb_components;
 }
 
-bool RenderData::isComponentInSeparatePlane(int c, const AVPixFmtDescriptor *desc) {
+bool VideoRenderData::isComponentInSeparatePlane(int c, const AVPixFmtDescriptor *desc) {
     if (!desc)
         return false;
 
@@ -67,14 +67,14 @@ bool RenderData::isComponentInSeparatePlane(int c, const AVPixFmtDescriptor *des
     return planes[desc->comp[c].plane] == 1;
 }
 
-void RenderData::splitFrameComponentsToPlanes(const AVPixFmtDescriptor *desc) {
+void VideoRenderData::splitFrameComponentsToPlanes(const AVPixFmtDescriptor *desc) {
     for (int c = 0; c < desc->nb_components; ++c) {
         // TODO ： 多线程
         splitComponentToPlane(c, desc);
     }
 }
 
-void RenderData::splitComponentToPlane(int c, const AVPixFmtDescriptor *desc) {
+void VideoRenderData::splitComponentToPlane(int c, const AVPixFmtDescriptor *desc) {
     if (!desc || !frmItem.frm) {
         return;
     }
@@ -129,7 +129,7 @@ void RenderData::splitComponentToPlane(int c, const AVPixFmtDescriptor *desc) {
 }
 
 // TODO ： 只在类型不一样时重新初始化参数，否则只初始化必要参数
-void RenderData::updateFormat(AVFrmItem &newItem) {
+void VideoRenderData::updateFormat(AVFrmItem &newItem) {
     if (!newItem.frm)
         return;
     if (frmItem.frm != nullptr)
@@ -219,26 +219,24 @@ void RenderData::updateFormat(AVFrmItem &newItem) {
     updateGLParaArr(pixFormat);
 }
 
-void RenderData::reset() {
-    mutex.lock();
+void VideoRenderData::reset() {
     if (frmItem.frm)
         av_frame_free(&frmItem.frm);
     frmItem.pts = renderedTime = std::numeric_limits<double>::quiet_NaN();
     frmItem.duration = renderedTime = std::numeric_limits<double>::quiet_NaN();
-    mutex.unlock();
 }
 
-void RenderData::updateGLParaArr(PixFormat fmt) {
-    if (fmt == RenderData::Y || fmt == RenderData::YA) {
+void VideoRenderData::updateGLParaArr(PixFormat fmt) {
+    if (fmt == VideoRenderData::Y || fmt == VideoRenderData::YA) {
         GLParaArr[0] = bitSize2GLPara(componentBitSize[0]); // Y
-        if (fmt == RenderData::YA) {
+        if (fmt == VideoRenderData::YA) {
             GLParaArr[1] = bitSize2GLPara(componentBitSize[1]); // A
         }
     } else {
         for (int i = 0; i < 3; ++i) {
             GLParaArr[i] = bitSize2GLPara(componentBitSize[i]); // RGB | YUV
         }
-        if (fmt == RenderData::RGBA_PLANAR || fmt == RenderData::YUVA) {
+        if (fmt == VideoRenderData::RGBA_PLANAR || fmt == VideoRenderData::YUVA) {
             GLParaArr[3] = bitSize2GLPara(componentBitSize[3]); // A
         }
     }
@@ -246,7 +244,6 @@ void RenderData::updateGLParaArr(PixFormat fmt) {
 
 //======SubRenderData===========//
 void SubRenderData::reset() {
-    mutex.lock();
     if (subSwsCtx) { // MABEY: 需要free吗
         sws_freeContext(subSwsCtx);
         subSwsCtx = nullptr;
@@ -256,23 +253,28 @@ void SubRenderData::reset() {
     frmItem.pts = std::numeric_limits<double>::quiet_NaN();
     frmItem.duration = std::numeric_limits<double>::quiet_NaN();
     clear();
-    forceRefresh = false;
+    // forceRefresh = false;
     uploaded = false;
-    mutex.unlock();
 }
 
 void SubRenderData::clear() {
     size = 0;
 }
 
-void SubRenderData::updateBitmapImage(AVFrmItem &newItem, int videoWidth, int videoHeight) {
+void SubRenderData::updateBitmapImage(AVFrmItem *newItem, int videoWidth, int videoHeight) {
     avsubtitle_free(&frmItem.sub);
 
-    AVSubtitle &sub = newItem.sub;
+    uploaded = false;
+
+    if (newItem == nullptr) {
+        prepareBuffers(0);
+        return;
+    }
+
+    AVSubtitle &sub = newItem->sub;
     Q_ASSERT(sub.format == 0); // 图形字幕
 
-    uploaded = false;
-    frmItem = newItem;
+    frmItem = *newItem;
 
     prepareBuffers(sub.num_rects);
 

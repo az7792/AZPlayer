@@ -6,6 +6,7 @@
 #include "assrender.h"
 #include "compat/compat.h"
 #include "types/types.h"
+#include "utils/AtomicDoubleBuffer.h"
 #include <QMutex>
 #include <QOpenGLFunctions_3_3_Core>
 #include <QRect>
@@ -22,7 +23,7 @@ AZ_EXTERN_C_BEGIN
 #include <libswscale/swscale.h>
 AZ_EXTERN_C_END
 
-struct RenderData {
+struct VideoRenderData {
     enum PixFormat {
         // 可直接上传opengl，通过GLPara获取参数
         NONE = -1,
@@ -69,8 +70,6 @@ struct RenderData {
         {AV_PIX_FMT_X2BGR10LE, {GL_RGB10_A2, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV}}, ///< packed BGR 10:10:10, 30bpp, (msb)2X 10B 10G 10R(lsb), little-endian, X=unused/undefined
     };
 
-    QMutex mutex; // 锁
-
     AVFrmItem frmItem;
     double renderedTime; // 实际渲染到FBO的时间(相对现实时间，秒)
 
@@ -102,10 +101,10 @@ struct RenderData {
     void updateFormat(AVFrmItem &newItem);
     void reset();
 
-    void updateGLParaArr(RenderData::PixFormat fmt);
+    void updateGLParaArr(VideoRenderData::PixFormat fmt);
 
-    RenderData() : mutex() { reset(); }
-    ~RenderData() {
+    VideoRenderData() { reset(); }
+    ~VideoRenderData() {
         if (!frmItem.frm) {
             av_frame_free(&frmItem.frm);
         }
@@ -115,7 +114,6 @@ struct RenderData {
 struct SubRenderData {
     AVFrmItem frmItem;
     AVSubtitleType subtitleType = SUBTITLE_NONE; // 无字幕
-    QMutex mutex;                                // 锁
     SwsContext *subSwsCtx = nullptr;
 
     size_t size; // 矩形可用个数，避免频繁清空分配dataArr
@@ -124,7 +122,7 @@ struct SubRenderData {
     std::vector<int> linesizeArr;              // 每行实际存储的像素数 = [有效 + 填充]
     std::vector<QRect> rects;                  // 单个字幕的区域
     bool uploaded = false;                     // 是否已更新（对于图形字幕而言一帧可能需要显示很久，不需要重复上传）
-    bool forceRefresh = false;                 // 用于通知videoRender强制清理旧数据（只是清理数据，不会上传和渲染）
+    // bool forceRefresh = false;                 // 用于通知videoRender强制清理旧数据（只是清理数据，不会上传和渲染）
 
     image_t assImage{};
 
@@ -134,8 +132,11 @@ struct SubRenderData {
     // 清空
     void clear();
 
-    // 更新图形字幕
-    void updateBitmapImage(AVFrmItem &newItem, int videoWidth, int videoHeight);
+    /**
+     * 更新图形字幕
+     * 传空会直接清空
+     */
+    void updateBitmapImage(AVFrmItem *newItem, int videoWidth, int videoHeight);
 
     // 更新ASS字幕
     void updateASSImage(double pts, int videoWidth, int videoHeight);
@@ -143,8 +144,11 @@ struct SubRenderData {
     // 准备缓冲区
     void prepareBuffers(size_t newSize);
 
-    SubRenderData() : mutex() { reset(); }
+    SubRenderData() { reset(); }
     ~SubRenderData() { reset(); }
 };
+
+using VideoDoubleBuf = AtomicDoubleBuffer<VideoRenderData>;
+using SubtitleDoubleBuf = AtomicDoubleBuffer<SubRenderData>;
 
 #endif // RENDERDATA_H

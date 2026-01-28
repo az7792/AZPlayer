@@ -8,6 +8,7 @@
 #include "renderdata.h"
 #include "types/ptrs.h"
 #include <QObject>
+#include <QPair>
 #include <atomic>
 #include <thread>
 
@@ -19,6 +20,8 @@ AZ_EXTERN_C_END
 class VideoPlayer : public QObject {
     Q_OBJECT
 public:
+    using FrameInterval = QPair<double, double>;
+
     explicit VideoPlayer(QObject *parent = nullptr);
     ~VideoPlayer();
 
@@ -32,25 +35,24 @@ public:
 
     void togglePaused();
 
-    void forceRefreshSubtitle();
+    void clearSubtitle();
 
 public:
     sharedFrmQueue m_frmBuf;    // 视频
     sharedFrmQueue m_subFrmBuf; // 字幕
 
 signals:
-    void renderDataReady(RenderData *data, SubRenderData *subData);
+    void renderDataReady(VideoDoubleBuf *vidData, SubtitleDoubleBuf *subData);
     void seeked();
 
 private:
     // 双缓冲
-    RenderData renderData1;
-    RenderData renderData2;
-    RenderData *renderData{nullptr}; // 用于给渲染线程发数据
-    SubRenderData subRenderData1;
-    SubRenderData subRenderData2;
-    SubRenderData *subRenderData{nullptr};
-    double renderTime; // 实际渲染指令被发出的时间(相对现实时间，秒)
+    VideoDoubleBuf m_videoRenderData;       // 视频
+    SubtitleDoubleBuf m_subRenderData;      // 字幕
+    FrameInterval m_lastVideoFrameInterval; // 上一帧视频帧区间
+    double m_subtitleEndDisplayTime;        // 上一帧字幕结束时间
+    bool m_needClearSubtitle;               // 需要清空字幕
+    double m_renderTime;                    // 实际渲染指令被发出的时间(相对现实时间，秒)
 
     std::atomic<bool> m_stop{true};
     std::atomic<bool> m_paused{false};
@@ -72,6 +74,8 @@ private:
     bool getVideoFrm(AVFrmItem &item);
 
     void playerLoop();
+
+    static double getDuration(const FrameInterval &last, const FrameInterval &now);
 };
 
 #endif // VIDEOPLAYER_H

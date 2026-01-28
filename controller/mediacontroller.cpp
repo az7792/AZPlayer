@@ -289,7 +289,7 @@ bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
         m_demuxs[m_streams[to_index(MediaIdx::Subtitle)].first]->closeStream(MediaIdx::Subtitle);
     m_decodeSubtitl->uninit();
     ASSRender::instance().uninit();
-    m_videoPlayer->forceRefreshSubtitle(); // 切换后需要一定时间才会解码到新字幕，因此提前强制清掉旧字幕
+    m_videoPlayer->clearSubtitle(); // 切换后需要一定时间才会解码到新字幕，因此提前强制清掉旧字幕
 
     clearPktQ(m_pktSubtitleBuf);
     m_pktSubtitleBuf->addSerial();

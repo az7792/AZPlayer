@@ -66,18 +66,18 @@ private:
     bool m_lastShowSubtitle = true; // 上一次是否显示字幕，主要是为了防止频繁更新 shader的showSub变量
     bool m_showSubtitle = true;     // 是否显示字幕
 
-    RenderData *m_renderData = nullptr;       // 渲染需要的视频数据
-    SubRenderData *m_subRenderData = nullptr; // 渲染需要的字幕数据
+    VideoDoubleBuf *m_vidData = nullptr;    // 渲染需要的视频数据
+    SubtitleDoubleBuf *m_subData = nullptr; // 渲染需要的字幕数据
 
 private:
     // 初始化视频纹理
-    void initVideoTex(RenderData *renderData);
+    void initVideoTex(VideoRenderData *renderData);
     // 初始化字幕纹理
     void initSubtitleTex(SubRenderData *subRenderData);
 
-    bool updateTex(RenderData::PixFormat fmt);
+    bool updateTex(VideoRenderData::PixFormat fmt);
     // 字幕纹理固定 RGBA_PACKED 格式
-    bool updateSubTex();
+    bool updateSubTex(SubRenderData &renData);
 
     /**
      * @brief 初始化或重建一个 2D OpenGL 纹理
@@ -102,6 +102,9 @@ private:
     void initTex(GLuint &tex, const QSize &size, const std::array<unsigned int, 3> &para, uint8_t *fill = nullptr);
 
     QMatrix4x4 getTransformMat(); // 获取当前的变换矩阵
+
+    // 把纹理单元和纹理对象绑定
+    void bindAllTexturesForDraw();
 };
 
 // QML控件
@@ -197,7 +200,7 @@ public:
     Q_INVOKABLE float ty() const { return m_ty; }
 
 public slots:
-    void updateRenderData(RenderData *renderData, SubRenderData *subRenderData);
+    void updateRenderData(VideoDoubleBuf *vidData, SubtitleDoubleBuf *subData);
 
 signals:
     void videoAngleChanged();
@@ -206,8 +209,8 @@ signals:
     void videoYChanged();
 
 private:
-    RenderData *m_renderData = nullptr;
-    SubRenderData *m_subRenderData = nullptr;
+    VideoDoubleBuf *m_vidData = nullptr;
+    SubtitleDoubleBuf *m_subData = nullptr;
     float m_tx{0.f}, m_ty{0.f}; // 移动(像素)
     float m_angle{0.f};         // 顺时针旋转(角度)
     int m_scale{100};           // 缩放(100为不缩放)

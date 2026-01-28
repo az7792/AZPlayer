@@ -91,7 +91,7 @@ VideoRenderer::~VideoRenderer() {
     }
 }
 
-void VideoRenderer::initVideoTex(RenderData *renderData) {
+void VideoRenderer::initVideoTex(VideoRenderData *renderData) {
     if (!renderData)
         return;
 
@@ -114,9 +114,10 @@ void VideoRenderer::initVideoTex(RenderData *renderData) {
     m_program.setUniformValue(loc, 2);
     loc = m_program.uniformLocation("aTex");
     m_program.setUniformValue(loc, 3);
+    m_program.release();
 
     // 拷贝一些参数方便使用
-    RenderData::PixFormat tmpFmt = renderData->pixFormat;
+    VideoRenderData::PixFormat tmpFmt = renderData->pixFormat;
     for (int i = 0; i < 4; ++i) {
         GLParaArr[i] = renderData->GLParaArr[i];
         linesizeArr[i] = renderData->linesizeArr[i];
@@ -124,17 +125,17 @@ void VideoRenderer::initVideoTex(RenderData *renderData) {
         alignment = renderData->alignment;
     }
 
-    if (tmpFmt == RenderData::RGB_PACKED || tmpFmt == RenderData::RGBA_PACKED ||
-        tmpFmt == RenderData::Y || tmpFmt == RenderData::YA) {
+    if (tmpFmt == VideoRenderData::RGB_PACKED || tmpFmt == VideoRenderData::RGBA_PACKED ||
+        tmpFmt == VideoRenderData::Y || tmpFmt == VideoRenderData::YA) {
         initTex(m_texArr[0], componentSizeArr[0], GLParaArr[0]);
-        if (tmpFmt == RenderData::YA) {
+        if (tmpFmt == VideoRenderData::YA) {
             initTex(m_texArr[3], componentSizeArr[1], GLParaArr[1]); // A
         }
     } else {
         for (int i = 0; i < 3; ++i) {
             initTex(m_texArr[i], componentSizeArr[i], GLParaArr[i]); // RGB | YUV
         }
-        if (tmpFmt == RenderData::RGBA_PLANAR || tmpFmt == RenderData::YUVA) {
+        if (tmpFmt == VideoRenderData::RGBA_PLANAR || tmpFmt == VideoRenderData::YUVA) {
             initTex(m_texArr[3], componentSizeArr[3], GLParaArr[3]); // A
         }
     }
@@ -163,7 +164,15 @@ void VideoRenderer::initSubtitleTex(SubRenderData *subRenderData) {
         loc = m_program.uniformLocation("haveSubTex"); // 主要用于标记有字幕纹理(即使当前播放的视频没有字幕)
         m_program.setUniformValue(loc, true);
 
+        // 清空
+        glActiveTexture(GL_TEXTURE0 + 4);
+        glBindTexture(GL_TEXTURE_2D, m_subTex);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, m_widthSub);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_widthSub, m_heightSub, GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
+
         m_needInitSubtitleTex = false;
+        m_program.release();
     }
 }
 
@@ -179,63 +188,116 @@ QOpenGLFramebufferObject *VideoRenderer::createFramebufferObject(const QSize &si
 }
 
 void VideoRenderer::render() {
-    if (!m_renderData || !m_renderData->frmItem.frm) {
+    if (!m_vidData) {
         glClearColor(0.0627f, 0.0627f, 0.0627f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         return;
     }
+    // if (!m_renderData || !m_renderData->frmItem.frm) {
+    //     glClearColor(0.0627f, 0.0627f, 0.0627f, 1.0f);
+    //     glClear(GL_COLOR_BUFFER_BIT);
+    //     return;
+    // }
 
-    m_renderData->mutex.lock();
+    // m_renderData->mutex.lock();
+    GLint prevAlign = 0;
+    GLint prevRowLen = 0;
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &prevAlign);
+    glGetIntegerv(GL_UNPACK_ROW_LENGTH, &prevRowLen);
 
-    // 更新视频纹理
-    AVFrame *frm = m_renderData->frmItem.frm;
-    if (frm->width != m_width || frm->height != m_height || frm->format != m_AVPixelFormat) {
-        m_needInitVideoTex = true;
-        initVideoTex(m_renderData);
+    if (m_subData) {
+        m_subData->read([&](SubRenderData &renData, int) -> bool {
+            // 初始化字幕纹理
+            if (renData.subtitleType != SUBTITLE_NONE && (renData.frmItem.width != m_widthSub || renData.frmItem.height != m_heightSub)) {
+                m_needInitSubtitleTex = true;
+                initSubtitleTex(&renData);
+            }
+            return updateSubTex(renData);
+        });
     }
 
-    if (m_subRenderData && m_subRenderData->subtitleType != SUBTITLE_NONE &&
-        (m_subRenderData->frmItem.width != m_widthSub || m_subRenderData->frmItem.height != m_heightSub)) {
-        m_needInitSubtitleTex = true;
-        initSubtitleTex(m_subRenderData);
-    }
+    static int ct0 = 0, ct1 = 0;
+    bool ok = m_vidData->read([&](VideoRenderData &renData, int idx) -> bool {
+        if (idx == 0)
+            ct0++;
+        else
+            ct1++;
+        qDebug() << "video read: " << ct0 << ct1 << idx << GlobalClock::instance().getMainPts() * 1000;
+        AVFrame *frm = renData.frmItem.frm;
+        if (frm == nullptr)
+            return false;
 
-    // 更新参数
-    for (int i = 0; i < 4; ++i) {
-        dataArr[i] = m_renderData->dataArr[i];
-    }
-    // 上传纹理
-    if (updateTex(m_renderData->pixFormat) && updateSubTex()) {
-        m_renderData->mutex.unlock();
-        // 纯色背景
-        glClearColor(0.0627f, 0.0627f, 0.0627f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        m_program.bind();
-
-        if (m_showSubtitle != m_lastShowSubtitle) {
-            m_lastShowSubtitle = m_showSubtitle;
-            int loc = m_program.uniformLocation("showSub"); // 是否显示字幕
-            m_program.setUniformValue(loc, m_showSubtitle);
+        // 更新视频纹理
+        if (frm->width != m_width || frm->height != m_height || frm->format != m_AVPixelFormat) {
+            m_needInitVideoTex = true;
+            initVideoTex(&renData);
         }
 
-        m_program.setUniformValue(m_program.uniformLocation("transform"), getTransformMat());
-        // 绘制视频画面
-        glBindVertexArray(m_vao);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
-        m_program.release();
-    } else {
-        m_renderData->mutex.unlock();
+        // 更新参数
+        for (int i = 0; i < 4; ++i) {
+            dataArr[i] = renData.dataArr[i];
+        }
+        // 上传视频纹理
+        updateTex(renData.pixFormat);
+
+        renData.renderedTime = getRelativeSeconds();
+        return true;
+    });
+
+    // // 更新视频纹理
+    // AVFrame *frm = m_renderData->frmItem.frm;
+    // if (frm->width != m_width || frm->height != m_height || frm->format != m_AVPixelFormat) {
+    //     m_needInitVideoTex = true;
+    //     initVideoTex(m_renderData);
+    // }
+
+    // if (m_subRenderData && m_subRenderData->subtitleType != SUBTITLE_NONE &&
+    //     (m_subRenderData->frmItem.width != m_widthSub || m_subRenderData->frmItem.height != m_heightSub)) {
+    //     m_needInitSubtitleTex = true;
+    //     initSubtitleTex(m_subRenderData);
+    // }
+
+    // // 更新参数
+    // for (int i = 0; i < 4; ++i) {
+    //     dataArr[i] = m_renderData->dataArr[i];
+    // }
+    // 上传纹理
+    // 纯色背景
+
+    // 绘制
+
+    // 灰底背景
+    glClearColor(0.0627f, 0.0627f, 0.0627f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // 绑定纹理单元和纹理对象
+    bindAllTexturesForDraw();
+    m_program.bind();
+
+    if (m_showSubtitle != m_lastShowSubtitle) {
+        m_lastShowSubtitle = m_showSubtitle;
+        int loc = m_program.uniformLocation("showSub"); // 是否显示字幕
+        m_program.setUniformValue(loc, m_showSubtitle);
     }
 
+    m_program.setUniformValue(m_program.uniformLocation("transform"), getTransformMat());
+    // 绘制视频画面
+    glBindVertexArray(m_vao);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, prevAlign);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, prevRowLen);
+
+    m_program.release();
     // 绘制结束
-    m_renderData->renderedTime = getRelativeSeconds();
+    // m_renderData->renderedTime = getRelativeSeconds();
 }
 
 void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
     VideoWindow *videoWindow = static_cast<VideoWindow *>(item);
-    m_renderData = videoWindow->m_renderData;
-    m_subRenderData = videoWindow->m_subRenderData;
+    m_vidData = videoWindow->m_vidData;
+    m_subData = videoWindow->m_subData;
     m_tx = 2.f * videoWindow->m_tx / m_widthFBO;
     m_ty = 2.f * videoWindow->m_ty / m_heightFBO;
 
@@ -248,8 +310,8 @@ void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
     m_showSubtitle = videoWindow->m_showSubtitle;
 }
 
-bool VideoRenderer::updateTex(RenderData::PixFormat fmt) {
-    if (fmt == RenderData::NONE)
+bool VideoRenderer::updateTex(VideoRenderData::PixFormat fmt) {
+    if (fmt == VideoRenderData::NONE)
         return false;
 
     auto uploadTexture = [&](int pos, GLenum textureOffset) {
@@ -263,11 +325,11 @@ bool VideoRenderer::updateTex(RenderData::PixFormat fmt) {
                         dataArr[pos]);
     };
 
-    if (fmt == RenderData::RGB_PACKED || fmt == RenderData::RGBA_PACKED ||
-        fmt == RenderData::Y || fmt == RenderData::YA) {
+    if (fmt == VideoRenderData::RGB_PACKED || fmt == VideoRenderData::RGBA_PACKED ||
+        fmt == VideoRenderData::Y || fmt == VideoRenderData::YA) {
         uploadTexture(0, 0); // RGB|RGBA|Y
 
-        if (fmt == RenderData::YA) {
+        if (fmt == VideoRenderData::YA) {
             uploadTexture(1, 3); // A
         }
     } else {
@@ -275,15 +337,15 @@ bool VideoRenderer::updateTex(RenderData::PixFormat fmt) {
             uploadTexture(pos, pos); // R,G,B | Y,U,V
         }
 
-        if (fmt == RenderData::RGBA_PLANAR || fmt == RenderData::YUVA) {
+        if (fmt == VideoRenderData::RGBA_PLANAR || fmt == VideoRenderData::YUVA) {
             uploadTexture(3, 3); // A
         }
     }
     return true;
 }
 
-bool VideoRenderer::updateSubTex() {
-    if (m_subRenderData && m_subRenderData->uploaded && !m_subRenderData->forceRefresh) {
+bool VideoRenderer::updateSubTex(SubRenderData &renData) {
+    if (renData.uploaded) {
         return true;
     }
     if (m_subTex == 0) {
@@ -307,17 +369,15 @@ bool VideoRenderer::updateSubTex() {
     static AVSubtitleType lastSubType = SUBTITLE_NONE;
 
     // 清理旧数据
-    if (!m_subRenderData || m_subRenderData->forceRefresh) {
+    if (renData.size == 0) {
         clearSubTex();
-        if (m_subRenderData)
-            m_subRenderData->forceRefresh = false;
+        renData.uploaded = true;
         return true;
     }
 
-    Q_ASSERT(m_subRenderData);
-    if (m_subRenderData->subtitleType != lastSubType) {
+    if (renData.subtitleType != lastSubType) {
         clearSubTex();
-        lastSubType = m_subRenderData->subtitleType;
+        lastSubType = renData.subtitleType;
     }
 
     // 清理纹理上的旧字幕
@@ -339,14 +399,12 @@ bool VideoRenderer::updateSubTex() {
     }
 
     // 保存当前字幕区域
-    lastSubTexRect() = m_subRenderData->rects;
-
-    m_subRenderData->mutex.lock();
+    lastSubTexRect() = renData.rects;
 
     // 绘制新字幕
-    for (size_t i = 0; i < m_subRenderData->size; ++i) {
-        int len = m_subRenderData->linesizeArr[i];
-        const QRect &rect = m_subRenderData->rects[i];
+    for (size_t i = 0; i < renData.size; ++i) {
+        int len = renData.linesizeArr[i];
+        const QRect &rect = renData.rects[i];
         int x = rect.x();
         int y = rect.y();
         int h = rect.height();
@@ -354,14 +412,13 @@ bool VideoRenderer::updateSubTex() {
         if (h == 0 || w == 0) {
             continue;
         }
-        uint8_t *subtitleData = m_subRenderData->dataArr[i].data();
+        uint8_t *subtitleData = renData.dataArr[i].data();
 
         glPixelStorei(GL_UNPACK_ROW_LENGTH, len);
         glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, subtitleData);
     }
 
-    m_subRenderData->uploaded = true;
-    m_subRenderData->mutex.unlock();
+    renData.uploaded = true;
     return true;
 }
 
@@ -417,14 +474,39 @@ QMatrix4x4 VideoRenderer::getTransformMat() {
     return mat;
 }
 
+void VideoRenderer::bindAllTexturesForDraw() {
+    // 视频纹理
+    for (int i = 0; i < 4; ++i) {
+        // 这儿是本程序约定好的，具体查看：initVideoTex()
+        glActiveTexture(GL_TEXTURE0 + i);
+
+        if (m_texArr[i] != 0) {
+            glBindTexture(GL_TEXTURE_2D, m_texArr[i]);
+        } else {
+            // 显式解绑，避免采样到 Qt / 其他 renderer 的残留
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+    }
+
+    // 字幕纹理（固定使用 unit 4）,具体查看：initSubtitleTex()
+    glActiveTexture(GL_TEXTURE0 + 4);
+    if (m_subTex != 0) {
+        glBindTexture(GL_TEXTURE_2D, m_subTex);
+    } else {
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    glActiveTexture(GL_TEXTURE0);
+}
+
 //===========VideoWindow===========//
 QQuickFramebufferObject::Renderer *VideoWindow::createRenderer() const {
     VideoRenderer *render = new VideoRenderer();
     return render;
 }
 
-void VideoWindow::updateRenderData(RenderData *renderData, SubRenderData *subRenderData) {
-    m_renderData = renderData;
-    m_subRenderData = subRenderData;
+void VideoWindow::updateRenderData(VideoDoubleBuf *vidData, SubtitleDoubleBuf *subData) {
+    m_vidData = vidData;
+    m_subData = subData;
     update();
 }

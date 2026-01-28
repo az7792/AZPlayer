@@ -6,16 +6,6 @@
 #include <QDateTime>
 #include <QDebug>
 
-namespace {
-    double getDuration(const AVFrmItem &last, const AVFrmItem &now) {
-        double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
-        double duration = now.pts - last.pts;
-        if (std::isnan(duration) || duration <= 0 || duration > maxFrameDuration)
-            duration = std::isnan(last.duration) ? 0.0 : last.duration;
-        return duration;
-    }
-}
-
 VideoPlayer::VideoPlayer(QObject *parent)
     : QObject{parent} {}
 
@@ -30,13 +20,20 @@ bool VideoPlayer::init(sharedFrmQueue frmBuf, sharedFrmQueue subFrmBuf) {
     m_forceRefresh = false;
     m_frmBuf = frmBuf;
     m_subFrmBuf = subFrmBuf;
-    renderData1.reset();
-    renderData2.reset();
-    subRenderData1.reset();
-    subRenderData2.reset();
-    renderTime = std::numeric_limits<double>::quiet_NaN();
-    renderData = &renderData1;
-    subRenderData = &subRenderData1;
+    m_videoRenderData.reset([](VideoRenderData &b1, VideoRenderData &b2) -> bool {
+        b1.reset();
+        b2.reset();
+        return true;
+    });
+    m_subRenderData.reset([](SubRenderData &b1, SubRenderData &b2) -> bool {
+        b1.reset();
+        b2.reset();
+        return true;
+    });
+    m_lastVideoFrameInterval = qMakePair(INVALID_DOUBLE, INVALID_DOUBLE);
+    m_needClearSubtitle = false;
+    m_subtitleEndDisplayTime = 1e9;
+    m_renderTime = std::numeric_limits<double>::quiet_NaN();
     m_serial = 0;
     m_width = 0;
     m_height = 0;
@@ -48,10 +45,16 @@ bool VideoPlayer::uninit() {
 
     m_frmBuf.reset();
     m_subFrmBuf.reset();
-    renderData1.reset();
-    renderData2.reset();
-    subRenderData1.reset();
-    subRenderData2.reset();
+    m_videoRenderData.reset([](VideoRenderData &b1, VideoRenderData &b2) -> bool {
+        b1.reset();
+        b2.reset();
+        return true;
+    });
+    m_subRenderData.reset([](SubRenderData &b1, SubRenderData &b2) -> bool {
+        b1.reset();
+        b2.reset();
+        return true;
+    });
     emit renderDataReady(nullptr, nullptr);
     return true;
 }
@@ -81,15 +84,13 @@ void VideoPlayer::togglePaused() {
     }
     bool paused = m_paused.load(std::memory_order_relaxed);
     if (paused) {
-        renderTime = getRelativeSeconds();
+        m_renderTime = getRelativeSeconds();
     }
     m_paused.store(!paused, std::memory_order_release);
 }
 
-void VideoPlayer::forceRefreshSubtitle() {
-    if (subRenderData) {
-        subRenderData->forceRefresh = true;
-    }
+void VideoPlayer::clearSubtitle() {
+    m_needClearSubtitle = true;
 }
 
 double d0, d1, d2, d3, d4, d5;
@@ -141,15 +142,33 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
     m_width = videoFrmitem.frm->width;
     m_height = videoFrmitem.frm->height;
 
+    FrameInterval nowVideoFrameInterval = qMakePair(videoFrmitem.pts, videoFrmitem.duration);
+    // 上一帧持续时间
+    double delay = getDuration(m_lastVideoFrameInterval, nowVideoFrameInterval);
+
+    // // 在渲染之前准备好数据
+    // VideoRenderData *tmpPtr = renderData == &renderData1 ? &renderData2 : &renderData1;
+    // // Qt信号会使用事件队列，可能导致渲染线程使用的renderData与tmpPtr是同一个
+    // if (!tmpPtr->mutex.try_lock_for(std::chrono::milliseconds(1))) {
+    //     std::swap(tmpPtr, renderData);
+    //     tmpPtr->mutex.lock();
+    // }
+    // tmpPtr->updateFormat(videoFrmitem);
+    // tmpPtr->mutex.unlock();
+
     // 在渲染之前准备好数据
-    RenderData *tmpPtr = renderData == &renderData1 ? &renderData2 : &renderData1;
-    // Qt信号会使用事件队列，可能导致渲染线程使用的renderData与tmpPtr是同一个
-    if (!tmpPtr->mutex.try_lock_for(std::chrono::milliseconds(1))) {
-        std::swap(tmpPtr, renderData);
-        tmpPtr->mutex.lock();
-    }
-    tmpPtr->updateFormat(videoFrmitem);
-    tmpPtr->mutex.unlock();
+    static int ct1 = 0, ct0 = 0;
+    m_videoRenderData.write([&](VideoRenderData &renData, int idx) -> bool {
+        if (idx == 0)
+            ct0++;
+        else
+            ct1++;
+        // qDebug() << "video write:" << ct0 << ct1 << idx << GlobalClock::instance().getMainPts() * 1000;
+        m_lastVideoFrameInterval = nowVideoFrameInterval;
+        renData.updateFormat(videoFrmitem);
+        return true;
+    },
+                            false);
 
     // 处理字幕seek/切流
     AVFrmItem subFrmItem;
@@ -159,43 +178,87 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
         m_forceRefresh = true;
     }
 
-    // 尝试读取图形字幕
-    if (m_subFrmBuf->peekFirst(subFrmItem) && GlobalClock::instance().videoPts() >= subFrmItem.pts) {
-        m_subFrmBuf->pop(subFrmItem);
-        SubRenderData *tmpSubPtr = subRenderData == &subRenderData1 ? &subRenderData2 : &subRenderData1;
-        if (!tmpSubPtr->mutex.try_lock_for(std::chrono::milliseconds(1))) {
-            std::swap(tmpSubPtr, subRenderData);
-            tmpSubPtr->mutex.lock();
+    // 有ASS字幕
+    if (ASSRender::instance().initialized()) {
+        m_subRenderData.write([&](SubRenderData &renData, int idx) -> bool {
+            renData.updateASSImage(videoFrmitem.pts, m_width, m_height);
+            renData.frmItem.width = m_width;
+            renData.frmItem.height = m_height;
+            return true;
+        },
+                              false);
+        // ASS字幕下应该没有图形字幕了
+        Q_ASSERT(m_subFrmBuf->peekFirst(subFrmItem) == false);
+    } else {
+        // 文本字幕
+        double videoPts = GlobalClock::instance().videoPts();
+        if (m_subFrmBuf->peekFirst(subFrmItem) && videoPts >= subFrmItem.pts) {
+            m_subFrmBuf->pop(subFrmItem);
+            m_subRenderData.write([&](SubRenderData &renData, int idx) -> bool {
+                renData.updateBitmapImage(&subFrmItem, m_width, m_height);
+                m_subtitleEndDisplayTime = subFrmItem.pts + subFrmItem.duration;
+                return true;
+            },
+                                  false);
+        } else if (videoPts >= m_subtitleEndDisplayTime) {
+            m_subtitleEndDisplayTime = 1e9;
+            m_subRenderData.write([&](SubRenderData &renData, int idx) -> bool {
+                renData.updateBitmapImage(nullptr, m_width, m_height);
+                return true;
+            },
+                                  false);
         }
-        tmpSubPtr->updateBitmapImage(subFrmItem, m_width, m_height);
-        tmpSubPtr->mutex.unlock();
-        subRenderData = tmpSubPtr;
-    } else if (subRenderData && subRenderData->uploaded == true && GlobalClock::instance().videoPts() > subRenderData->frmItem.pts + subRenderData->frmItem.duration) {
-        subRenderData->frmItem.duration = 1e9; // HACK: 避免重复触发清理超时数据
-        subRenderData->forceRefresh = subRenderData->subtitleType == SUBTITLE_BITMAP;
     }
 
-    if (m_forceRefresh && subRenderData) {
-        subRenderData->forceRefresh = true;
+    // 需要刷新帧或者需要清空字幕
+    if (m_needClearSubtitle || m_forceRefresh) {
+        m_subRenderData.write([&](SubRenderData &renData, int idx) -> bool {
+            renData.updateBitmapImage(nullptr, m_width, m_height);
+            return true;
+        },
+                              false);
+        m_needClearSubtitle = false;
     }
 
-    if (subRenderData && ASSRender::instance().initialized()) {
-        SubRenderData *tmpSubPtr = subRenderData == &subRenderData1 ? &subRenderData2 : &subRenderData1;
-        if (!subRenderData->mutex.try_lock_for(std::chrono::milliseconds(1))) {
-            std::swap(tmpSubPtr, subRenderData);
-            subRenderData->mutex.lock();
-        }
-        subRenderData->frmItem.width = m_width;
-        subRenderData->frmItem.height = m_height;
+    // // 尝试读取图形字幕
+    // if (m_subFrmBuf->peekFirst(subFrmItem) && GlobalClock::instance().videoPts() >= subFrmItem.pts) {
+    //     m_subFrmBuf->pop(subFrmItem);
+    //     // SubRenderData *tmpSubPtr = subRenderData == &subRenderData1 ? &subRenderData2 : &subRenderData1;
+    //     // if (!tmpSubPtr->mutex.try_lock_for(std::chrono::milliseconds(1))) {
+    //     //     std::swap(tmpSubPtr, subRenderData);
+    //     //     tmpSubPtr->mutex.lock();
+    //     // }
+    //     // tmpSubPtr->updateBitmapImage(subFrmItem, m_width, m_height);
+    //     // tmpSubPtr->mutex.unlock();
+    //     // subRenderData = tmpSubPtr;
 
-        subRenderData->updateASSImage(tmpPtr->frmItem.pts, m_width, m_height);
-        subRenderData->mutex.unlock();
-    }
+    //     m_subRenderData.write([&](SubRenderData &renData) -> bool {
+    //         renData.updateBitmapImage(subFrmItem, m_width, m_height);
+    //     });
+
+    // } else if (subRenderData && subRenderData->uploaded == true && GlobalClock::instance().videoPts() > subRenderData->frmItem.pts + subRenderData->frmItem.duration) {
+    //     subRenderData->frmItem.duration = 1e9; // HACK: 避免重复触发清理超时数据
+    //     subRenderData->forceRefresh = subRenderData->subtitleType == SUBTITLE_BITMAP;
+    // }
+
+    // if (m_forceRefresh && subRenderData) {
+    //     subRenderData->forceRefresh = true;
+    // }
+
+    // if (subRenderData && ASSRender::instance().initialized()) {
+    //     SubRenderData *tmpSubPtr = subRenderData == &subRenderData1 ? &subRenderData2 : &subRenderData1;
+    //     if (!subRenderData->mutex.try_lock_for(std::chrono::milliseconds(1))) {
+    //         std::swap(tmpSubPtr, subRenderData);
+    //         subRenderData->mutex.lock();
+    //     }
+    //     subRenderData->frmItem.width = m_width;
+    //     subRenderData->frmItem.height = m_height;
+
+    //     subRenderData->updateASSImage(tmpPtr->frmItem.pts, m_width, m_height);
+    //     subRenderData->mutex.unlock();
+    // }
 
     d2 = getRelativeSeconds();
-
-    // 上一帧持续时间
-    double delay = getDuration(renderData->frmItem, videoFrmitem);
 
     static int lessCt = 0, moreCt = 0, loseCt = 0;
     // 同步主时钟
@@ -213,21 +276,21 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
         }
     }
 
-    if (std::isnan(renderTime) || m_forceRefresh) {
-        renderTime = getRelativeSeconds();
+    if (std::isnan(m_renderTime) || m_forceRefresh) {
+        m_renderTime = getRelativeSeconds();
     } else {
-        renderTime += delay;
+        m_renderTime += delay;
     }
 
     double nowTime = getRelativeSeconds();
-    double dt = renderTime - nowTime;
+    double dt = m_renderTime - nowTime;
 
     d3 = getRelativeSeconds();
 
     if (dt > 0) {
         if (dt > 0.1) {
             dt = 0.1;
-            renderTime = nowTime + dt;
+            m_renderTime = nowTime + dt;
         }
         std::this_thread::sleep_for(std::chrono::duration<double>(dt));
     }
@@ -236,10 +299,12 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
 
     AVFrmItem tmpItem;
     bool peekOk = m_frmBuf->peekFirst(tmpItem);
-    renderData = tmpPtr;
+
     nowTime = getRelativeSeconds();
-    if (!peekOk || nowTime <= renderTime + getDuration(videoFrmitem, tmpItem)) {
-        emit renderDataReady(renderData, subRenderData);
+    if (!peekOk || nowTime <= m_renderTime + getDuration(nowVideoFrameInterval, qMakePair(tmpItem.pts, tmpItem.duration))) {
+        m_videoRenderData.release();
+        m_subRenderData.release();
+        emit renderDataReady(&m_videoRenderData, &m_subRenderData);
     } else {
         loseCt++;
     }
@@ -282,4 +347,12 @@ bool VideoPlayer::getVideoFrm(AVFrmItem &item) {
         return false;
     }
     return true;
+}
+
+double VideoPlayer::getDuration(const FrameInterval &last, const FrameInterval &now) {
+    double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
+    double duration = now.first - last.first;
+    if (std::isnan(duration) || duration <= 0 || duration > maxFrameDuration)
+        duration = std::isnan(last.second) ? 0.0 : last.second;
+    return duration;
 }

@@ -10,6 +10,8 @@ AZ_EXTERN_C_BEGIN
 #include <libavcodec/avcodec.h>
 AZ_EXTERN_C_END
 
+constexpr double INVALID_DOUBLE = std::numeric_limits<double>::quiet_NaN();
+
 enum class MediaType : uint8_t {
     Video = 0,
     Subtitle,
@@ -28,8 +30,8 @@ struct AVFrmItem {
     AVSubtitle sub{};
     int width{0}, height{0}; // HACK 目前仅用于表示字幕的分辨率大小
     int serial = 0;
-    double pts = std::numeric_limits<double>::quiet_NaN();
-    double duration = std::numeric_limits<double>::quiet_NaN();
+    double pts = INVALID_DOUBLE;
+    double duration = INVALID_DOUBLE;
 };
 
 struct AudioPar {
