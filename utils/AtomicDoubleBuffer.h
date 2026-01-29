@@ -16,8 +16,8 @@ class AtomicDoubleBuffer {
 public:
     std::atomic<uint32_t> serial{0};
     // 读写回调函数，可安全的在内部进行读写
-    using WriterFunc = std::function<bool(T &, int)>;
-    using ReaderFunc = std::function<bool(T &, int)>;
+    using WriterFunc = std::function<bool(T &, [[maybe_unused]] int)>;
+    using ReaderFunc = std::function<bool(T &, [[maybe_unused]] int)>;
     using ResetFunc = std::function<bool(T &, T &)>;
 
     AtomicDoubleBuffer() = default;
@@ -181,8 +181,8 @@ class AtomicDoubleBuffer {
 public:
     std::atomic<uint32_t> serial{0};
     // 读写回调函数，可安全的在内部进行读写
-    using WriterFunc = std::function<bool(T &, int)>;
-    using ReaderFunc = std::function<bool(T &, int)>;
+    using WriterFunc = std::function<bool(T &, [[maybe_unused]] int)>;
+    using ReaderFunc = std::function<bool(T &, [[maybe_unused]] int)>;
     using ResetFunc = std::function<bool(T &, T &)>;
 
     AtomicDoubleBuffer() = default;

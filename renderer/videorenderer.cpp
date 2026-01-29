@@ -193,13 +193,7 @@ void VideoRenderer::render() {
         glClear(GL_COLOR_BUFFER_BIT);
         return;
     }
-    // if (!m_renderData || !m_renderData->frmItem.frm) {
-    //     glClearColor(0.0627f, 0.0627f, 0.0627f, 1.0f);
-    //     glClear(GL_COLOR_BUFFER_BIT);
-    //     return;
-    // }
 
-    // m_renderData->mutex.lock();
     GLint prevAlign = 0;
     GLint prevRowLen = 0;
     glGetIntegerv(GL_UNPACK_ALIGNMENT, &prevAlign);
@@ -217,7 +211,7 @@ void VideoRenderer::render() {
     }
 
     static int ct0 = 0, ct1 = 0;
-    bool ok = m_vidData->read([&](VideoRenderData &renData, int idx) -> bool {
+    [[maybe_unused]] bool ok = m_vidData->read([&](VideoRenderData &renData, int idx) -> bool {
         if (idx == 0)
             ct0++;
         else
@@ -244,27 +238,7 @@ void VideoRenderer::render() {
         return true;
     });
 
-    // // 更新视频纹理
-    // AVFrame *frm = m_renderData->frmItem.frm;
-    // if (frm->width != m_width || frm->height != m_height || frm->format != m_AVPixelFormat) {
-    //     m_needInitVideoTex = true;
-    //     initVideoTex(m_renderData);
-    // }
-
-    // if (m_subRenderData && m_subRenderData->subtitleType != SUBTITLE_NONE &&
-    //     (m_subRenderData->frmItem.width != m_widthSub || m_subRenderData->frmItem.height != m_heightSub)) {
-    //     m_needInitSubtitleTex = true;
-    //     initSubtitleTex(m_subRenderData);
-    // }
-
-    // // 更新参数
-    // for (int i = 0; i < 4; ++i) {
-    //     dataArr[i] = m_renderData->dataArr[i];
-    // }
-    // 上传纹理
-    // 纯色背景
-
-    // 绘制
+    // =======绘制==============
 
     // 灰底背景
     glClearColor(0.0627f, 0.0627f, 0.0627f, 1.0f);
@@ -291,7 +265,6 @@ void VideoRenderer::render() {
 
     m_program.release();
     // 绘制结束
-    // m_renderData->renderedTime = getRelativeSeconds();
 }
 
 void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
