@@ -6,6 +6,7 @@
 #endif
 #ifndef UTILS_H
 #define UTILS_H
+#include "compat/compat.h"
 #include "types/types.h"
 #include <QAudioFormat>
 #include <atomic>
@@ -64,11 +65,11 @@ public:
 
     bool push(const T &value) {
         // 生产者本地快照
-        size_t current_tail = m_tail.v.load(std::memory_order_relaxed);
+        size_t current_tail = m_tail.load(std::memory_order_relaxed);
         size_t next_tail = nextIndex(current_tail);
 
         // 检查队列是否已满
-        if (next_tail == m_head.v.load(std::memory_order_acquire)) {
+        if (next_tail == m_head.load(std::memory_order_acquire)) {
             return false; // 队列满，推送失败
         }
 
@@ -76,16 +77,16 @@ public:
         m_buffer[current_tail] = value;
 
         // 发布tail的更新，确保前面的数据存储对消费者可见
-        m_tail.v.store(next_tail, std::memory_order_release);
+        m_tail.store(next_tail, std::memory_order_release);
         return true;
     }
 
     bool pop(T &value) {
         // 消费者本地快照
-        size_t current_head = m_head.v.load(std::memory_order_relaxed);
+        size_t current_head = m_head.load(std::memory_order_relaxed);
 
         // 检查队列是否为空
-        if (current_head == m_tail.v.load(std::memory_order_acquire)) {
+        if (current_head == m_tail.load(std::memory_order_acquire)) {
             return false; // 队列空，弹出失败
         }
 
@@ -93,7 +94,7 @@ public:
         value = m_buffer[current_head];
 
         // 发布head的更新，告知生产者新的头部位置
-        m_head.v.store(nextIndex(current_head), std::memory_order_release);
+        m_head.store(nextIndex(current_head), std::memory_order_release);
         return true;
     }
 
@@ -103,10 +104,10 @@ public:
      */
     bool peekFirst(T &value) {
         // 消费者本地快照
-        size_t current_head = m_head.v.load(std::memory_order_relaxed);
+        size_t current_head = m_head.load(std::memory_order_relaxed);
 
         // 检查队列是否为空
-        if (current_head == m_tail.v.load(std::memory_order_acquire)) {
+        if (current_head == m_tail.load(std::memory_order_acquire)) {
             return false; // 队列空，弹出失败
         }
 
@@ -116,8 +117,8 @@ public:
     }
 
     size_t size() const {
-        size_t head = m_head.v.load(std::memory_order_acquire);
-        size_t tail = m_tail.v.load(std::memory_order_acquire);
+        size_t head = m_head.load(std::memory_order_acquire);
+        size_t tail = m_tail.load(std::memory_order_acquire);
         if (tail >= head)
             return tail - head;
         else
@@ -139,13 +140,8 @@ private:
     const size_t m_capacity; // 环形缓冲区的总容量（包括浪费的一个位置）
     std::vector<T> m_buffer; // 数据缓冲区
 
-    struct alignas(64) PaddedAtomic {
-        std::atomic<size_t> v;
-        char pad[64 - sizeof(std::atomic<size_t>)]; // 填充缓存行,防止伪共享
-        PaddedAtomic() : v(0) {}
-    };
-    PaddedAtomic m_head; // 读索引（消费者使用）
-    PaddedAtomic m_tail; // 写索引（生产者使用）
+    alignas(hardware_destructive_interference_size) std::atomic<size_t> m_head; // 读索引（消费者使用）
+    alignas(hardware_destructive_interference_size) std::atomic<size_t> m_tail; // 写索引（生产者使用）
     std::atomic<int> m_serial{0};
 };
 
