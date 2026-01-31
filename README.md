@@ -88,11 +88,11 @@ add_custom_command(TARGET appAZPlayer POST_BUILD
 │  main.cpp
 │  qml.qrc
 │  resource.qrc
-│  utils.h 
+├─utils # 工具
 ├─clock # 时钟
 ├─demux # 解复用器
 ├─decode # 音、视频、字幕解码器
-├─renderer # 音频、视频播放控制器（控制数据输出节奏），以及音频播放设备和视频画面渲染器
+├─renderer # 音频、视频播放控制器（控制数据输出节奏），以及音频播放设备、文本字幕渲染器和视频画面渲染器
 ├─controller # 管理整个后端并向前端提供接口
 ├─qml # 前端UI
 ├─docs
@@ -100,7 +100,12 @@ add_custom_command(TARGET appAZPlayer POST_BUILD
     ├─icon # 图标
     └─shaderSource # OpenGL的顶点着色器和片段着色器
 ```
-![](./static/img2.png)
+
+![](./static/architecture.png)
+
+> 其中两个副解复用器用于从外部加载音频和字幕
+> 文本字幕是一次性加载的，后续帧数据全部由文本字幕渲染器提供
+
 ## 图标
 
 本项目图标来自[material-design-icons](https://fonts.google.com/icons)
