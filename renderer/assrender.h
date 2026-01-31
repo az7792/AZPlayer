@@ -38,6 +38,7 @@ public:
     bool init(const std::string &subFile); // 通过字幕文件加载
     /**
      * @param subStreamIdx 流ID，-1表示自动选中最佳字幕流
+     * @note subStreamIdx 指 Demux全局的流ID
      */
     bool init(const std::string &mediaFile, int subStreamIdx);
     bool uninit();

@@ -158,7 +158,8 @@ bool Demux::switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue w
         closeStream(MediaType::Subtitle);
     }
 
-    isAssSub = ASSRender::instance().init(m_URL, streamIdx);
+    // ASS初始化用的demux全局的流ID
+    isAssSub = ASSRender::instance().init(m_URL, m_subtitleIdx[streamIdx]);
     if (isAssSub) {
         std::lock_guard<std::mutex> mtx(m_mutex);
         m_subtitlePktBuf.reset(), m_subtitleFrmBuf.reset();

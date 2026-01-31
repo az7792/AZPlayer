@@ -95,7 +95,8 @@ private:
 
     // 解复用器
     std::array<Demux *, to_index(MediaIdx::Count)> m_demuxs{nullptr, nullptr, nullptr}; // 0文件 1字幕 2音轨
-    std::array<std::pair<int, int>, to_index(MediaIdx::Count)> m_streams;               // 当前的视频流/字幕流/音频流所使用的{demuxIdx,streamIdx}
+    // 当前的视频流/字幕流/音频流所使用的{demuxIdx,streamIdx}，streamIdx是指demux中同类型的流中的顺序，不是demux全局的
+    std::array<std::pair<int, int>, to_index(MediaIdx::Count)> m_streams;
     // 音视频解码器
     DecodeAudio *m_decodeAudio = nullptr;
     DecodeVideo *m_decodeVideo = nullptr;
