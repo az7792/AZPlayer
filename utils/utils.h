@@ -140,8 +140,8 @@ private:
     const size_t m_capacity; // 环形缓冲区的总容量（包括浪费的一个位置）
     std::vector<T> m_buffer; // 数据缓冲区
 
-    alignas(hardware_destructive_interference_size) std::atomic<size_t> m_head; // 读索引（消费者使用）
-    alignas(hardware_destructive_interference_size) std::atomic<size_t> m_tail; // 写索引（生产者使用）
+    alignas(hardware_destructive_interference_size) std::atomic<size_t> m_head{0}; // 读索引（消费者使用）
+    alignas(hardware_destructive_interference_size) std::atomic<size_t> m_tail{0}; // 写索引（生产者使用）
     std::atomic<int> m_serial{0};
 };
 
