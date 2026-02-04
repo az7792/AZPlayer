@@ -3,18 +3,17 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import VideoWindow 1.0
 import "../controls"
-Rectangle{
+import "../playerState"
+Popup{
     id:root
-    color: "#1c1c1c"
-    border.color: "#a1cafe"
-    border.width: 1
+    background: Rectangle{
+        color: "#1c1c1c"
+        border.color: "#a1cafe"
+        border.width: 1
+    }
+    padding: 10
 
-    property VideoWindow videoWindow: null
-    property AZDial angleDial : null
-
-    ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: border.width
+    contentItem: ColumnLayout {
         AZTabBar{
             id:tabBar
             Layout.fillWidth: true
@@ -38,6 +37,8 @@ Rectangle{
     }
 
 
+
+
     component MyVidioCtrl:Column{
         spacing: 5
         Row {
@@ -55,13 +56,13 @@ Rectangle{
                     notation: DoubleValidator.StandardNotation
                 }
                 anchors.verticalCenter: parent.verticalCenter
-                onEditingFinished: angleDial.value = Number(text) //angleDial会自己调用setAngle
-                onWheelUp: angleDial.value = (Number(text) + 1) % 360     //angleDial会自己调用setAngle
-                onWheelDown: angleDial.value = (Number(text) - 1 + 360) % 360   //angleDial会自己调用setAngle
+                onEditingFinished: AZPlayerState.videoAngle = Number(text)
+                onWheelUp: AZPlayerState.videoAngle = (Number(text) + 1) % 360
+                onWheelDown: AZPlayerState.videoAngle = (Number(text) - 1 + 360) % 360
                 Connections {
-                    target: videoWindow
+                    target: AZPlayerState
                     function onVideoAngleChanged() {
-                        inputAngle.text = videoWindow.angle().toFixed(1)
+                        inputAngle.text = AZPlayerState.videoAngle.toFixed(1)
                     }
                 }
             }
@@ -77,13 +78,13 @@ Rectangle{
                     top: 600
                 }
                 anchors.verticalCenter: parent.verticalCenter
-                onEditingFinished: videoWindow.setScale(Number(text))
-                onWheelUp: videoWindow.addScale()
-                onWheelDown: videoWindow.subScale()
+                onEditingFinished: AZPlayerState.videoScale = Number(text)
+                onWheelUp: AZPlayerState.videoScale += 1
+                onWheelDown: AZPlayerState.videoScale -= 1
                 Connections {
-                    target: videoWindow
+                    target: AZPlayerState
                     function onVideoScaleChanged() {
-                        inputScale.text = videoWindow.scale()
+                        inputScale.text = AZPlayerState.videoScale
                     }
                 }
             }
@@ -101,14 +102,13 @@ Rectangle{
                     notation: DoubleValidator.StandardNotation
                 }
                 anchors.verticalCenter: parent.verticalCenter
-                onEditingFinished: {videoWindow.setX(Number(text))
-                console.log(text)}
-                onWheelUp: videoWindow.addX()
-                onWheelDown: videoWindow.subX()
+                onEditingFinished: AZPlayerState.videoX = Number(text)
+                onWheelUp: AZPlayerState.videoX += 1
+                onWheelDown: AZPlayerState.videoX -= 1
                 Connections {
-                    target: videoWindow
+                    target: AZPlayerState
                     function onVideoXChanged() {
-                        inputX.text = videoWindow.tx().toFixed(1)
+                        inputX.text = AZPlayerState.videoX.toFixed(1)
                     }
                 }
             }
@@ -126,13 +126,13 @@ Rectangle{
                     notation: DoubleValidator.StandardNotation
                 }
                 anchors.verticalCenter: parent.verticalCenter
-                onEditingFinished: videoWindow.setY(-Number(text)) // QML坐标的Y轴与OpenGL的Y轴是相反的
-                onWheelUp: videoWindow.subY() // QML坐标的Y轴与OpenGL的Y轴是相反的
-                onWheelDown: videoWindow.addY() // QML坐标的Y轴与OpenGL的Y轴是相反的
+                onEditingFinished: AZPlayerState.videoY = Number(text)
+                onWheelUp: AZPlayerState.videoY += 1
+                onWheelDown: AZPlayerState.videoY -= 1
                 Connections {
-                    target: videoWindow
+                    target: AZPlayerState
                     function onVideoYChanged() {
-                        inputY.text = -videoWindow.ty().toFixed(1) // QML坐标的Y轴与OpenGL的Y轴是相反的
+                        inputY.text = AZPlayerState.videoY.toFixed(1)
                     }
                 }
             }
@@ -144,11 +144,12 @@ Rectangle{
                 anchors.verticalCenter: parent.verticalCenter
                 text: "恢复屏幕"
                 onClicked: {
-                    videoWindow.setXY(0,0)
+                    AZPlayerState.videoX = 0
+                    AZPlayerState.videoY = 0
                     horizontalMirrorCheckBox.checked = false
                     verticalMirrorCheckBox.checked = false
-                    angleDial.value = 0
-                    videoWindow.setScale(100)
+                    AZPlayerState.videoAngle = 0
+                    AZPlayerState.videoScale = 100
                 }
             }
         }
@@ -161,7 +162,7 @@ Rectangle{
                 width: 80
                 text:"水平镜像"
                 textColor: "#ebebeb"
-                onCheckedChanged: videoWindow.setHorizontalMirror(checked)
+                onCheckedChanged: { AZPlayerState.videoHorizontalMirror = checked }
             }
 
             AZCheckBox {
@@ -170,7 +171,7 @@ Rectangle{
                 width: 80
                 text:"垂直镜像"
                 textColor: "#ebebeb"
-                onCheckedChanged: videoWindow.setVerticalMirror(checked)
+                onCheckedChanged: { AZPlayerState.videoVerticalMirror = checked }
             }
         }
     }
@@ -184,7 +185,7 @@ Rectangle{
             text:"显示字幕"
             checked: true
             textColor: "#ebebeb"
-            onCheckedChanged: videoWindow.setShowSubtitle(checked)
+            onCheckedChanged: { AZPlayerState.videoShowSubtitle = checked }
         }
     }
 

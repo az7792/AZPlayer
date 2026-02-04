@@ -3,9 +3,10 @@
 
 import QtQuick
 import "../controls"
+// 加载展示媒体流信息（音频或字幕）
 Item{
 
-    property string streamType: "AUDIO"
+    property string streamType: "AUDIO" // 或 "SUBTITLE"
     property int currentIdx: -1
 
     ListModel{

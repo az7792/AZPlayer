@@ -216,7 +216,7 @@ void VideoRenderer::render() {
             ct0++;
         else
             ct1++;
-        qDebug() << "video read: " << ct0 << ct1 << idx << GlobalClock::instance().getMainPts() * 1000;
+        // qDebug() << "video read: " << ct0 << ct1 << idx << GlobalClock::instance().getMainPts() * 1000;
         AVFrame *frm = renData.frmItem.frm;
         if (frm == nullptr)
             return false;

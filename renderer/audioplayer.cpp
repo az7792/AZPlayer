@@ -401,6 +401,8 @@ void AudioPlayer::playerLoop() {
             emit seeked();
         }
         m_forceRefresh = false;
+        if (!DeviceStatus::instance().haveVideo())
+            emit playedOneFrame();
     }
 
     if (m_audioSink) { // 不能在其他线程销毁

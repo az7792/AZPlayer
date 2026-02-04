@@ -4,16 +4,12 @@
 import QtQuick
 import QtQuick.Layouts
 import "../controls"
-/*TODO: 目前Qt|Windows从FullScreen到Maximized的实际路线是FullScreen->Windowed->Maximized
-        从Minimized到Maximized或FullScreen（这儿指从dock栏点击图标从最小化还原到之前的状态）的实际路线都是Minimized->Windowed
-        且直接使用窗口自带的控件没有上述问题
-        因此窗口切换逻辑暂且采用一下的简单逻辑
-*/
+
 Rectangle{
     id: root
 
     // 外部传入的窗口
-    property Window targetWindow: null
+    required property AZWindow targetWindow
 
     // 按钮统一样式
     property int iconWidth: 16
@@ -21,22 +17,22 @@ Rectangle{
 
     Connections {
         target: targetWindow
-        function onVisibilityChanged() {
-            let tmp = targetWindow.visibility
+        function onWindowStateChanged() {
+            let tmp = targetWindow.windowState
 
-            if(tmp == Window.Maximized ){
+            if(tmp === targetWindow.winMaximized){
                 fullScreenBtn.tooltipText = "全屏"
                 fullScreenBtn.iconSource = "qrc:/icon/fullscreen.png"
 
                 maximizeBtn.tooltipText = "恢复"
                 maximizeBtn.iconSource = "qrc:/icon/restore.png"
-            }else if(tmp == Window.FullScreen){
+            }else if(tmp === targetWindow.winFullScreen){
                 fullScreenBtn.tooltipText = "退出全屏"
                 fullScreenBtn.iconSource = "qrc:/icon/fullscreen_exit.png"
 
                 maximizeBtn.tooltipText = "恢复"
                 maximizeBtn.iconSource = "qrc:/icon/restore.png"
-            }else if(tmp == Window.Windowed){
+            }else if(tmp === targetWindow.winNormal){
                 maximizeBtn.tooltipText = "最大化"
                 maximizeBtn.iconSource = "qrc:/icon/maximize.png"
 
@@ -52,20 +48,20 @@ Rectangle{
         spacing: 0
 
         function toggleFullScreen(){
-            let nowVis = targetWindow.visibility
-            if(nowVis == Window.FullScreen){
-                targetWindow.showNormal()
+            let nowWinState = targetWindow.windowState
+            if(nowWinState === targetWindow.winFullScreen){
+                targetWindow.restore()
             }else{
-                targetWindow.showFullScreen()
+                targetWindow.fullscreen()
             }
         }
 
         function toggleMaximized(){
-            let nowVis = targetWindow.visibility
-            if(nowVis == Window.Windowed){
-                targetWindow.showMaximized()
-            }else if(nowVis == Window.FullScreen || nowVis == Window.Maximized){
-                targetWindow.showNormal()
+            let nowWinState = targetWindow.windowState
+            if(nowWinState === targetWindow.winNormal){
+                targetWindow.maximize()
+            }else if(nowWinState === targetWindow.winFullScreen || nowWinState == Window.Maximized){
+                targetWindow.restore()
             }
         }
 
@@ -77,7 +73,7 @@ Rectangle{
             iconHeight: root.iconHeight
             iconSource: "qrc:/icon/minimize.png"
             tooltipText: "最小化"
-            onLeftClicked:targetWindow.showMinimized();
+            onLeftClicked: targetWindow.minimize()
         }
 
         AZButton {
@@ -110,7 +106,7 @@ Rectangle{
             iconHeight: root.iconHeight
             iconSource: "qrc:/icon/close.png"
             tooltipText: "关闭"
-            onLeftClicked:targetWindow.close();
+            onLeftClicked: targetWindow.close()
         }
     }
 }

@@ -39,7 +39,9 @@ qt_add_executable(appAZPlayer
 
 #qt_policy(SET QTP0001 NEW)
 
-set_source_files_properties(qml/controls/AZTooltip.qml
+set_source_files_properties(
+    qml/controls/AZTooltip.qml
+    qml/playerState/AZPlayerState.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
 
@@ -57,6 +59,8 @@ qt_add_qml_module(appAZPlayer
               qml/controls/AZTooltip.qml
               qml/controls/AZCheckBox.qml
               qml/controls/AZComboBox.qml
+              qml/controls/AZWindow.qml
+              qml/controls/AZEventBlocker.qml
               qml/fileDialog/AZFileDialog.qml
               qml/bottomBar/AZPlayerCtrlBar.qml
               qml/bottomBar/AZProgressBar.qml
@@ -66,10 +70,12 @@ qt_add_qml_module(appAZPlayer
               qml/topBar/AZTopBar.qml
               qml/topBar/AZWindowControls.qml
               qml/sideBar/AZStreamView.qml
-              qml/sideBar/AZFileSideBar.qml
+              qml/sideBar/AZSideBar.qml
               qml/sideBar/AZFileTab.qml
               qml/sideBar/AZSubtitleTab.qml
               qml/sideBar/AZAudioTab.qml
+              qml/videoArea/AZVideoArea.qml
+              qml/playerState/AZPlayerState.qml
     SOURCES demux/demux.h demux/demux.cpp
             decode/decodebase.h decode/decodebase.cpp
             decode/decodeaudio.h decode/decodeaudio.cpp

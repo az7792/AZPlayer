@@ -129,6 +129,7 @@ void VideoPlayer::playerLoop() {
             emit seeked();
         }
         m_forceRefresh = false;
+        emit playedOneFrame();
     }
     return;
 }

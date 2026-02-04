@@ -1,44 +1,41 @@
 import QtQuick
 import QtQuick.Layouts
 import "../controls"
-import "../fileDialog"
+import "../playerState"
 import "../topBar"
 
 ColumnLayout{
-    property AZFileDialog fileDialog:null
-    property AZTopBar topBar: null
-    property alias fileTab: fileTab
-
+    property alias fileListView: fileTab
 
     AZListView{
         id: fileTab
         Layout.fillHeight: true
         Layout.fillWidth: true
         color: "#3b3b3b"
-        listModel: fileDialog.listModel
+        listModel: AZPlayerState.mediaListModel
 
         onDelActive:{
-            topBar.setTextWrapper("")
+            AZPlayerState.currentFile = ""
             MediaCtrl.close()
         }
 
         onStopActive: {
-            topBar.setTextWrapper("")
+            AZPlayerState.currentFile = ""
             MediaCtrl.close()
         }
 
         Connections {
-            target: fileDialog
-            function onOpenIndex(index) {
+            target: AZPlayerState.mediafileDialog
+            function onOpenMediaByIdx(index) {
                 fileTab.setHighlightIdx(index)
-                topBar.setTextWrapper(fileDialog.listModel.get(index).text)
-                MediaCtrl.open(fileDialog.activeFilePath)
+                AZPlayerState.currentFile = fileTab.listModel.get(index).text
+                MediaCtrl.open(AZPlayerState.mediafileDialog.activeFilePath)
             }
         }
 
         onOpenIndex:function(index){
-            topBar.setTextWrapper(fileDialog.listModel.get(index).text)
-            MediaCtrl.open(fileDialog.listModel.get(index).fileUrl)
+            AZPlayerState.currentFile = fileTab.listModel.get(index).text
+            MediaCtrl.open(fileTab.listModel.get(index).fileUrl)
         }
     }
 
@@ -57,7 +54,7 @@ ColumnLayout{
             anchors.bottomMargin: 3
             anchors.leftMargin: 3
             text: "添加文件"
-            onClicked: fileDialog.addFile()
+            onClicked: AZPlayerState.mediafileDialog.addMediaFile()
         }
     }
 }

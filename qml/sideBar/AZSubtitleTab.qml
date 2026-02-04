@@ -1,11 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import "../controls"
-import "../fileDialog"
+import "../playerState"
 
 ColumnLayout{
-    property AZFileDialog fileDialog:null
-
     AZStreamView {
         id: subtitleTab
         streamType: "SUBTITLE"
@@ -27,7 +25,7 @@ ColumnLayout{
             anchors.bottomMargin: 3
             anchors.leftMargin: 3
             text: "添加字幕"
-            onClicked: fileDialog.openSubtitleStreamFile()
+            onClicked: AZPlayerState.mediafileDialog.openSubtitleStreamFile()
         }
     }
 }

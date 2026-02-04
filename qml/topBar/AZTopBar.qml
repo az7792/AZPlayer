@@ -2,16 +2,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
-import QtQuick.Window 2.15
 import "../controls"
+import "../playerState"
 Rectangle{
     id: topBar
 
-    property Window mainWindow: null
+    required property AZWindow mainWindow
+    property bool isActive: false
 
-    function setTextWrapper(str){
-        titleText.text = str
-    }
+    AZEventBlocker{anchors.fill: parent}
 
     AZPlayerAbout{
         id:appAbout
@@ -36,10 +35,13 @@ Rectangle{
         anchors.rightMargin: 1
         color: "#1d1d1d"
         clip: true
+        DragHandler {
+            target: null
+            onActiveChanged: if(active) mainWindow.startMoveWindow()
+        }
         MouseArea {
-            anchors.fill: parent
-            onPressed: mainWindow.startSystemMove()
-            onDoubleClicked: mainWindow.visibility = mainWindow.visibility == Window.Windowed ? Window.Maximized : Window.Windowed
+            anchors.fill: parent            
+            onDoubleClicked: mainWindow.toggleMaximize()
         }
         Text {
             id: titleText
@@ -52,6 +54,7 @@ Rectangle{
             anchors.rightMargin: 5
             wrapMode: Text.NoWrap
             elide: Text.ElideRight
+            text: AZPlayerState.currentFile
         }
     }
 

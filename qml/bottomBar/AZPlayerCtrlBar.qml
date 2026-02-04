@@ -4,15 +4,21 @@
 import QtQuick
 import QtQuick.Controls
 import "../controls"
+import "../playerState"
 Item{
-    id:playerCtrlBar
+    id: playerCtrlBar
     height: 40
 
-    property AZListView listView: null
-    property Item splitView: null
-    property int currentTime: 0
-    property bool playerSettingOpened: false
-    signal openFileBtnClicked()
+    // 开关侧边栏
+    signal requestToggleSideBar()
+
+    // 打开setting
+    signal requestOpenSetting()
+
+    readonly property bool popupOpened: chapterComboBox.popupOpened
+
+    required property bool playerSettingOpened
+    required property AZListView fileListView
 
     Row{
         id:btnRow
@@ -38,7 +44,7 @@ Item{
             iconHeight: 16
             iconSource: "qrc:/icon/stop.png"
             tooltipText: "停止"
-            onLeftClicked: listView.stopActiveItem()
+            onLeftClicked: MediaCtrl.close()
         }
         AZButton{
             id:skipPrevBtn
@@ -49,7 +55,7 @@ Item{
             iconSource: "qrc:/icon/skip_previous.png"
             tooltipText: "L:快退，R:上一个"
             onLeftClicked: MediaCtrl.fastRewind()
-            onRightClicked: listView.openPrev()
+            onRightClicked: playerCtrlBar.fileListView.openPrev()
         }
         AZButton{
             id:skipNextBtn
@@ -60,7 +66,7 @@ Item{
             iconSource: "qrc:/icon/skip_next.png"
             tooltipText: "L:快进，R:下一个"
             onLeftClicked: MediaCtrl.fastForward()
-            onRightClicked: listView.openNext()
+            onRightClicked: playerCtrlBar.fileListView.openNext()
         }
 
         AZButton{
@@ -93,9 +99,9 @@ Item{
                 target: MediaCtrl
                 function onPlayed() {
                     if(playbackModeBtn.mode === 1){
-                        listView.openNext()
+                        playerCtrlBar.fileListView.openNext()
                     } else if(playbackModeBtn.mode === 2){
-                        listView.openRandom()
+                        playerCtrlBar.fileListView.openRandom()
                     }
                 }
             }
@@ -109,7 +115,7 @@ Item{
             iconHeight: 16
             iconSource: "qrc:/icon/open.png"
             tooltipText: "打开文件"
-            onLeftClicked: playerCtrlBar.openFileBtnClicked()
+            onLeftClicked: AZPlayerState.mediafileDialog.openMediaFile()
         }
     }
 
@@ -139,7 +145,7 @@ Item{
         Text {
             id: mediaDurationText1
             color: "#ebebeb"
-            text: parent.secondsToHMS(playerCtrlBar.currentTime)
+            text: parent.secondsToHMS(MediaCtrl.progress)
             font.family: "Segoe UI"
             font.pixelSize: 12
             anchors.verticalCenter: parent.verticalCenter
@@ -189,22 +195,42 @@ Item{
         width: height
         anchors.right: fileListBtn.left
         anchors.rightMargin: 1
-        onLeftClicked: playerCtrlBar.playerSettingOpened = !playerCtrlBar.playerSettingOpened
         iconHeight: 20
-        iconWidth: 20
+        iconWidth: 20        
+        onLeftClicked: requestOpenSetting()
         iconSource: playerCtrlBar.playerSettingOpened ? "qrc:/icon/player_settings_opened.png" : "qrc:/icon/player_settings_closed.png"
-        tooltipText: playerCtrlBar.playerSettingOpened ? "关闭播放设置" : "打开播放设置"
+        tooltipText: "打开播放设置"
+
+        AZEventBlocker{
+            anchors.fill: parent
+            visible: playerCtrlBar.playerSettingOpened
+
+            onPositionChanged: (mouse) => {
+                if (containsMouse) {
+                    let globalPos = playerSetting.mapToItem(playerCtrlBar.window, 0, 0)
+                    AZTooltip.show("关闭播放设置" ,mouse.x + globalPos.x, mouse.y + globalPos.y)
+                }
+            }
+
+            onExited: {
+                AZTooltip.hide()
+            }
+        }
     }
 
     AZButton{
+        property bool sideBarOpened: false
         id:fileListBtn
         height: parent.height
         width: height
         anchors.right: parent.right
-        onLeftClicked: playerCtrlBar.splitView.toggleSidebar()
+        onLeftClicked: {
+            playerCtrlBar.requestToggleSideBar()
+            sideBarOpened = !sideBarOpened
+        }
         iconHeight: 20
         iconWidth: 20
-        iconSource: "qrc:/icon/list.png"
-        tooltipText: "打开/关闭列表"
+        iconSource: sideBarOpened ? "qrc:/icon/list_opened.png" : "qrc:/icon/list.png"
+        tooltipText: sideBarOpened ? "关闭列表" : "打开列表"
     }
 }

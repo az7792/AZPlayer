@@ -9,47 +9,57 @@ Rectangle{
     height: 20
     color: "#1d1d1d"
 
-    property int currentTime: 0
-
-    Timer {
-        id: currentTimeTimer
-        interval: 500
-        repeat: true
-        onTriggered: {
-            progressBar.currentTime = MediaCtrl.getCurrentTime()
-        }
-    }
-    Component.onCompleted:{
-        currentTimeTimer.start()
-    }
-
     AZSlider{
         id:videoSlider
 
         property bool isSeeking: false
-        property real seekTs: 0.0
+        property real lastSeekTime: 0  // 上次实际 seek 的时间 (毫秒)
+
+        // 延时seek
+        Timer {
+            id: seekDelayTimer
+            interval: 50
+            repeat: false
+            onTriggered: {
+                videoSlider.doSeek(videoSlider.value)
+            }
+        }
+
+        // 执行seek后延时恢复seeking状态，避免进度条鬼畜
+        Timer {
+            id: closeSeekingTimeer
+            interval: 350
+            repeat: false
+            onTriggered: {
+                videoSlider.isSeeking = false
+            }
+        }
+
+        function doSeek(targetValue) {
+            videoSlider.lastSeekTime = Date.now() // 当前系统时间（毫秒）
+            MediaCtrl.seekBySec(targetValue, 0.0)
+            closeSeekingTimeer.start()
+        }
 
         height: parent.height
         anchors.left: parent.left
         anchors.right: volumeBtn.left
         from: 0.0
-        value: (pressed || isSeeking) ? value : progressBar.currentTime
+        value: (pressed || isSeeking) ? value : MediaCtrl.progress
         to: MediaCtrl.duration
         stepSize: 0.01
         snapMode: Slider.SnapOnRelease
         onValueChanged: {
-            if(pressed){
-                seekTs = value
-                videoSlider.isSeeking = true
-                MediaCtrl.seekBySec(videoSlider.seekTs,0.0)
-                //seekDelay1.restart()
-            }
-        }
-        Connections {
-            target: MediaCtrl
-            function onSeeked() {
-                progressBar.currentTime = MediaCtrl.getCurrentTime()//强制更新
-                videoSlider.isSeeking = false
+            if(!pressed) return
+            videoSlider.isSeeking = true
+            closeSeekingTimeer.stop()
+            let timeDiff = Date.now() - lastSeekTime
+            if (timeDiff >= 100) {
+                seekDelayTimer.stop()
+                doSeek(value)
+            } else {
+                // 延时执行
+                seekDelayTimer.restart()
             }
         }
     }

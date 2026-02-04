@@ -10,19 +10,19 @@ import QtQuick.Dialogs
 Rectangle {
     id:root
 
-    signal openIndex(int index)
+    signal openMediaByIdx(int index)
 
     property url activeFilePath: ""
-    property alias listModel: listModel
+    property alias mediaListModel: medialist
     // 是否允许加载
     property bool allowFolderLoad: false
 
-    function openFile(){
-        fileDialogSingle.open()
+    function openMediaFile(){
+        openMediafileDialog.open()
     }
 
-    function addFile(){
-        fileDialogMulti.open()
+    function addMediaFile(){
+        addMediafileDialog.open()
     }
 
     function openSubtitleStreamFile(){
@@ -33,13 +33,14 @@ Rectangle {
         audioStreamDialog.open()
     }
 
+    // 已加载的媒体文件
     ListModel {
-        id: listModel
+        id: medialist
 
         function existsInModel(fileUrl){
             let lower = fileUrl.toString().toLowerCase()
             for (let i = 0; i < count; ++i) {
-                if (listModel.get(i).fileUrl.toString().toLowerCase() === lower)
+                if (medialist.get(i).fileUrl.toString().toLowerCase() === lower)
                     return true
             }
             return false
@@ -54,19 +55,19 @@ Rectangle {
         showDirs:false
         onStatusChanged: {
             if (status === FolderListModel.Ready && root.allowFolderLoad) {
-                listModel.clear()
+                medialist.clear()
 
                 let i;
                 for (i = 0; i < count; ++i) {
-                    listModel.append({text: folderModel.get(i, "fileName"),
+                    medialist.append({text: folderModel.get(i, "fileName"),
                                       fileUrl: folderModel.get(i, "fileUrl")})
                 }
                 root.allowFolderLoad = false;
 
                 //更新播放索引
-                for(i = 0; i < listModel.count ;++i){
-                    if(listModel.get(i).fileUrl.toString().toLowerCase() === root.activeFilePath.toString().toLowerCase()){
-                        openIndex(i)
+                for(i = 0; i < medialist.count ;++i){
+                    if(medialist.get(i).fileUrl.toString().toLowerCase() === root.activeFilePath.toString().toLowerCase()){
+                        openMediaByIdx(i)
                         break
                     }
                 }
@@ -75,9 +76,9 @@ Rectangle {
     }
 
 
-    // 单选对话框
+    // 打开一个媒体文件，并刷新媒体文件列表
     FileDialog {
-        id: fileDialogSingle
+        id: openMediafileDialog
         title: "选择一个文件"
         acceptLabel:"打开"
         rejectLabel:"取消"
@@ -104,9 +105,9 @@ Rectangle {
         onRejected: { console.log("[FileDialogSingle] 取消") }
     }
 
-    // 多选对话框
+    // 添加单个或多个文件到媒体文件列表
     FileDialog {
-        id: fileDialogMulti
+        id: addMediafileDialog
         title: "选择一个或多个文件"
         acceptLabel:"打开"
         rejectLabel:"取消"
@@ -114,8 +115,8 @@ Rectangle {
         onAccepted: {
             for (var i = 0; i < selectedFiles.length; ++i) {
                 var fileName = selectedFiles[i].toString().split(/[\\/]/).pop()
-                if (!listModel.existsInModel(selectedFiles[i])) {
-                    listModel.append({text: fileName, fileUrl:selectedFiles[i]})
+                if (!medialist.existsInModel(selectedFiles[i])) {
+                    medialist.append({text: fileName, fileUrl:selectedFiles[i]})
                 }
             }
         }

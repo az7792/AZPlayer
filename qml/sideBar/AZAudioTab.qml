@@ -1,10 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import "../controls"
-import "../fileDialog"
+import "../playerState"
 ColumnLayout{
-    property AZFileDialog fileDialog:null
-
     AZStreamView {
         id: audioTab
         streamType: "AUDIO"
@@ -26,7 +24,7 @@ ColumnLayout{
             anchors.bottomMargin: 3
             anchors.leftMargin: 3
             text: "添加音轨"
-            onClicked: fileDialog.openAudioStreamFile()
+            onClicked: AZPlayerState.mediafileDialog.openAudioStreamFile()
         }
     }
 }

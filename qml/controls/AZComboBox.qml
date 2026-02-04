@@ -7,6 +7,7 @@ ComboBox {
     id:root
 
     property alias popupWidth: mypopup.width
+    readonly property bool popupOpened: mypopup.opened
 
     // 渲染下拉列表的每一项
     delegate: ItemDelegate {

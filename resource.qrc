@@ -26,6 +26,7 @@
         <file alias="player_settings_closed.png">resource/icon/player_settings_closed.png</file>
         <file alias="player_settings_opened.png">resource/icon/player_settings_opened.png</file>
         <file alias="check_box_checked.png">resource/icon/check_box_checked.png</file>
+        <file alias="list_opened.png">resource/icon/list_opened.png</file>
     </qresource>
     <qresource prefix="/">
         <file>qml/bottomBar/AZBottomBar.qml</file>
@@ -45,12 +46,16 @@
         <file>qml/controls/AZTooltip.qml</file>
         <file>qml/bottomBar/AZPlayerCtrlBar.qml</file>
         <file>qml/bottomBar/AZProgressBar.qml</file>
-        <file>qml/sideBar/AZFileSideBar.qml</file>
+        <file>qml/sideBar/AZSideBar.qml</file>
         <file>qml/sideBar/AZFileTab.qml</file>
         <file>qml/sideBar/AZSubtitleTab.qml</file>
         <file>qml/sideBar/AZAudioTab.qml</file>
         <file>qml/bottomBar/AZPlayerSetting.qml</file>
         <file>qml/controls/AZCheckBox.qml</file>
         <file>qml/controls/AZComboBox.qml</file>
+        <file>qml/controls/AZWindow.qml</file>
+        <file>qml/controls/AZEventBlocker.qml</file>
+        <file>qml/videoArea/AZVideoArea.qml</file>
+        <file>qml/playerState/AZPlayerState.qml</file>
     </qresource>
 </RCC>

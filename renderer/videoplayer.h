@@ -44,6 +44,7 @@ public:
 signals:
     void renderDataReady(VideoDoubleBuf *vidData, SubtitleDoubleBuf *subData);
     void seeked();
+    void playedOneFrame(); // 播放了一帧
 
 private:
     // 双缓冲

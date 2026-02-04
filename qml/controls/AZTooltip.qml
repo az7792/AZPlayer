@@ -11,7 +11,14 @@ Window {
     flags: Qt.ToolTip | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
     color: "transparent"
 
-    property Window mainWindow: null
+    required property Window mainWindow
+
+    Connections{
+        target: mainWindow
+        function onWidthChanged(){
+            if(tooltipWindow.visible) tooltipWindow.hide()
+        }
+    }
 
     Rectangle {
         id: box
@@ -39,10 +46,13 @@ Window {
         px += mainWindow.x
         py += mainWindow.y
         label.text = msg
+        let offsetX = px + 8 + box.width - Screen.width
+        let offsetY = py + 16 + box.height - Screen.height
+        y = py + 16 - (offsetY > 0 ? offsetY : 0)
+        x = (offsetX > 0 && offsetY > 0) ? (px - box.width - 4)
+                : (px + 8 - (offsetX > 0 ? offsetX : 0))
         width = box.width
         height = box.height
-        x = px + 8
-        y = py + 16
         visible = true
         raise() // 保证显示在最上层
     }

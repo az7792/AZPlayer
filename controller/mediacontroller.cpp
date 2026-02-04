@@ -45,6 +45,12 @@ MediaController::MediaController(QObject *parent)
 
     QObject::connect(m_audioPlayer, &AudioPlayer::seeked, this, &MediaController::seeked);
     QObject::connect(m_videoPlayer, &VideoPlayer::seeked, this, &MediaController::seeked);
+    QObject::connect(m_videoPlayer, &VideoPlayer::playedOneFrame, this, [&]() {
+        setProgress(getCurrentTime());
+    });
+    QObject::connect(m_audioPlayer, &AudioPlayer::playedOneFrame, this, [&]() {
+        setProgress(getCurrentTime());
+    });
     // 如果是多个解复用器同时seek，需要使用第一个解复用器seek到的实际位置来seek剩余的解复用器
     QObject::connect(m_demuxs[0], &Demux::seeked, this, &MediaController::seekAudioAndSubtitleDemux);
     QObject::connect(this, &MediaController::seeked, this, [&]() {
@@ -132,6 +138,7 @@ bool MediaController::open(const QUrl &URL) {
     DeviceStatus::instance().setHaveVideo(haveVideo);
 
     setDuration(m_demuxs[defDemuxIdx]->getDuration()); // 总时长
+    setProgress(0);
     GlobalClock::instance().reset();
     GlobalClock::instance().setMainClockType(ClockType::AUDIO); // 默认
     m_audioPlayer->setVolume(m_muted ? 0.0 : m_volume);         // start之前设置好
@@ -199,10 +206,11 @@ bool MediaController::close() {
     DeviceStatus::instance().setHaveVideo(false);
     GlobalClock::instance().reset();
     ASSRender::instance().uninit();
-    m_opened = false;
+    setOpened(false);
     m_streams.fill({-1, -1});
     setPaused(true);
     setDuration(0);
+    setProgress(0);
     qDebug() << "关闭";
     emit streamInfoUpdate();
     emit chaptersInfoUpdate();
@@ -336,6 +344,17 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
     m_streams[to_index(MediaIdx::Audio)] = {demuxIdx, streamIdx}; // 更新
 
     return true;
+}
+
+int MediaController::progress() const {
+    return m_progress;
+}
+
+void MediaController::setProgress(int newProgress) {
+    if (m_progress == newProgress)
+        return;
+    m_progress = newProgress;
+    emit progressChanged();
 }
 
 bool MediaController::loopOnEnd() const { return m_loopOnEnd; }

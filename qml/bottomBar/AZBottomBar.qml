@@ -1,26 +1,35 @@
 import QtQuick
 import "../fileDialog"
+import "../controls"
+import "../playerState"
 //底部控制栏
 Rectangle{
-    id:bottomBar
+    id: bottomBar
     height: progressBar.height + playerCtrlBar.height + 1
 
-    property alias listView: playerCtrlBar.listView
-    property alias splitView: playerCtrlBar.splitView
-    property alias videoWindow: playerSetting.videoWindow
-    property alias angleDial: playerSetting.angleDial
-    property AZFileDialog fileDialog:null
-    property alias playerSettingOpened: playerCtrlBar.playerSettingOpened
+    // 开关侧边栏
+    signal requestToggleSideBar()
 
-    color: "black"    
+    property bool isActive: playerSetting.opened | playerCtrlBar.popupOpened
+
+    required property AZListView fileListView
+
+    color: "black"
+
+    AZEventBlocker{
+        anchors.fill: parent
+        onWheel: function(wheel) {
+            if (wheel.angleDelta.y > 0) MediaCtrl.addVolum()
+            else if (wheel.angleDelta.y < 0) MediaCtrl.subVolum()
+        }
+    }
 
     AZPlayerSetting{
         id:playerSetting
-        visible: playerCtrlBar.playerSettingOpened
         height: 250
         width: 400
-        anchors.right: parent.right
-        anchors.bottom: progressBar.top
+        x: parent.width - width
+        y: -height
     }
 
     AZProgressBar{
@@ -32,12 +41,14 @@ Rectangle{
 
     AZPlayerCtrlBar{
         id:playerCtrlBar
-        currentTime: progressBar.currentTime
         z:1
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: progressBar.bottom
         anchors.topMargin: 1
-        onOpenFileBtnClicked: fileDialog.openFile()
-    }
+        fileListView: bottomBar.fileListView        
+        onRequestToggleSideBar: bottomBar.requestToggleSideBar()
+        playerSettingOpened: playerSetting.opened
+        onRequestOpenSetting: playerSetting.open()
+    }    
 }
