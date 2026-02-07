@@ -21,6 +21,20 @@ Rectangle {
         openMediafileDialog.open()
     }
 
+    function onStartupFiles(files){
+        medialist.clear()
+        for (var i = 0; i < files.length; ++i) {
+            // var fileUrl = files[i].fileUrl
+            // var name = files[i].text
+            // console.log("Open file:", fileUrl,name)
+            medialist.append(files[i])
+        }
+        if (files.length > 0) {
+            root.activeFilePath = files[0].fileUrl
+            openMediaByIdx(0)
+        }
+    }
+
     function addMediaFile(){
         addMediafileDialog.open()
     }

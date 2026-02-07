@@ -23,6 +23,11 @@ AZWindow {
         AZTooltip.mainWindow = mainWin
     }
 
+    // 启动参数
+    function onStartupFiles(files) {
+        AZPlayerState.mediafileDialog.onStartupFiles(files)
+    }
+
     // 鼠标滚轮控制旋转角度或音量
     WheelHandler {
         target: videoArea
