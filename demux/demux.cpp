@@ -242,6 +242,10 @@ AVFormatContext *Demux::formatCtx() {
     return m_formatCtx;
 }
 
+bool Demux::isEOF() {
+    return m_isEOF;
+}
+
 void Demux::seekAllPktQueue() {
     if (auto q = m_audioPktBuf.lock()) {
         q->addSerial();

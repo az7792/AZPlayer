@@ -67,17 +67,7 @@ MediaController::MediaController(QObject *parent)
     // DEBUG: end
 
     // 定时判断是否播完
-    QObject::connect(&m_timer, &QTimer::timeout, this, [&]() {
-        if (m_opened && !m_played && getCurrentTime() > m_duration) {
-            if (m_loopOnEnd) {
-                seekBySec(0.0, 0.0);
-            } else {
-                togglePaused();
-                m_played = true;
-                emit played();
-            }
-        }
-    });
+    QObject::connect(&m_timer, &QTimer::timeout, this, &MediaController::checkPlayerFinished);
     m_timer.start(100);
 }
 
@@ -334,6 +324,7 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
     m_demuxs[demuxIdx]->switchAudioStream(streamIdx, m_pktAudioBuf, m_frmAudioBuf);
     m_decodeAudio->init(m_demuxs[demuxIdx]->getStream(MediaType::Audio), m_pktAudioBuf, m_frmAudioBuf);
     m_audioPlayer->init(m_demuxs[demuxIdx]->getStream(MediaType::Audio)->codecpar, m_frmAudioBuf);
+    DeviceStatus::instance().setHaveAudio(true);
     m_decodeAudio->start();
     m_audioPlayer->start();
 
@@ -426,6 +417,36 @@ bool MediaController::seekAudioAndSubtitleDemux(double pts) {
     m_demuxs[1]->seekBySec(pts, 0.0);
     m_demuxs[2]->seekBySec(pts, 0.0);
     return true;
+}
+
+void MediaController::checkPlayerFinished() {
+    if (!m_opened || m_played || !m_demuxs[0]->isEOF())
+        return;
+
+    bool haveAudio = m_streams[to_index(MediaIdx::Audio)].second != -1;
+
+    bool audioQueueIsEmpty = m_pktAudioBuf->size() == 0 && m_frmAudioBuf->size() == 0;
+    bool videoQueueIsEmpty = m_pktVideoBuf->size() == 0 && m_frmVideoBuf->size() == 0;
+    bool playerFinished = false;
+
+    if (haveAudio) {
+        if (audioQueueIsEmpty) {
+            playerFinished = true;
+        }
+    } else if (videoQueueIsEmpty) {
+        playerFinished = true;
+    }
+
+    if (playerFinished) {
+        if (m_loopOnEnd) {
+            seekBySec(0.0, 0.0);
+        } else {
+            if (!m_paused)
+                togglePaused(); // HACK: 已经暂停有可能触发播放介绍吗？
+            m_played = true;
+            emit played();
+        }
+    }
 }
 
 int MediaController::getCurrentTime() const {

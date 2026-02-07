@@ -71,6 +71,8 @@ public:
     const std::vector<ChapterInfo> &chaptersInfo() { return m_chaptersInfo; }
 
     AVFormatContext *formatCtx();
+
+    bool isEOF();
 public slots:
 signals:
     // 当前解复用器seek完成
