@@ -62,6 +62,9 @@ Rectangle{
                 seekDelayTimer.restart()
             }
         }
+        Keys.onPressed: (event) => {
+            event.accepted = true
+        }
     }
 
     AZButton{
@@ -90,6 +93,9 @@ Rectangle{
         snapMode: Slider.SnapOnRelease
         onMoved:{
             MediaCtrl.setVolume(value);
+        }
+        Keys.onPressed: (event) => {
+            event.accepted = true
         }
     }
 }
