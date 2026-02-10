@@ -219,18 +219,35 @@ Item{
     }
 
     AZButton{
-        property bool sideBarOpened: false
         id:fileListBtn
         height: parent.height
         width: height
         anchors.right: parent.right
+        
+        property bool sideBarOpened: false
+        property bool tooltipEnabled: true
+
+        // 切换侧边栏后延时一段时间再启用tooltip，避免因窗口尺寸改变导致tooltip乱飞
+        Timer {
+            id: tooltipDelayTimer
+            interval: 100
+            repeat: false
+            onTriggered: {
+                fileListBtn.tooltipEnabled = true
+            }
+        }
+
         onLeftClicked: {
+            AZTooltip.hide()
+            tooltipEnabled = false
+            tooltipDelayTimer.restart()
+
             playerCtrlBar.requestToggleSideBar()
             sideBarOpened = !sideBarOpened
         }
         iconHeight: 20
         iconWidth: 20
         iconSource: sideBarOpened ? "qrc:/icon/list_opened.png" : "qrc:/icon/list.png"
-        tooltipText: sideBarOpened ? "关闭列表" : "打开列表"
+        tooltipText: tooltipEnabled ? (sideBarOpened ? "关闭列表" : "打开列表") : ""
     }
 }
