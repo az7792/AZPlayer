@@ -43,6 +43,43 @@ AZWindow {
         }
     }
 
+    Item {
+        id: keyboardController
+
+        // 播放/暂停（空格）
+        Shortcut {
+            sequence: "Space"
+            autoRepeat: false
+            onActivated: MediaCtrl.togglePaused()
+        }
+
+        // 后退 (左方向键)
+        Shortcut {
+            sequence: "Left"
+            autoRepeat: false
+            onActivated: MediaCtrl.fastRewind()
+        }
+
+        // 前进 (右方向键)
+        Shortcut {
+            sequence: "Right"
+            autoRepeat: false
+            onActivated: MediaCtrl.fastForward()
+        }
+
+        // 音量加 (上方向键)
+        Shortcut {
+            sequence: "Up"
+            onActivated: MediaCtrl.addVolum()
+        }
+
+        // 音量减 (下方向键)
+        Shortcut {
+            sequence: "Down"
+            onActivated: MediaCtrl.subVolum()
+        }
+    }
+
     // ====topBar、 bottomBar、sideBar区域是否包含鼠标====
     property bool containsTopBar: false
     property bool containsBottomBar: false
@@ -203,31 +240,11 @@ AZWindow {
         Keys.forwardTo : [angleDial]
 
         Keys.onPressed: function(event) {
-            if (event.isAutoRepeat && event.key === Qt.Key_Space) return
-
-            switch (event.key) {
-                case Qt.Key_Space:
-                    MediaCtrl.togglePaused()
-                    break
-                case Qt.Key_Left:
-                    MediaCtrl.fastRewind()
-                    break
-                case Qt.Key_Right:
-                    MediaCtrl.fastForward()
-                    break
-                case Qt.Key_Up:
-                    MediaCtrl.addVolum()
-                    break
-                case Qt.Key_Down:
-                    MediaCtrl.subVolum()
-                    break
-                case Qt.Key_Alt:
-                    angleDial.visible = true
-                    break
-                default:
-                    return
+            if (event.isAutoRepeat) return
+            if (event.key === Qt.Key_Alt) {
+                angleDial.visible = true
+                event.accepted = true
             }
-            event.accepted = true
         }
 
         Keys.onReleased: function(event) {
