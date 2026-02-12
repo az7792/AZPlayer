@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Xuefei Ai
+// SPDX-FileCopyrightText: 2025-2026 Xuefei Ai
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #ifndef VIDEOPLAYER_H
