@@ -6,6 +6,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Qt.labs.folderlistmodel
 import QtQuick.Dialogs
+import "../playerState"
 
 Rectangle {
     id:root
@@ -140,7 +141,7 @@ Rectangle {
     // 打开字幕文件对话框
     FileDialog {
         id: subtitleStreamDialog
-        title: "选择字幕文件"
+        title: "选择字幕文件 - 当前在正在播放:" + AZPlayerState.currentFile
         acceptLabel: "打开"
         rejectLabel: "取消"
         fileMode: FileDialog.OpenFile
@@ -161,7 +162,7 @@ Rectangle {
     // 打开音轨文件对话框
     FileDialog {
         id: audioStreamDialog
-        title: "选择音轨文件"
+        title: "选择音轨文件 - 当前在正在播放:" + AZPlayerState.currentFile
         acceptLabel: "打开"
         rejectLabel: "取消"
         fileMode: FileDialog.OpenFile
