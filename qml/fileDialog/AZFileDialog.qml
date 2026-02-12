@@ -12,7 +12,7 @@ Rectangle {
 
     signal openMediaByIdx(int index)
 
-    property url activeFilePath: ""
+    property string activeFilePath: ""
     property alias mediaListModel: medialist
     // 是否允许加载
     property bool allowFolderLoad: false
@@ -51,10 +51,10 @@ Rectangle {
     ListModel {
         id: medialist
 
-        function existsInModel(fileUrl){
-            let lower = fileUrl.toString().toLowerCase()
+        function existsInModel(fileUrl){ //fileUrl 为string类型
+            let lower = fileUrl.toLowerCase()
             for (let i = 0; i < count; ++i) {
-                if (medialist.get(i).fileUrl.toString().toLowerCase() === lower)
+                if (medialist.get(i).fileUrl.toLowerCase() === lower)
                     return true
             }
             return false
@@ -73,14 +73,14 @@ Rectangle {
 
                 let i;
                 for (i = 0; i < count; ++i) {
-                    medialist.append({text: folderModel.get(i, "fileName"),
-                                      fileUrl: folderModel.get(i, "fileUrl")})
+                    medialist.append({text: folderModel.get(i, "fileName").toString(),
+                                      fileUrl: folderModel.get(i, "fileUrl").toString()})
                 }
                 root.allowFolderLoad = false;
 
                 //更新播放索引
                 for(i = 0; i < medialist.count ;++i){
-                    if(medialist.get(i).fileUrl.toString().toLowerCase() === root.activeFilePath.toString().toLowerCase()){
+                    if(medialist.get(i).fileUrl.toLowerCase() === root.activeFilePath.toLowerCase()){
                         openMediaByIdx(i)
                         break
                     }
@@ -100,7 +100,7 @@ Rectangle {
         nameFilters: ["媒体文件 (*.mp4 *.mkv *.avi *.mp3 *.aac *.mka)", "所有文件 (*)"]
         onAccepted: {
             if (!selectedFile) return
-            root.activeFilePath = selectedFile
+            root.activeFilePath = selectedFile.toString()
 
             var parts = selectedFile.toString().split('.')
 
@@ -129,8 +129,8 @@ Rectangle {
         onAccepted: {
             for (var i = 0; i < selectedFiles.length; ++i) {
                 var fileName = selectedFiles[i].toString().split(/[\\/]/).pop()
-                if (!medialist.existsInModel(selectedFiles[i])) {
-                    medialist.append({text: fileName, fileUrl:selectedFiles[i]})
+                if (!medialist.existsInModel(selectedFiles[i].toString())) {
+                    medialist.append({text: fileName, fileUrl:selectedFiles[i].toString()})
                 }
             }
         }

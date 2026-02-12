@@ -12,7 +12,11 @@ public:
     // 获取单例
     static FileHelper &instance();
 
-    // 展开文件和文件夹，返回QVariantMap列表，单个map包含text(文件名)和fileUrl(URL)
+    /**
+     * 展开文件和文件夹，返回QVariantMap列表，单个map包含两个(key,value),类型均为QString:
+     * text:文件名
+     * fileUrl:URL
+     */
     Q_INVOKABLE QVariantList expandFiles(const QStringList &inputPaths);
 
 signals:
