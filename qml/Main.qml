@@ -309,12 +309,16 @@ AZWindow {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: mainWin.resizeBorderWidth
         width: 4
-        x: mainWin.width - _rightRectWidth - width
+        readonly property int leftMinWidth: mainWin.width * 0.4          // 左侧最小宽度
+        readonly property int rightMinWidth: mainWin.minimumWidth * 0.4  // 右侧最小宽度
 
-        property int leftMinWidth: mainWin.width * 0.4                  // 左侧最小宽度
-        property int rightMinWidth: Math.min(mainWin.width * 0.2 , 200) // 右侧最小宽度
+        property int _rightRectWidth: 160
 
-        property int _rightRectWidth: mainWin.width * 0.2
+        Component.onCompleted: {
+            // 只在初始化时计算一次，不建立动态绑定
+            _rightRectWidth = rightMinWidth
+            x = mainWin.width - _rightRectWidth - width
+        }
 
         MouseArea {
             id: splitterMouseArea
@@ -364,9 +368,9 @@ AZWindow {
         property bool canShow: false
         function toggleSidebar(){
             canShow = !canShow
-            // FIXME: 在第一次加载时打开侧边栏会稍微向内挤压视频区域
             if(mainWin.windowState === mainWin.winNormal){
-                let tmpWidth = mainWin.width + (canShow ? 1 : -1) * (sideBar.width + splitter.width + 1) // +1是因为视频与splitter有1px的空隙
+                let targetAddWidth = splitter._rightRectWidth - mainWin.resizeBorderWidth + splitter.width + 1 // +1是因为视频与splitter有1px的空隙                
+                let tmpWidth = mainWin.width + (canShow ? targetAddWidth : -targetAddWidth)
                 tmpWidth = Math.max(mainWin.minimumWidth, Math.min(Screen.desktopAvailableWidth,tmpWidth))
                 let offset = tmpWidth + mainWin.x - Screen.desktopAvailableWidth
                 if(offset > 0){
