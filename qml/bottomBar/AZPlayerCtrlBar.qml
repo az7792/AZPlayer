@@ -43,7 +43,7 @@ Item{
             iconHeight: 16
             iconSource: "qrc:/icon/stop.png"
             tooltipText: "停止"
-            onLeftClicked: MediaCtrl.close()
+            onLeftClicked: fileListView.stopActiveItem()
         }
         AZButton{
             id:skipPrevBtn
