@@ -3,7 +3,7 @@
 
 pragma Singleton
 import QtQuick 2.15
-import "../fileDialog"
+import AZPlayer 1.0
 
 Item {
     property string currentFile: ""            // 当前播放的媒体文件
@@ -21,5 +21,6 @@ Item {
     // FileDialog
     AZFileDialog{
         id: fileDialog
+        currentPlayingFile: currentFile // NOTE: 避免 AZFileDialog 直接访问 AZPlayerState.currentFile 导致的循环引用
     }
 }

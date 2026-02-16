@@ -4,9 +4,7 @@
 import QtQuick
 import QtQuick.Layouts
 import VideoWindow 1.0
-import "../controls"
-import "../fileDialog"
-import "../topBar"
+import AZPlayer 1.0
 Rectangle {
     id: sideBar
     property alias fileListView: fileTab.fileListView

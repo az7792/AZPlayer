@@ -5,8 +5,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import VideoWindow 1.0
-import "../controls"
-import "../playerState"
+import AZPlayer 1.0
 Popup{
     id:root
     background: Rectangle{

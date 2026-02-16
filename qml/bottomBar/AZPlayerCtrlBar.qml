@@ -3,8 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import "../controls"
-import "../playerState"
+import AZPlayer 1.0
 Item{
     id: playerCtrlBar
     height: 40

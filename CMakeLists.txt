@@ -21,8 +21,9 @@ set(app_icon_resource_windows "${CMAKE_CURRENT_SOURCE_DIR}/resource/icon/appico.
 find_package(Qt6 6.4 REQUIRED COMPONENTS Quick)
 find_package(Qt6 REQUIRED COMPONENTS QuickControls2)
 find_package(Qt6 REQUIRED COMPONENTS Gui)
-find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core Qml)
 find_package(Qt6 REQUIRED COMPONENTS Multimedia)
+qt_standard_project_setup()
 
 if (MSVC)
     add_compile_options(/W4)
@@ -30,14 +31,13 @@ else() # GCC/Clang 下
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-qt_standard_project_setup()
+qt_policy(SET QTP0001 NEW)
 
 qt_add_executable(appAZPlayer
     main.cpp
     ${app_icon_resource_windows}
 )
 
-#qt_policy(SET QTP0001 NEW)
 
 set_source_files_properties(
     qml/controls/AZTooltip.qml

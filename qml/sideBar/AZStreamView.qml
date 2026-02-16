@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick
-import "../controls"
+import AZPlayer 1.0
 // 加载展示媒体流信息（音频或字幕）
 Item{
 

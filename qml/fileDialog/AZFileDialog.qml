@@ -6,14 +6,14 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Qt.labs.folderlistmodel
 import QtQuick.Dialogs
-import "../playerState"
 
 Rectangle {
     id:root
 
     signal openMediaByIdx(int index)
 
-    property string activeFilePath: ""
+    property string currentPlayingFile: "" // 当前播放的文件 fileName ，由 AZPlayerState 创建时绑定到 AZPlayerState.currentFile
+    property string activeFilePath: ""     // 当前选中的文件路径 file:///....
     property alias mediaListModel: medialist
     // 是否允许加载
     property bool allowFolderLoad: false
@@ -141,7 +141,7 @@ Rectangle {
     // 打开字幕文件对话框
     FileDialog {
         id: subtitleStreamDialog
-        title: "选择字幕文件 - 当前在正在播放:" + AZPlayerState.currentFile
+        title: "选择字幕文件 - 当前在正在播放:" + root.currentPlayingFile
         acceptLabel: "打开"
         rejectLabel: "取消"
         fileMode: FileDialog.OpenFile
@@ -162,7 +162,7 @@ Rectangle {
     // 打开音轨文件对话框
     FileDialog {
         id: audioStreamDialog
-        title: "选择音轨文件 - 当前在正在播放:" + AZPlayerState.currentFile
+        title: "选择音轨文件 - 当前在正在播放:" + root.currentPlayingFile
         acceptLabel: "打开"
         rejectLabel: "取消"
         fileMode: FileDialog.OpenFile

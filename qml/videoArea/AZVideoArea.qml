@@ -3,7 +3,7 @@
 
 import QtQuick
 import VideoWindow 1.0
-import "../playerState"
+import AZPlayer 1.0
 Item {
     VideoWindow {
         anchors.fill: parent

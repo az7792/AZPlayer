@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     qmlRegisterType<VideoWindow>("VideoWindow", 1, 0, "VideoWindow");
     engine.rootContext()->setContextProperty("MediaCtrl", &mc);
     engine.rootContext()->setContextProperty("appDirPath", QCoreApplication::applicationDirPath());
-    const QUrl url(QStringLiteral("qrc:/qml/Main.qml"));
+
     QObject::connect(
         &engine,
         &QQmlApplicationEngine::objectCreationFailed,
@@ -57,6 +57,6 @@ int main(int argc, char *argv[]) {
                 Q_ARG(QVariant, mediaFiles));
         });
 
-    engine.load(url);
+    engine.loadFromModule("AZPlayer", "Main");
     return app.exec();
 }

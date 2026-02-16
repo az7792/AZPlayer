@@ -4,7 +4,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
-import VideoWindow 1.0
 import QtQuick.Layouts
 import AZPlayer 1.0
 
@@ -208,7 +207,7 @@ AZWindow {
 
         onReleased: function(mouse) {
             toggleBarContains(mouse.x, mouse.y)
-        }
+        }        
     }
 
 

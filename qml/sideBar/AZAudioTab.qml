@@ -3,8 +3,7 @@
 
 import QtQuick
 import QtQuick.Layouts
-import "../controls"
-import "../playerState"
+import AZPlayer 1.0
 ColumnLayout{
     AZStreamView {
         id: audioTab

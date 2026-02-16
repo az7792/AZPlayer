@@ -28,7 +28,7 @@
         <file alias="check_box_checked.png">resource/icon/check_box_checked.png</file>
         <file alias="list_opened.png">resource/icon/list_opened.png</file>
     </qresource>
-    <qresource prefix="/">
+    <qresource prefix="/qt/qml">
         <file>qml/bottomBar/AZBottomBar.qml</file>
         <file>qml/Main.qml</file>
         <file>qml/topBar/AZPlayerAbout.qml</file>

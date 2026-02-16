@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick
-import "../fileDialog"
-import "../controls"
-import "../playerState"
+import AZPlayer 1.0
 //底部控制栏
 Rectangle{
     id: bottomBar

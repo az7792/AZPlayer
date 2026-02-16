@@ -3,9 +3,7 @@
 
 import QtQuick
 import QtQuick.Layouts
-import "../controls"
-import "../playerState"
-import "../topBar"
+import AZPlayer 1.0
 
 ColumnLayout{
     property alias fileListView: fileTab

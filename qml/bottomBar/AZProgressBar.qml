@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import "../controls"
+import AZPlayer 1.0
 Rectangle{
     id:progressBar
     height: 20
