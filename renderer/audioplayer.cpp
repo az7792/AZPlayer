@@ -400,9 +400,11 @@ void AudioPlayer::playerLoop() {
         if (m_forceRefresh && GlobalClock::instance().mainClockType() == ClockType::AUDIO) {
             emit seeked();
         }
-        m_forceRefresh = false;
-        if (!DeviceStatus::instance().haveVideo())
+
+        if (!DeviceStatus::instance().haveVideo() || m_forceRefresh)
             emit playedOneFrame();
+
+        m_forceRefresh = false;
     }
 
     if (m_audioSink) { // 不能在其他线程销毁

@@ -43,7 +43,7 @@ public:
 
 signals:
     void seeked();
-    void playedOneFrame(); // 播放了一帧(仅没有视频流时发射该信号)
+    void playedOneFrame(); // 播放了一帧(仅没有视频流 或是 seek 时发射该信号)
 
 private:
     sharedFrmQueue m_frmBuf;
