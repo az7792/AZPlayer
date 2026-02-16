@@ -83,6 +83,27 @@ add_custom_command(TARGET appAZPlayer POST_BUILD
 ...
 ```
 
+## 打包发布
+
+1. 首先使用 `release` 模式编译一遍程序
+2. 将 `release.ps1` 脚本中的4个常量根据实际情况改成你自己的
+```
+# [常量1] 编译后的可执行文件路径
+$ExeSourcePath = ".\out\build\release\appAZPlayer.exe"
+
+# [常量2] libass/bin 的文件夹路径
+$LibAssBinPath = ".\libass\bin"
+
+# [常量3] ffmpeg/bin 的文件夹路径
+$FfmpegBinPath = "D:\ffmpeg-8.0-full_build-shared\bin"
+
+# [常量4] windeployqt.exe 所在路径
+# !!! 提示：请确保此工具与编译主程序时使用的套件一致 (如均为 MinGW 或均为 MSVC)
+$WindeployqtPath = "D:\Qt\6.6.3\msvc2019_64\bin\windeployqt.exe"
+```
+3. 执行该脚本
+4. 脚本执行完成后程序会被打包到当前文件夹下的 `release` 文件夹里
+
 ## 文件/程序结构
 
 ```
