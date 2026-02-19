@@ -9,6 +9,7 @@
 
 #include "controller/mediacontroller.h"
 #include "renderer/videorenderer.h"
+#include "stats/playbackstats.h"
 #include "utils/filehelper.h"
 
 int main(int argc, char *argv[]) {
@@ -33,6 +34,7 @@ int main(int argc, char *argv[]) {
     QQmlApplicationEngine engine;
     qmlRegisterType<VideoWindow>("VideoWindow", 1, 0, "VideoWindow");
     engine.rootContext()->setContextProperty("MediaCtrl", &mc);
+    engine.rootContext()->setContextProperty("PlaybackStats", &PlaybackStats::instance());
     engine.rootContext()->setContextProperty("appDirPath", QCoreApplication::applicationDirPath());
 
     QObject::connect(

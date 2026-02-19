@@ -4,6 +4,7 @@
 #include "mediacontroller.h"
 #include "clock/globalclock.h"
 #include "renderer/videorenderer.h"
+#include "stats/playbackstats.h"
 #include <QFileInfo>
 
 namespace {
@@ -57,18 +58,21 @@ MediaController::MediaController(QObject *parent)
         m_played = false;
     });
 
-    // DEBUG:start
-    static QTimer timer;
-    QObject::connect(&timer, &QTimer::timeout, this, [&]() {
-        qDebug() << "AudioPkt:" << m_pktAudioBuf->size() << "VideoPkt:" << m_pktVideoBuf->size() << "SubtitlePkt:" << m_pktSubtitleBuf->size();
-        qDebug() << "AudioFrm:" << m_frmAudioBuf->size() << "VideoFrm:" << m_frmVideoBuf->size() << "SubtitleFrm:" << m_frmSubtitleBuf->size() << "\n";
+    // 更新队列长度
+    QObject::connect(&m_updatePktAndFrmQueueSizeTimer, &QTimer::timeout, this, [&]() {
+        PlaybackStats::instance().audioPacketCount = m_pktAudioBuf->size();
+        PlaybackStats::instance().videoPacketCount = m_pktVideoBuf->size();
+        PlaybackStats::instance().subtitlePacketCount = m_pktSubtitleBuf->size();
+
+        PlaybackStats::instance().audioFrameCount = m_frmAudioBuf->size();
+        PlaybackStats::instance().videoFrameCount = m_frmVideoBuf->size();
+        PlaybackStats::instance().subtitleFrameCount = m_frmSubtitleBuf->size();
     });
-    timer.start(3000); // 每1000ms触发一次
-    // DEBUG: end
+    m_updatePktAndFrmQueueSizeTimer.start(1000); // 每1000ms触发一次
 
     // 定时判断是否播完
-    QObject::connect(&m_timer, &QTimer::timeout, this, &MediaController::checkPlayerFinished);
-    m_timer.start(100);
+    QObject::connect(&m_checkPlayerFinishedTimer, &QTimer::timeout, this, &MediaController::checkPlayerFinished);
+    m_checkPlayerFinishedTimer.start(100);
 }
 
 bool MediaController::setVideoWindow(QObject *videoWindow) {
@@ -90,6 +94,7 @@ bool MediaController::open(const QUrl &URL) {
         close();
     }
 
+    PlaybackStats::instance().reset();
     static constexpr int defDemuxIdx = 0;
 
     bool ok = true;
@@ -201,6 +206,7 @@ bool MediaController::close() {
     setPaused(true);
     setDuration(0);
     setProgress(0);
+    PlaybackStats::instance().reset();
     qDebug() << "关闭";
     emit streamInfoUpdate();
     emit chaptersInfoUpdate();

@@ -4,7 +4,9 @@
 #include "demux.h"
 #include "clock/globalclock.h"
 #include "renderer/assrender.h"
+#include "stats/playbackstats.h"
 #include <QDebug>
+
 namespace {
     static char _infoBuf[512];
 
@@ -412,12 +414,17 @@ bool Demux::switchStream(MediaType type, int streamIdx, weakPktQueue wpq, weakFr
     weakPktQueue *pktBuf = nullptr;
     weakFrmQueue *frmBuf = nullptr;
 
+    AVStream *videoStream = nullptr;
     switch (type) {
     case MediaType::Video:
         idxVec = &m_videoIdx;
         usedIdx = &m_usedVIdx;
         pktBuf = &m_videoPktBuf;
         frmBuf = &m_videoFrmBuf;
+
+        // 更新视频原始FPS
+        videoStream = m_formatCtx->streams[(*idxVec)[streamIdx]];
+        PlaybackStats::instance().videoFps = av_q2d(videoStream->avg_frame_rate);
         break;
     case MediaType::Audio:
         idxVec = &m_audioIdx;

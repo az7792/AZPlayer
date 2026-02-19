@@ -57,5 +57,7 @@
         <file>qml/controls/AZEventBlocker.qml</file>
         <file>qml/videoArea/AZVideoArea.qml</file>
         <file>qml/playerState/AZPlayerState.qml</file>
+        <file>qml/videoArea/AZPlaybackStatsArea.qml</file>
+        <file>qml/videoArea/AZVideoAngleDialArea.qml</file>
     </qresource>
 </RCC>

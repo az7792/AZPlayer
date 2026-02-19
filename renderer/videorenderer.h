@@ -9,6 +9,7 @@
 #include <QOpenGLFunctions_3_3_Core>
 #include <QOpenGLShaderProgram>
 #include <QQuickFramebufferObject>
+#include <QSize>
 
 AZ_EXTERN_C_BEGIN
 #include <libavutil/frame.h>
@@ -29,12 +30,10 @@ private:
     GLuint m_vbo = 0;
     GLuint m_ebo = 0;
 
-    int m_width = 0;     // frm的宽
-    int m_height = 0;    // frm的高
-    int m_widthFBO = 0;  // FBO的宽
-    int m_heightFBO = 0; // FBO的高
-    int m_widthSub = 0;  // 字幕的宽
-    int m_heightSub = 0; // 字幕的高
+    QSize m_frameSize{};    // frm的宽高
+    QSize m_FBOSize{};      // FBO的宽高
+    QSize m_subtitleSize{}; // 字幕的宽高
+
     AVPixelFormat m_AVPixelFormat = AV_PIX_FMT_NONE;
     /**
      * Y | R | RGB | RGBA

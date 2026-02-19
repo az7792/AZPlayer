@@ -76,6 +76,8 @@ qt_add_qml_module(appAZPlayer
               qml/sideBar/AZAudioTab.qml
               qml/videoArea/AZVideoArea.qml
               qml/playerState/AZPlayerState.qml
+              qml/videoArea/AZPlaybackStatsArea.qml
+              qml/videoArea/AZVideoAngleDialArea.qml
     SOURCES demux/demux.h demux/demux.cpp
             decode/decodebase.h decode/decodebase.cpp
             decode/decodeaudio.h decode/decodeaudio.cpp
@@ -96,6 +98,7 @@ qt_add_qml_module(appAZPlayer
     SOURCES utils/dirtyrectmanager.h utils/dirtyrectmanager.cpp
     SOURCES utils/AtomicDoubleBuffer.h
     SOURCES utils/filehelper.h utils/filehelper.cpp
+    SOURCES stats/playbackstats.h stats/playbackstats.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

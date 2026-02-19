@@ -3,6 +3,7 @@
 
 #include "videorenderer.h"
 #include "clock/globalclock.h"
+#include "stats/playbackstats.h"
 #include "utils/utils.h"
 #include <QOpenGLFramebufferObjectFormat>
 namespace {
@@ -100,7 +101,7 @@ void VideoRenderer::initVideoTex(VideoRenderData *renderData) {
         return;
 
     // 初始化像素格式与上传方式
-    m_width = frm->width, m_height = frm->height;
+    m_frameSize = {frm->width, frm->height};
     m_AVPixelFormat = (AVPixelFormat)frm->format; // FFmpeg 的像素格式
 
     m_program.bind();
@@ -148,18 +149,19 @@ void VideoRenderer::initSubtitleTex(SubRenderData *subRenderData) {
         int loc = m_program.uniformLocation("subTex");
         m_program.setUniformValue(loc, 4);
 
-        m_heightSub = subRenderData->frmItem.height;
-        m_widthSub = subRenderData->frmItem.width;
+        m_subtitleSize.setHeight(subRenderData->frmItem.height);
+        m_subtitleSize.setWidth(subRenderData->frmItem.width);
 
-        if (m_heightSub == 0 || m_widthSub == 0) {
-            m_heightSub = m_height, m_widthSub = m_width;
+        if (m_subtitleSize.isNull()) {
+            m_subtitleSize = m_frameSize;
         }
 
         // 字幕纹理
-        if ((int)texFill().size() < m_widthSub * m_heightSub * 4) {
-            texFill().assign(m_widthSub * m_heightSub * 4, 0);
+        int fillLen = m_subtitleSize.height() * m_subtitleSize.width() * 4;
+        if ((int)texFill().size() < fillLen) {
+            texFill().assign(fillLen, 0);
         }
-        initTex(m_subTex, {m_widthSub, m_heightSub}, {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE}, texFill().data());
+        initTex(m_subTex, m_subtitleSize, {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE}, texFill().data());
 
         loc = m_program.uniformLocation("haveSubTex"); // 主要用于标记有字幕纹理(即使当前播放的视频没有字幕)
         m_program.setUniformValue(loc, true);
@@ -168,8 +170,8 @@ void VideoRenderer::initSubtitleTex(SubRenderData *subRenderData) {
         glActiveTexture(GL_TEXTURE0 + 4);
         glBindTexture(GL_TEXTURE_2D, m_subTex);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, m_widthSub);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_widthSub, m_heightSub, GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, m_subtitleSize.width());
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_subtitleSize.width(), m_subtitleSize.height(), GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
 
         m_needInitSubtitleTex = false;
         m_program.release();
@@ -177,8 +179,7 @@ void VideoRenderer::initSubtitleTex(SubRenderData *subRenderData) {
 }
 
 QOpenGLFramebufferObject *VideoRenderer::createFramebufferObject(const QSize &size) {
-    m_widthFBO = size.width();
-    m_heightFBO = size.height();
+    m_FBOSize = size;
 
     QOpenGLFramebufferObjectFormat format;
     format.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
@@ -202,7 +203,7 @@ void VideoRenderer::render() {
     if (m_subData) {
         m_subData->read([&](SubRenderData &renData, int) -> bool {
             // 初始化字幕纹理
-            if (renData.subtitleType != SUBTITLE_NONE && (renData.frmItem.width != m_widthSub || renData.frmItem.height != m_heightSub)) {
+            if (renData.subtitleType != SUBTITLE_NONE && (renData.frmItem.width != m_subtitleSize.width() || renData.frmItem.height != m_subtitleSize.height())) {
                 m_needInitSubtitleTex = true;
                 initSubtitleTex(&renData);
             }
@@ -210,19 +211,13 @@ void VideoRenderer::render() {
         });
     }
 
-    static int ct0 = 0, ct1 = 0;
-    [[maybe_unused]] bool ok = m_vidData->read([&](VideoRenderData &renData, int idx) -> bool {
-        if (idx == 0)
-            ct0++;
-        else
-            ct1++;
-        // qDebug() << "video read: " << ct0 << ct1 << idx << GlobalClock::instance().getMainPts() * 1000;
+    m_vidData->read([&](VideoRenderData &renData, int) -> bool {
         AVFrame *frm = renData.frmItem.frm;
         if (frm == nullptr)
             return false;
 
         // 更新视频纹理
-        if (frm->width != m_width || frm->height != m_height || frm->format != m_AVPixelFormat) {
+        if (frm->width != m_frameSize.width() || frm->height != m_frameSize.height() || frm->format != m_AVPixelFormat) {
             m_needInitVideoTex = true;
             initVideoTex(&renData);
         }
@@ -234,7 +229,13 @@ void VideoRenderer::render() {
         // 上传视频纹理
         updateTex(renData.pixFormat);
 
-        renData.renderedTime = getRelativeSeconds();
+        // 更新播放信息
+        if (frm->format != PlaybackStats::instance().videoFormat) {
+            PlaybackStats::instance().videoPixFormat = QString(av_get_pix_fmt_name((AVPixelFormat)frm->format));
+            PlaybackStats::instance().videoFormat = frm->format;
+        }
+
+        renData.renderedTime = getRelativeSeconds(); // NOTE: 当前并未使用该变量
         return true;
     });
 
@@ -265,14 +266,16 @@ void VideoRenderer::render() {
 
     m_program.release();
     // 绘制结束
+    PlaybackStats::instance().FBOSize = m_FBOSize;
+    PlaybackStats::instance().frameRendered();
 }
 
 void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
     VideoWindow *videoWindow = static_cast<VideoWindow *>(item);
     m_vidData = videoWindow->m_vidData;
     m_subData = videoWindow->m_subData;
-    m_tx = 2.f * videoWindow->m_tx / m_widthFBO;
-    m_ty = 2.f * videoWindow->m_ty / m_heightFBO;
+    m_tx = 2.f * videoWindow->m_tx / m_FBOSize.width();
+    m_ty = 2.f * videoWindow->m_ty / m_FBOSize.height();
 
     m_angle = videoWindow->m_angle * (videoWindow->m_horizontalMirror ^ videoWindow->m_verticalMirror ? -1.f : 1.f);
 
@@ -314,6 +317,7 @@ bool VideoRenderer::updateTex(VideoRenderData::PixFormat fmt) {
             uploadTexture(3, 3); // A
         }
     }
+    PlaybackStats::instance().videoSize = m_frameSize;
     return true;
 }
 
@@ -331,11 +335,12 @@ bool VideoRenderer::updateSubTex(SubRenderData &renData) {
 
     // 清空字幕，和矩形列表
     auto clearSubTex = [&]() {
-        if ((int)texFill().size() < m_widthSub * m_heightSub * 4) {
-            texFill().assign(m_widthSub * m_heightSub * 4, 0);
+        int fillLen = m_subtitleSize.height() * m_subtitleSize.width() * 4;
+        if ((int)texFill().size() < fillLen) {
+            texFill().assign(fillLen, 0);
         }
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, m_widthSub);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_widthSub, m_heightSub, GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, m_subtitleSize.width());
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_subtitleSize.width(), m_subtitleSize.height(), GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
         lastSubTexRect().clear();
     };
 
@@ -356,10 +361,10 @@ bool VideoRenderer::updateSubTex(SubRenderData &renData) {
     // 清理纹理上的旧字幕
     for (size_t i = 0; i < lastSubTexRect().size(); ++i) {
         const QRect &rect = lastSubTexRect()[i];
-        int x = std::clamp(rect.x(), 0, (int)m_width);
-        int y = std::clamp(rect.y(), 0, (int)m_height);
-        int w = std::clamp(rect.width(), 0, (int)m_width - x);
-        int h = std::clamp(rect.height(), 0, (int)m_height - y);
+        int x = std::clamp(rect.x(), 0, m_frameSize.width());
+        int y = std::clamp(rect.y(), 0, m_frameSize.height());
+        int w = std::clamp(rect.width(), 0, m_frameSize.width() - x);
+        int h = std::clamp(rect.height(), 0, m_frameSize.height() - y);
 
         if (w == 0 || h == 0)
             continue;
@@ -391,6 +396,7 @@ bool VideoRenderer::updateSubTex(SubRenderData &renData) {
         glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, subtitleData);
     }
 
+    PlaybackStats::instance().subtitleSize = m_subtitleSize;
     renData.uploaded = true;
     return true;
 }
@@ -420,15 +426,15 @@ QMatrix4x4 VideoRenderer::getTransformMat() {
 
     // 视频等比例缩放到[-1,1]的正方形里时视频右上角的坐标
     float scaleX0 = 1.0f, scaleY0 = 1.0f;
-    if (m_width > m_height) {
-        scaleY0 = 1.f * m_height / m_width;
+    if (m_frameSize.width() > m_frameSize.height()) {
+        scaleY0 = 1.f * m_frameSize.height() / m_frameSize.width();
     } else {
-        scaleX0 = 1.f * m_width / m_height;
+        scaleX0 = 1.f * m_frameSize.width() / m_frameSize.height();
     }
 
     // 将视频等比例填充满FBO并将FBO缩放到[-1,1]时视频右上角的坐标
     float scaleX = 1.0f, scaleY = 1.0f;
-    float videoAspect = 1.f * m_width / m_height, fboAspect = 1.f * m_widthFBO / m_heightFBO;
+    float videoAspect = 1.f * m_frameSize.width() / m_frameSize.height(), fboAspect = 1.f * m_FBOSize.width() / m_FBOSize.height();
     if (videoAspect > fboAspect) {
         // 视频比FBO宽，宽撑满，高缩放
         scaleY = fboAspect / videoAspect;

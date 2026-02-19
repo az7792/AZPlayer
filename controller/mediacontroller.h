@@ -109,7 +109,8 @@ private:
     AudioPlayer *m_audioPlayer = nullptr;
     VideoPlayer *m_videoPlayer = nullptr;
 
-    QTimer m_timer;
+    QTimer m_checkPlayerFinishedTimer;
+    QTimer m_updatePktAndFrmQueueSizeTimer;
 
     bool m_opened = false;   // 是否打开文件
     bool m_paused = true;    // 是否暂停

@@ -3,6 +3,7 @@
 
 #include "audioplayer.h"
 #include "clock/globalclock.h"
+#include "stats/playbackstats.h"
 #include <QDebug>
 #include <QMediaDevices>
 
@@ -349,6 +350,8 @@ qint64 AudioPlayer::write(AVFrmItem *item) {
 
     GlobalClock::instance().setAudioClk(nextPts - offsetPts);
     GlobalClock::instance().syncExternalClk(ClockType::AUDIO);
+
+    PlaybackStats::instance().audioPTS = nextPts - offsetPts;
 
     return writeCnt;
 }

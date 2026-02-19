@@ -3,6 +3,7 @@
 
 #include "videoplayer.h"
 #include "clock/globalclock.h"
+#include "stats/playbackstats.h"
 #include <QDateTime>
 #include <QDebug>
 
@@ -93,7 +94,6 @@ void VideoPlayer::clearSubtitle() {
     m_needClearSubtitle = true;
 }
 
-double d0, d1, d2, d3, d4, d5;
 void VideoPlayer::playerLoop() {
     // 确保音视频设备都完成了基本初始化
     while (!DeviceStatus::instance().initialized() && !m_stop.load(std::memory_order_relaxed)) {
@@ -102,7 +102,6 @@ void VideoPlayer::playerLoop() {
 
     AVFrmItem frmItem;
     while (!m_stop.load(std::memory_order_relaxed)) {
-        d0 = getRelativeSeconds();
         // 处理视频seek/切流
         int ok = getVideoFrm(frmItem);
         if (!ok) {
@@ -119,8 +118,6 @@ void VideoPlayer::playerLoop() {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
             continue;
         }
-
-        d1 = getRelativeSeconds();
 
         // 写如入设备
         write(frmItem);
@@ -206,9 +203,6 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
     // clang-format on
     // ==============渲染数据准备完毕==============
 
-    d2 = getRelativeSeconds();
-
-    static int lessCt = 0, moreCt = 0, loseCt = 0;
     // 同步主时钟
     double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
     double diff = GlobalClock::instance().videoPts() - GlobalClock::instance().getMainPts();
@@ -216,10 +210,10 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
     double syncThreshold = std::max(0.004, std::min(0.01, delay));
     if (!std::isnan(diff) && std::abs(diff) < maxFrameDuration) {
         if (diff <= -syncThreshold) { // 落后太多，尝试直接播放
-            lessCt++;
+            PlaybackStats::instance().lateFrameCount++;
             delay = std::max(0.0, delay + diff);
         } else if (diff >= syncThreshold) { // 领先太多
-            moreCt++;
+            PlaybackStats::instance().earlyFrameCount++;
             delay = delay + (delay > 0.1 ? diff : delay);
         }
     }
@@ -233,8 +227,6 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
     double nowTime = getRelativeSeconds();
     double dt = m_renderTime - nowTime;
 
-    d3 = getRelativeSeconds();
-
     if (dt > 0) {
         if (dt > 0.1) {
             dt = 0.1;
@@ -242,8 +234,6 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
         }
         std::this_thread::sleep_for(std::chrono::duration<double>(dt));
     }
-
-    d4 = getRelativeSeconds();
 
     AVFrmItem tmpItem;
     bool peekOk = m_frmBuf->peekFirst(tmpItem);
@@ -254,26 +244,15 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
         m_subRenderData.release();
         emit renderDataReady(&m_videoRenderData, &m_subRenderData);
     } else {
-        loseCt++;
+        PlaybackStats::instance().droppedFrameCount++;
     }
 
     // 更新视频时钟
-    // qDebug() << "v:" << pts << GlobalClock::instance().videoPts();
     GlobalClock::instance().setVideoClk(videoFrmitem.pts);
     GlobalClock::instance().syncExternalClk(ClockType::VIDEO);
 
-    d5 = getRelativeSeconds();
-
-    static int ct = 0;
-    if ((int)nowTime != ct) {
-        ct = (int)nowTime;
-        qDebug() << "sleep:" << dt
-                 << "delay:" << delay;
-        qDebug() << (d1 - d0) * 1e6 << (d2 - d1) * 1e6 << (d3 - d2) * 1e6 << (d4 - d3) * 1e6 << (d5 - d4) * 1e6;
-        qDebug() << "视频调用间隔" << d5 - d0;
-        qDebug() << "lessCt:" << lessCt << "moreCt:" << moreCt << "loseCt:" << loseCt;
-        qDebug() << "AVdiff1" << GlobalClock::instance().videoPts() - GlobalClock::instance().getMainPts();
-    }
+    PlaybackStats::instance().videoPTS = videoFrmitem.pts;
+    PlaybackStats::instance().avPtsDiff = GlobalClock::instance().getMainPts() - GlobalClock::instance().videoPts();
     return true;
 }
 

@@ -82,3 +82,5 @@ CMakePresets.json
 CMakeUserPresets.json
 libass/
 release/
+InnoSetup.iss
+release.7z

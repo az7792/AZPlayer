@@ -77,6 +77,17 @@ AZWindow {
             sequence: "Down"
             onActivated: MediaCtrl.subVolum()
         }
+
+        // 播放信息（Tab键）
+        Shortcut {
+            sequence: "Tab"
+            onActivated: {
+                if(playbackStatsArea.visible) playbackStatsArea.hideStats()
+                else playbackStatsArea.showStats()
+
+                playbackStatsArea.visible = !playbackStatsArea.visible
+            }
+        }
     }
 
     // ====topBar、 bottomBar、sideBar区域是否包含鼠标====
@@ -99,6 +110,40 @@ AZWindow {
         if(!sideBar.canShow) return false
         if(!mainWin.videoFull) return true
         return containsSideBar | sideBar.isActive
+    }
+
+
+    // 视频
+    AZVideoArea{
+        // Rectangle{
+        //     id: debugDorder
+        //     anchors.fill: parent
+        //     border.color: "green"
+        //     border.width: 1
+        //     color: "transparent"
+        // }
+
+        id: videoArea
+
+        anchors.left: parent.left
+        anchors.leftMargin: mainWin.resizeBorderWidth
+
+        anchors.top: mainWin.videoFull ? parent.top : topBar.bottom
+        anchors.topMargin: mainWin.videoFull ? mainWin.resizeBorderWidth : 1
+
+        anchors.bottom: mainWin.videoFull ? parent.bottom : bottomBar.top
+        anchors.bottomMargin: mainWin.videoFull ? mainWin.resizeBorderWidth : 1
+
+        anchors.right: mainWin.videoFull ? parent.right : (showSideBar ? splitter.left : parent.right)
+        anchors.rightMargin: mainWin.videoFull ? mainWin.resizeBorderWidth : (showSideBar ? 1 : mainWin.resizeBorderWidth)
+
+        AZPlaybackStatsArea {
+            id: playbackStatsArea
+            visible: false
+            font.family: "Consolas"
+            font.pixelSize: Math.max(12, parent.width * Screen.devicePixelRatio * 0.02)
+            anchors.fill: parent
+        }
     }
 
     // ====计算topBar、 bottomBar、sideBar区域是否包含鼠标====
@@ -128,9 +173,9 @@ AZWindow {
             }
         }
 
-        // 点击视频区域获取焦点
-        function toggleVideoGetForce(x,y) {
-            videoArea.forceActiveFocus()
+        // 点击视频区域，角度转盘获取焦点
+        function toggleVideoDialGetForce(x,y) {
+            videoAngleDialArea.forceActiveFocus()
         }
 
         //全屏时呼出topBar 或 bottomBar 或 sideBar
@@ -199,7 +244,7 @@ AZWindow {
         }
 
         onPressed: function(mouse) {
-            toggleVideoGetForce(mouse.x, mouse.y)
+            toggleVideoDialGetForce(mouse.x, mouse.y)
 
             videoInteractionArea.lastMouseX = mouse.x
             videoInteractionArea.lastMouseY = mouse.y
@@ -210,58 +255,11 @@ AZWindow {
         }        
     }
 
-
-    // 视频
-    AZVideoArea{
-        // Rectangle{
-        //     id: debugDorder
-        //     anchors.fill: parent
-        //     border.color: "green"
-        //     border.width: 1
-        //     color: "transparent"
-        // }
-
-        id: videoArea
-
-        anchors.left: parent.left
-        anchors.leftMargin: mainWin.resizeBorderWidth
-
-        anchors.top: mainWin.videoFull ? parent.top : topBar.bottom
-        anchors.topMargin: mainWin.videoFull ? mainWin.resizeBorderWidth : 1
-
-        anchors.bottom: mainWin.videoFull ? parent.bottom : bottomBar.top
-        anchors.bottomMargin: mainWin.videoFull ? mainWin.resizeBorderWidth : 1
-
-        anchors.right: mainWin.videoFull ? parent.right : (showSideBar ? splitter.left : parent.right)
-        anchors.rightMargin: mainWin.videoFull ? mainWin.resizeBorderWidth : (showSideBar ? 1 : mainWin.resizeBorderWidth)
-
-
-        Keys.forwardTo : [angleDial]
-
-        Keys.onPressed: function(event) {
-            if (event.isAutoRepeat) return
-            if (event.key === Qt.Key_Alt) {
-                angleDial.visible = true
-                event.accepted = true
-            }
-        }
-
-        Keys.onReleased: function(event) {
-            if (event.key === Qt.Key_Alt) {
-                angleDial.visible = false
-                event.accepted = true
-            }
-        }
-
-        AZDial{
-            id: angleDial
-            anchors.centerIn: parent
-            height: 150
-            width: 150
-            visible: false
-            onValueChanged: AZPlayerState.videoAngle = value
-        }
+    AZVideoAngleDialArea {
+        id: videoAngleDialArea
+        anchors.fill: videoArea
     }
+
 
     // TopBar
     AZTopBar {
