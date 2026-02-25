@@ -62,8 +62,9 @@ private:
     bool m_needInitVideoTex = true;
     bool m_needInitSubtitleTex = true;
 
-    bool m_lastShowSubtitle = true; // 上一次是否显示字幕，主要是为了防止频繁更新 shader的showSub变量
-    bool m_showSubtitle = true;     // 是否显示字幕
+    bool m_lastShowSubtitle = true;      // 上一次是否显示字幕，主要是为了防止频繁更新 shader的showSub变量
+    bool m_showSubtitle = true;          // 是否显示字幕
+    bool *m_forceClearSubtitle{nullptr}; // 是否强制清空字幕
 
     VideoDoubleBuf *m_vidData = nullptr;    // 渲染需要的视频数据
     SubtitleDoubleBuf *m_subData = nullptr; // 渲染需要的字幕数据
@@ -104,6 +105,9 @@ private:
 
     // 把纹理单元和纹理对象绑定
     void bindAllTexturesForDraw();
+
+    // 清空字幕纹理
+    void clearSubtitleTex();
 };
 
 // QML控件
@@ -200,6 +204,7 @@ public:
 
 public slots:
     void updateRenderData(VideoDoubleBuf *vidData, SubtitleDoubleBuf *subData);
+    void forceClearSubtitle();
 
 signals:
     void videoAngleChanged();
@@ -216,6 +221,7 @@ private:
     bool m_showSubtitle = true; // 是否显示字幕
     bool m_horizontalMirror{false};
     bool m_verticalMirror{false};
+    bool m_forceClearSubtitle{false}; // 强制清空字幕
     friend VideoRenderer;
 };
 #endif // VIDEORENDERER_H

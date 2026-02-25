@@ -76,9 +76,14 @@ MediaController::MediaController(QObject *parent)
 }
 
 bool MediaController::setVideoWindow(QObject *videoWindow) {
+    // HACK: 目前仅支持调用一次，多次调用不会清理旧连接
     VideoWindow *wd = static_cast<VideoWindow *>(videoWindow);
     QObject::connect(m_videoPlayer, &VideoPlayer::renderDataReady,
                      wd, &VideoWindow::updateRenderData,
+                     Qt::QueuedConnection);
+
+    QObject::connect(this, &MediaController::clearVideoFBOSubtitleTex,
+                     wd, &VideoWindow::forceClearSubtitle,
                      Qt::QueuedConnection);
     return true;
 }
@@ -210,6 +215,7 @@ bool MediaController::close() {
     qDebug() << "关闭";
     emit streamInfoUpdate();
     emit chaptersInfoUpdate();
+    emit clearVideoFBOSubtitleTex();
     return ok;
 }
 

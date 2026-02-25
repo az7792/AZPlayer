@@ -132,6 +132,9 @@ private:
     bool openStreamByFile(const QUrl &URL, MediaIdx idx);
     bool seekAudioAndSubtitleDemux(double pts);
     void checkPlayerFinished();
+
+signals:
+    void clearVideoFBOSubtitleTex();
 };
 
 #endif // MEDIACONTROLLER_H

@@ -157,21 +157,13 @@ void VideoRenderer::initSubtitleTex(SubRenderData *subRenderData) {
         }
 
         // 字幕纹理
-        int fillLen = m_subtitleSize.height() * m_subtitleSize.width() * 4;
-        if ((int)texFill().size() < fillLen) {
-            texFill().assign(fillLen, 0);
-        }
-        initTex(m_subTex, m_subtitleSize, {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE}, texFill().data());
+        initTex(m_subTex, m_subtitleSize, {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE}, nullptr);
 
         loc = m_program.uniformLocation("haveSubTex"); // 主要用于标记有字幕纹理(即使当前播放的视频没有字幕)
         m_program.setUniformValue(loc, true);
 
         // 清空
-        glActiveTexture(GL_TEXTURE0 + 4);
-        glBindTexture(GL_TEXTURE_2D, m_subTex);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, m_subtitleSize.width());
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_subtitleSize.width(), m_subtitleSize.height(), GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
+        clearSubtitleTex();
 
         m_needInitSubtitleTex = false;
         m_program.release();
@@ -209,6 +201,11 @@ void VideoRenderer::render() {
             }
             return updateSubTex(renData);
         });
+    }
+
+    if (m_forceClearSubtitle && *m_forceClearSubtitle == true) {
+        clearSubtitleTex();
+        *m_forceClearSubtitle = false;
     }
 
     m_vidData->read([&](VideoRenderData &renData, int) -> bool {
@@ -284,6 +281,8 @@ void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
     m_scaleY *= videoWindow->m_verticalMirror ? -1.f : 1.f;
 
     m_showSubtitle = videoWindow->m_showSubtitle;
+
+    m_forceClearSubtitle = &videoWindow->m_forceClearSubtitle;
 }
 
 bool VideoRenderer::updateTex(VideoRenderData::PixFormat fmt) {
@@ -333,28 +332,17 @@ bool VideoRenderer::updateSubTex(SubRenderData &renData) {
     glBindTexture(GL_TEXTURE_2D, m_subTex);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
-    // 清空字幕，和矩形列表
-    auto clearSubTex = [&]() {
-        int fillLen = m_subtitleSize.height() * m_subtitleSize.width() * 4;
-        if ((int)texFill().size() < fillLen) {
-            texFill().assign(fillLen, 0);
-        }
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, m_subtitleSize.width());
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_subtitleSize.width(), m_subtitleSize.height(), GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
-        lastSubTexRect().clear();
-    };
-
     static AVSubtitleType lastSubType = SUBTITLE_NONE;
 
     // 清理旧数据
     if (renData.size == 0) {
-        clearSubTex();
+        clearSubtitleTex();
         renData.uploaded = true;
         return true;
     }
 
     if (renData.subtitleType != lastSubType) {
-        clearSubTex();
+        clearSubtitleTex();
         lastSubType = renData.subtitleType;
     }
 
@@ -478,6 +466,25 @@ void VideoRenderer::bindAllTexturesForDraw() {
     glActiveTexture(GL_TEXTURE0);
 }
 
+void VideoRenderer::clearSubtitleTex() {
+    if (m_subTex == 0) {
+        return;
+    }
+
+    glActiveTexture(GL_TEXTURE0 + 4);
+    glBindTexture(GL_TEXTURE_2D, m_subTex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+    // 清空字幕，和矩形列表
+    int fillLen = m_subtitleSize.height() * m_subtitleSize.width() * 4;
+    if ((int)texFill().size() < fillLen) {
+        texFill().assign(fillLen, 0);
+    }
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, m_subtitleSize.width());
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_subtitleSize.width(), m_subtitleSize.height(), GL_RGBA, GL_UNSIGNED_BYTE, texFill().data());
+    lastSubTexRect().clear();
+}
+
 //===========VideoWindow===========//
 QQuickFramebufferObject::Renderer *VideoWindow::createRenderer() const {
     VideoRenderer *render = new VideoRenderer();
@@ -487,5 +494,10 @@ QQuickFramebufferObject::Renderer *VideoWindow::createRenderer() const {
 void VideoWindow::updateRenderData(VideoDoubleBuf *vidData, SubtitleDoubleBuf *subData) {
     m_vidData = vidData;
     m_subData = subData;
+    update();
+}
+
+void VideoWindow::forceClearSubtitle() {
+    m_forceClearSubtitle = true;
     update();
 }

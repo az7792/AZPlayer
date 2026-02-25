@@ -77,6 +77,10 @@ private:
     void playerLoop();
 
     static double getDuration(const FrameInterval &last, const FrameInterval &now);
+
+    void handleASSSubtitle(double pts); // ASS 字幕
+    void handleBitmapSubtitle();        // 位图字幕
+    void handleEmptySubtitle();         // 写入空字幕
 };
 
 #endif // VIDEOPLAYER_H

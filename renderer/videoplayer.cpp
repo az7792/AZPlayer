@@ -159,48 +159,21 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
         renData.updateFormat(videoFrmitem);
         return true;
     }, false);
+    // clang-format on
 
-    // 有ASS字幕
     if (ASSRender::instance().initialized()) {
-        m_subRenderData.write([&](SubRenderData &renData, [[maybe_unused]] int idx) -> bool {
-            // ASS/SRT 文本字幕每帧都刷新
-            renData.updateASSImage(videoFrmitem.pts, m_width, m_height);
-            renData.frmItem.width = m_width;
-            renData.frmItem.height = m_height;
-            return true;
-        }, false);
+        handleASSSubtitle(videoFrmitem.pts);
         // ASS字幕下应该没有图形字幕了
         Q_ASSERT(m_subFrmBuf->peekFirst(subFrmItem) == false);
     } else {
         // 位图字幕
-        double videoPts = GlobalClock::instance().videoPts();
-        if (m_subFrmBuf->peekFirst(subFrmItem) && videoPts >= subFrmItem.pts) {
-            // 有新字幕
-            m_subFrmBuf->pop(subFrmItem);
-            m_subRenderData.write([&](SubRenderData &renData, [[maybe_unused]] int idx) -> bool {
-                renData.updateBitmapImage(&subFrmItem, m_width, m_height);
-                m_subtitleEndDisplayTime = subFrmItem.pts + subFrmItem.duration;
-                return true;
-            }, false);
-        } else if (videoPts >= m_subtitleEndDisplayTime) {
-            // 上一帧字幕显示时间到期
-            m_subtitleEndDisplayTime = 1e9;
-            m_subRenderData.write([&](SubRenderData &renData, [[maybe_unused]] int idx) -> bool {
-                renData.updateBitmapImage(nullptr, m_width, m_height);
-                return true;
-            }, false);
-        }
+        handleBitmapSubtitle();
     }
 
-    // 需要刷新帧或者需要清空字幕
     if (m_needClearSubtitle || m_forceRefresh) {
-        m_subRenderData.write([&](SubRenderData &renData, [[maybe_unused]] int idx) -> bool {
-            renData.updateBitmapImage(nullptr, m_width, m_height);
-            return true;
-        }, false);
+        handleEmptySubtitle();
         m_needClearSubtitle = false;
     }
-    // clang-format on
     // ==============渲染数据准备完毕==============
 
     // 同步主时钟
@@ -283,3 +256,42 @@ double VideoPlayer::getDuration(const FrameInterval &last, const FrameInterval &
         duration = std::isnan(last.second) ? 0.0 : last.second;
     return duration;
 }
+
+// clang-format off
+void VideoPlayer::handleASSSubtitle(double pts)
+{
+    m_subRenderData.write([&](SubRenderData &renData, int) -> bool {
+        renData.updateASSImage(pts, m_width, m_height);
+        renData.frmItem.width  = m_width;
+        renData.frmItem.height = m_height;
+        return true;
+    }, false);
+}
+
+void VideoPlayer::handleBitmapSubtitle()
+{
+    AVFrmItem subFrmItem;
+    double videoPts = GlobalClock::instance().videoPts();
+    if (m_subFrmBuf->peekFirst(subFrmItem) && videoPts >= subFrmItem.pts) {
+        // 有新字幕
+        m_subFrmBuf->pop(subFrmItem);
+        m_subRenderData.write([&](SubRenderData &renData, [[maybe_unused]] int idx) -> bool {
+            renData.updateBitmapImage(&subFrmItem, m_width, m_height);
+            m_subtitleEndDisplayTime = subFrmItem.pts + subFrmItem.duration;
+            return true;
+        }, false);
+    } else if (videoPts >= m_subtitleEndDisplayTime) {
+        // 上一帧字幕显示时间到期
+        m_subtitleEndDisplayTime = 1e9;
+        handleEmptySubtitle();
+    }
+}
+
+void VideoPlayer::handleEmptySubtitle()
+{
+    m_subRenderData.write([&](SubRenderData &renData, int) -> bool {
+        renData.updateBitmapImage(nullptr, m_width, m_height);
+        return true;
+    }, false);
+}
+// clang-format on
