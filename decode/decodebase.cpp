@@ -42,7 +42,13 @@ bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue fr
     m_codecCtx->pkt_timebase = stream->time_base;
     m_codecCtx->codec_id = m_codec->id;
 
-    ret = avcodec_open2(m_codecCtx, m_codec, nullptr);
+    AVDictionary *opts = nullptr;
+    int cores = std::thread::hardware_concurrency();             // 逻辑核心数
+    av_dict_set(&opts, "threads", cores >= 6 ? "6" : "auto", 0); // auto 为自动
+
+    ret = avcodec_open2(m_codecCtx, m_codec, &opts);
+    av_dict_free(&opts);
+
     if (ret != 0) {
         av_strerror(ret, errBuf, sizeof(errBuf));
         qDebug() << "打开编码器失败:" << errBuf;

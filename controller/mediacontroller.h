@@ -90,11 +90,11 @@ private:
     QUrl m_URL{}; // 主复用器打开的文件
 
     // 音视频队列
-    sharedPktQueue m_pktAudioBuf = std::make_shared<AVPktQueue>(1);               // max(1MB,16packets)
+    sharedPktQueue m_pktAudioBuf = std::make_shared<AVPktQueue>(3);               // max(3MB,16packets)
     sharedFrmQueue m_frmAudioBuf = std::make_shared<SPSCQueue<AVFrmItem>>(9);     // max(9frames)
-    sharedPktQueue m_pktVideoBuf = std::make_shared<AVPktQueue>(3);               // max(3MB,16packets)
+    sharedPktQueue m_pktVideoBuf = std::make_shared<AVPktQueue>(10);              // max(10MB,16packets)
     sharedFrmQueue m_frmVideoBuf = std::make_shared<SPSCQueue<AVFrmItem>>(3);     // max(3frames)
-    sharedPktQueue m_pktSubtitleBuf = std::make_shared<AVPktQueue>(1);            // max(1MB,16packets)
+    sharedPktQueue m_pktSubtitleBuf = std::make_shared<AVPktQueue>(2);            // max(2MB,16packets)
     sharedFrmQueue m_frmSubtitleBuf = std::make_shared<SPSCQueue<AVFrmItem>>(16); // max(16frames)
 
     // 解复用器
