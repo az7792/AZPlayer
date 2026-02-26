@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "decodevideo.h"
+#include "clock/globalclock.h"
+#include "stats/playbackstats.h"
 #include <QDebug>
 
 bool DecodeVideo::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
@@ -9,7 +11,6 @@ bool DecodeVideo::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue f
     if (!initok) {
         return false;
     }
-
     m_initialized = true;
     return true;
 }
@@ -18,6 +19,8 @@ void DecodeVideo::decodingLoop() {
     if (!m_initialized) {
         return;
     }
+
+    double startTime, sumTime;
 
     AVPktItem pktItem;
     AVFrmItem frmItem;
@@ -35,7 +38,9 @@ void DecodeVideo::decodingLoop() {
             needFlushBuffers = false;
         }
 
+        startTime = getRelativeSeconds();
         int ret = avcodec_send_packet(m_codecCtx, pktItem.pkt);
+        sumTime = getRelativeSeconds() - startTime;
 
         if (ret == 0) {
             av_packet_free(&pktItem.pkt);
@@ -56,7 +61,11 @@ void DecodeVideo::decodingLoop() {
         while (true) {
             frmItem.frm = av_frame_alloc();
             frmItem.serial = pktItem.serial;
+
+            startTime = getRelativeSeconds();
             ret = avcodec_receive_frame(m_codecCtx, frmItem.frm);
+            sumTime += getRelativeSeconds() - startTime;
+
             // 完全消耗完解码后的帧
             if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
                 av_frame_free(&frmItem.frm);
@@ -80,6 +89,8 @@ void DecodeVideo::decodingLoop() {
                 goto end;
             }
         }
+
+        PlaybackStats::instance().updateVideoDecodeTime(sumTime * 1000);
     }
 
 end:

@@ -6,6 +6,15 @@
 PlaybackStats::PlaybackStats(QObject *parent)
     : QObject{parent} { reset(); }
 
+double PlaybackStats::calculateAverage(std::deque<double> &deq, double newValue) {
+    deq.push_back(newValue);
+    if (deq.size() > m_maxSamples) {
+        deq.pop_front();
+    }
+    double sum = std::accumulate(deq.begin(), deq.end(), 0.0);
+    return sum / deq.size();
+}
+
 PlaybackStats &PlaybackStats::instance() {
     static PlaybackStats instance;
     return instance;
@@ -35,6 +44,16 @@ void PlaybackStats::reset() {
     outputFps = 0.0;
     m_frameCounter = 0;
     m_lastFpsTime = std::chrono::steady_clock::now();
+
+    // ==== 视频解码耗时统计 ms ====
+    videoDecodeTime = 0.0;
+    avgVideoDecodeTime = 0.0;
+    // ==== 视频数据准备耗时 ms====
+    videoPrepTime = 0.0;
+    avgVideoPrepTime = 0.0;
+    // ==== 字幕数据准备耗时 ms====
+    subPrepTime = 0.0;
+    avgSubPrepTime = 0.0;
 
     // ==== 帧状态 ====
     lateFrameCount = 0;
@@ -67,6 +86,21 @@ void PlaybackStats::frameRendered() {
     }
 }
 
+void PlaybackStats::updateVideoDecodeTime(double ms) {
+    videoDecodeTime = ms;
+    avgVideoDecodeTime = calculateAverage(m_vDecSamples, ms);
+}
+
+void PlaybackStats::updateVideoPrepTime(double ms) {
+    videoPrepTime = ms;
+    avgVideoPrepTime = calculateAverage(m_vPrepSamples, ms);
+}
+
+void PlaybackStats::updateSubPrepTime(double ms) {
+    subPrepTime = ms;
+    avgSubPrepTime = calculateAverage(m_sPrepSamples, ms);
+}
+
 QString PlaybackStats::getPlaybackStatsStringHTML() const {
     QString str;
 
@@ -94,8 +128,17 @@ QString PlaybackStats::getPlaybackStatsStringHTML() const {
     str += item("Frame Buffer", QString("%1x%2").arg(FBOSize.width()).arg(FBOSize.height()), "white", "gray");
     str += "<br>";
 
-    // ==== 像素格式 ====
+    // ==== 4. 像素格式 & 视频解码耗时 ====
     str += item("像素格式", videoPixFormat, "white", "yellow");
+
+    // 性能统计：解码与准备 ms
+    int vdec = avgVideoDecodeTime;
+    int vprep = avgVideoPrepTime;
+    int sprep = avgSubPrepTime;
+
+    str += item("视频解码", QString::number(vdec) + "ms", "white", (vdec > 30 ? "red" : "#55FF55"));
+    str += item("视频准备", QString::number(vprep) + "ms", "white", (vprep > 30 ? "red" : "#55FF55"));
+    str += item("字幕准备", QString::number(sprep) + "ms", "white", (sprep > 5 ? "red" : "#55FF55"));
     str += "<br>";
 
     // ==== FPS 逻辑处理 ====

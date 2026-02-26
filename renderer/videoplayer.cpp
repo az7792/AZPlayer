@@ -154,13 +154,16 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
 
     // ==============在渲染之前准备好数据==============
     // clang-format off
+    double startTime = getRelativeSeconds();
     m_videoRenderData.write([&](VideoRenderData &renData, [[maybe_unused]] int idx) -> bool {
         m_lastVideoFrameInterval = nowVideoFrameInterval;
         renData.updateFormat(videoFrmitem);
         return true;
     }, false);
+    PlaybackStats::instance().updateVideoPrepTime((getRelativeSeconds() - startTime) * 1000);
     // clang-format on
 
+    startTime = getRelativeSeconds();
     if (ASSRender::instance().initialized()) {
         handleASSSubtitle(videoFrmitem.pts);
         // ASS字幕下应该没有图形字幕了
@@ -174,6 +177,7 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
         handleEmptySubtitle();
         m_needClearSubtitle = false;
     }
+    PlaybackStats::instance().updateSubPrepTime((getRelativeSeconds() - startTime) * 1000);
     // ==============渲染数据准备完毕==============
 
     // 同步主时钟
