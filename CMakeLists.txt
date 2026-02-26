@@ -18,11 +18,14 @@ set(ASS_LIB_DIR ${ASS_DIR}/lib)
 set(ASS_BIN_DIR ${ASS_DIR}/bin)
 set(app_icon_resource_windows "${CMAKE_CURRENT_SOURCE_DIR}/resource/icon/appico.rc")
 
-find_package(Qt6 6.4 REQUIRED COMPONENTS Quick)
-find_package(Qt6 REQUIRED COMPONENTS QuickControls2)
-find_package(Qt6 REQUIRED COMPONENTS Gui)
-find_package(Qt6 REQUIRED COMPONENTS Core Qml)
-find_package(Qt6 REQUIRED COMPONENTS Multimedia)
+find_package(Qt6 6.6 REQUIRED COMPONENTS
+    Core
+    Gui
+    Qml
+    Quick
+    QuickControls2
+    Multimedia
+)
 qt_standard_project_setup()
 
 if (MSVC)
