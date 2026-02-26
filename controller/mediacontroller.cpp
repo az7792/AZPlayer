@@ -44,19 +44,30 @@ MediaController::MediaController(QObject *parent)
     m_audioPlayer = new AudioPlayer(parent);
     m_videoPlayer = new VideoPlayer(parent);
 
+    // ==== seek ====
     QObject::connect(m_audioPlayer, &AudioPlayer::seeked, this, &MediaController::seeked);
     QObject::connect(m_videoPlayer, &VideoPlayer::seeked, this, &MediaController::seeked);
-    QObject::connect(m_videoPlayer, &VideoPlayer::playedOneFrame, this, [&]() {
-        setProgress(getCurrentTime());
-    });
-    QObject::connect(m_audioPlayer, &AudioPlayer::playedOneFrame, this, [&]() {
-        setProgress(getCurrentTime());
-    });
     // 如果是多个解复用器同时seek，需要使用第一个解复用器seek到的实际位置来seek剩余的解复用器
     QObject::connect(m_demuxs[0], &Demux::seeked, this, &MediaController::seekAudioAndSubtitleDemux);
     QObject::connect(this, &MediaController::seeked, this, [&]() {
         m_played = false;
     });
+
+    // ==== 播放进度 ====
+    QObject::connect(m_videoPlayer, &VideoPlayer::playedOneFrame, this, [&]() {
+        setProgress(getCurrentTime());
+        m_progressFallbackTimer.start(1000); // 重置定时器
+    });
+    QObject::connect(m_audioPlayer, &AudioPlayer::playedOneFrame, this, [&]() {
+        setProgress(getCurrentTime());
+        m_progressFallbackTimer.start(1000); // 重置定时器
+    });
+
+    // ==== Timer ====
+    QObject::connect(&m_progressFallbackTimer, &QTimer::timeout, this, [&]() {
+        setProgress(getCurrentTime());
+    });
+    m_progressFallbackTimer.start(1000); // 每1000ms触发一次
 
     // 更新队列长度
     QObject::connect(&m_updatePktAndFrmQueueSizeTimer, &QTimer::timeout, this, [&]() {

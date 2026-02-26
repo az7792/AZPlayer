@@ -42,6 +42,7 @@ bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue fr
     m_codecCtx->pkt_timebase = stream->time_base;
     m_codecCtx->codec_id = m_codec->id;
 
+    // HACK: 使用多线程会加剧部分带封面音频无法显示的问题
     AVDictionary *opts = nullptr;
     int cores = std::thread::hardware_concurrency();             // 逻辑核心数
     av_dict_set(&opts, "threads", cores >= 6 ? "6" : "auto", 0); // auto 为自动

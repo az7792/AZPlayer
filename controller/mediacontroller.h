@@ -109,8 +109,9 @@ private:
     AudioPlayer *m_audioPlayer = nullptr;
     VideoPlayer *m_videoPlayer = nullptr;
 
-    QTimer m_checkPlayerFinishedTimer;
-    QTimer m_updatePktAndFrmQueueSizeTimer;
+    QTimer m_checkPlayerFinishedTimer;      // 定时检查是否播完
+    QTimer m_updatePktAndFrmQueueSizeTimer; // 定时更新队列长度给 PlaybackStats
+    QTimer m_progressFallbackTimer;         // 进度条保底策略，防止在某些情况下进度条不更新
 
     bool m_opened = false;   // 是否打开文件
     bool m_paused = true;    // 是否暂停
