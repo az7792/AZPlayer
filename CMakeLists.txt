@@ -12,7 +12,7 @@ set(FFMPEG_INCLUDE_DIR ${FFMPEG_DIR}/include)
 set(FFMPEG_LIB_DIR ${FFMPEG_DIR}/lib)
 set(FFMPEG_BIN_DIR ${FFMPEG_DIR}/bin)
 # 设置 libass 路径
-set(ASS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libass)
+set(ASS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd/libass)
 set(ASS_INCLUDE_DIR ${ASS_DIR}/include)
 set(ASS_LIB_DIR ${ASS_DIR}/lib)
 set(ASS_BIN_DIR ${ASS_DIR}/bin)
@@ -92,16 +92,17 @@ qt_add_qml_module(appAZPlayer
             renderer/renderdata.h renderer/renderdata.cpp
             controller/mediacontroller.cpp controller/mediacontroller.h
             decode/decodesubtitle.h decode/decodesubtitle.cpp
+            renderer/assrender.h renderer/assrender.cpp
+            compat/compat.h
+            types/types.h
+            types/ptrs.h
+            utils/utils.h
+            utils/dirtyrectmanager.h utils/dirtyrectmanager.cpp
+            utils/AtomicDoubleBuffer.h
+            utils/filehelper.h utils/filehelper.cpp
+            stats/playbackstats.h stats/playbackstats.cpp
+            3rd/miniaudio/miniaudio.h 3rd/miniaudio/miniaudio.cpp
     RESOURCES resource.qrc
-    SOURCES renderer/assrender.h renderer/assrender.cpp
-    SOURCES compat/compat.h
-    SOURCES types/types.h
-    SOURCES types/ptrs.h
-    SOURCES utils/utils.h
-    SOURCES utils/dirtyrectmanager.h utils/dirtyrectmanager.cpp
-    SOURCES utils/AtomicDoubleBuffer.h
-    SOURCES utils/filehelper.h utils/filehelper.cpp
-    SOURCES stats/playbackstats.h stats/playbackstats.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
