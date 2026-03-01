@@ -324,7 +324,12 @@ void Demux::demuxLoop() {
         }
 
         if (emitRealSeekTs) {
-            emit seeked(pkt->pts * av_q2d(m_formatCtx->streams[pkt->stream_index]->time_base));
+            Q_ASSERT(m_isMainDemux);
+            double seekedPts = pkt->pts * av_q2d(m_formatCtx->streams[pkt->stream_index]->time_base);
+            // 提前设置一下时钟，能比较好的避免出现视频pts先更新且落后与音频，导致视频疯狂更新，然后音频再更新，导致视频领先与音频，最后导致视频变卡一会儿
+            GlobalClock::instance().setAudioClk(seekedPts);
+            GlobalClock::instance().setVideoClk(seekedPts);
+            emit seeked(seekedPts);
             emitRealSeekTs = false;
         }
 

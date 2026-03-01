@@ -6,7 +6,7 @@
 $ExeSourcePath = ".\out\build\release\appAZPlayer.exe"
 
 # [常量2] libass/bin 的文件夹路径
-$LibAssBinPath = ".\libass\bin"
+$LibAssBinPath = ".\3rd\libass\bin"
 
 # [常量3] ffmpeg/bin 的文件夹路径
 $FfmpegBinPath = "D:\ffmpeg-8.0-full_build-shared\bin"

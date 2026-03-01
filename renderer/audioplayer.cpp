@@ -2,41 +2,133 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "audioplayer.h"
+#include "3rd/miniaudio/miniaudio.h"
 #include "clock/globalclock.h"
 #include "stats/playbackstats.h"
 #include <QDebug>
-#include <QMediaDevices>
 
 namespace {
-    inline bool maskHasAll(uint64_t mask, uint64_t bits) {
-        return (mask & bits) == bits;
+
+    // 根据数量获取 miniaudio 与之对应的 FFmpeg 布局
+    static void get_default_ffmpeg_layout(int nb_channels, AVChannelLayout *layout) {
+        int count = (nb_channels > 8) ? 8 : nb_channels;
+        // clang-format off
+        switch (count) {
+        case 1: *layout = AV_CHANNEL_LAYOUT_MONO;         break;
+        case 2: *layout = AV_CHANNEL_LAYOUT_STEREO;       break;
+        case 3: *layout = AV_CHANNEL_LAYOUT_SURROUND;     break;
+        case 4: *layout = AV_CHANNEL_LAYOUT_4POINT0;      break;
+        case 5: *layout = AV_CHANNEL_LAYOUT_5POINT0_BACK; break;
+        case 6: *layout = AV_CHANNEL_LAYOUT_5POINT1;      break;
+        case 7: *layout = AV_CHANNEL_LAYOUT_6POINT1;      break;
+        case 8: *layout = AV_CHANNEL_LAYOUT_7POINT1;      break;
+        default: *layout = AV_CHANNEL_LAYOUT_STEREO;      break;
+        }
+        // clang-format on
     }
 
-    struct ChannelMapping {
-        uint64_t ffmpegMask;
-        QAudioFormat::ChannelConfig qtChannelConfig;
-    };
-    // 按优先级顺序排列（从高声道数到低声道数）
-    static const ChannelMapping mappings[] = {
+    static ma_channel ffmpeg_channel_to_ma(enum AVChannel channel) {
         // clang-format off
-        {AV_CH_LAYOUT_7POINT1,      QAudioFormat::ChannelConfigSurround7Dot1}, // 8
-        {AV_CH_LAYOUT_7POINT0,      QAudioFormat::ChannelConfigSurround7Dot0}, // 7
-        {AV_CH_LAYOUT_5POINT1_BACK, QAudioFormat::ChannelConfigSurround5Dot1}, // 6
-        {AV_CH_LAYOUT_5POINT0_BACK, QAudioFormat::ChannelConfigSurround5Dot0}, // 5
-        {AV_CH_LAYOUT_3POINT1,      QAudioFormat::ChannelConfig3Dot1},         // 4
-        {AV_CH_LAYOUT_SURROUND,     QAudioFormat::ChannelConfig3Dot0},         // 3
-        {AV_CH_LAYOUT_2POINT1,      QAudioFormat::ChannelConfig2Dot1},         // 3
-        {AV_CH_LAYOUT_STEREO,       QAudioFormat::ChannelConfigStereo},        // 2
-        {AV_CH_LAYOUT_MONO,         QAudioFormat::ChannelConfigMono},          // 1
+        switch (channel) {
+        // --- 基础声道 ---
+        case AV_CHAN_FRONT_LEFT:            return MA_CHANNEL_FRONT_LEFT;
+        case AV_CHAN_FRONT_RIGHT:           return MA_CHANNEL_FRONT_RIGHT;
+        case AV_CHAN_FRONT_CENTER:          return MA_CHANNEL_FRONT_CENTER;
+        case AV_CHAN_LOW_FREQUENCY:         return MA_CHANNEL_LFE;
+        case AV_CHAN_BACK_LEFT:             return MA_CHANNEL_BACK_LEFT;
+        case AV_CHAN_BACK_RIGHT:            return MA_CHANNEL_BACK_RIGHT;
+        case AV_CHAN_FRONT_LEFT_OF_CENTER:  return MA_CHANNEL_FRONT_LEFT_CENTER;
+        case AV_CHAN_FRONT_RIGHT_OF_CENTER: return MA_CHANNEL_FRONT_RIGHT_CENTER;
+        case AV_CHAN_BACK_CENTER:           return MA_CHANNEL_BACK_CENTER;
+        case AV_CHAN_SIDE_LEFT:             return MA_CHANNEL_SIDE_LEFT;
+        case AV_CHAN_SIDE_RIGHT:            return MA_CHANNEL_SIDE_RIGHT;
+
+        // --- 顶置声道 ---
+        case AV_CHAN_TOP_CENTER:            return MA_CHANNEL_TOP_CENTER;
+        case AV_CHAN_TOP_FRONT_LEFT:        return MA_CHANNEL_TOP_FRONT_LEFT;
+        case AV_CHAN_TOP_FRONT_CENTER:      return MA_CHANNEL_TOP_FRONT_CENTER;
+        case AV_CHAN_TOP_FRONT_RIGHT:       return MA_CHANNEL_TOP_FRONT_RIGHT;
+        case AV_CHAN_TOP_BACK_LEFT:         return MA_CHANNEL_TOP_BACK_LEFT;
+        case AV_CHAN_TOP_BACK_CENTER:       return MA_CHANNEL_TOP_BACK_CENTER;
+        case AV_CHAN_TOP_BACK_RIGHT:        return MA_CHANNEL_TOP_BACK_RIGHT;
+
+        default:
+            return MA_CHANNEL_NONE;
+        }
         // clang-format on
-    };
+    }
+
+    // 根据 oldPar 设置 deviceConfig 的通道参数，并设置 swrPar 的通道参数，返回是否重采样
+    static bool initChannelConfig(const AudioPar &oldPar, ma_device_config &deviceConfig, ma_channel *channelMap, AudioPar &swrPar, int &initIsOk) {
+        deviceConfig.playback.channels = oldPar.ch_layout.nb_channels;
+        initIsOk = av_channel_layout_copy(&swrPar.ch_layout, &oldPar.ch_layout);
+        if (initIsOk != 0) {
+            return false;
+        }
+
+        // 声道顺序未知，直接用 miniaudio 的默认顺序
+        if (oldPar.ch_layout.order == AV_CHANNEL_ORDER_UNSPEC) {
+            return false;
+        }
+
+        if (oldPar.ch_layout.order == AV_CHANNEL_ORDER_NATIVE) {
+            bool mappingFailed = false;
+
+            for (int i = 0; i < oldPar.ch_layout.nb_channels; ++i) {
+                AVChannel ffmpegChan = av_channel_layout_channel_from_index(&oldPar.ch_layout, i);
+                ma_channel maChan = ffmpeg_channel_to_ma(ffmpegChan);
+
+                if (maChan == MA_CHANNEL_NONE) {
+                    mappingFailed = true;
+                    break; // 只要有一个不支持，就重采样
+                }
+                channelMap[i] = maChan;
+            }
+
+            if (!mappingFailed) {
+                deviceConfig.playback.pChannelMap = channelMap;
+                return false;
+            }
+
+            // 重采样
+            av_channel_layout_uninit(&swrPar.ch_layout);
+            get_default_ffmpeg_layout(oldPar.ch_layout.nb_channels, &swrPar.ch_layout);
+
+            for (int i = 0; i < swrPar.ch_layout.nb_channels; ++i) {
+                AVChannel ffmpegChan = av_channel_layout_channel_from_index(&oldPar.ch_layout, i);
+                channelMap[i] = ffmpeg_channel_to_ma(ffmpegChan);
+                Q_ASSERT(channelMap[i] != MA_CHANNEL_NONE);
+            }
+            deviceConfig.playback.channels = swrPar.ch_layout.nb_channels;
+            deviceConfig.playback.pChannelMap = channelMap;
+
+            return true;
+        }
+
+        // HACK: 暂时不支持Ambisonic，先用声道数代替
+        if (oldPar.ch_layout.order == AV_CHANNEL_ORDER_AMBISONIC) {
+            return false;
+        }
+
+        // HACK: 暂时不支持自定义，先用声道数代替
+        if (oldPar.ch_layout.order == AV_CHANNEL_ORDER_CUSTOM) {
+            return false;
+        }
+
+        // 未知
+        return false;
+    }
 }
 
 AudioPlayer::AudioPlayer(QObject *parent)
-    : QObject{parent} {}
+    : QObject{parent} {
+    m_audioDevice = new ma_device{};
+}
 
 AudioPlayer::~AudioPlayer() {
     uninit();
+    Q_ASSERT(m_audioDevice != nullptr);
+    delete m_audioDevice;
 }
 
 bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmBuf) { // TODO ： initial_padding trailing_padding是否要做处理
@@ -51,92 +143,58 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
         return false;
     }
 
-    // 检查音频设备是否可用
-    if (QMediaDevices::defaultAudioOutput().isNull()) {
-        qDebug() << "没有可用的音频输出设备";
-        return false;
-    }
+    // 设备配置
+    ma_device_config deviceConfig = ma_device_config_init(ma_device_type_playback);
+    ma_channel channelMap[MA_MAX_CHANNELS];
 
     // 同步音频数据
+    m_oldPar.reset(), m_swrPar.reset();
     m_oldPar.sampleFormat = m_swrPar.sampleFormat = static_cast<AVSampleFormat>(codecParams->format);
     m_oldPar.sampleRate = m_swrPar.sampleRate = codecParams->sample_rate;
     int ret = av_channel_layout_copy(&m_oldPar.ch_layout, &codecParams->ch_layout);
     if (ret != 0) {
         return false;
     }
-    ret = av_channel_layout_copy(&m_swrPar.ch_layout, &codecParams->ch_layout);
-    if (ret != 0) {
-        return false;
-    }
-
-    // 选择系统默认音频设备
-    m_audioDevice = new QAudioDevice(QMediaDevices::defaultAudioOutput());
-    QAudioFormat preferredFormat = m_audioDevice->preferredFormat(); // 设备默认配置
 
     bool isResample = false; // 是否重采样
 
     // 调整采样率
-    int minSampleRate = m_audioDevice->minimumSampleRate(); // 设备支持的最小采样率
-    int maxSampleRate = m_audioDevice->maximumSampleRate(); // 设备支持的最大采样率
-    if (m_oldPar.sampleRate < minSampleRate || m_oldPar.sampleRate > maxSampleRate) {
-        isResample = true;
-        m_format.setSampleRate(preferredFormat.sampleRate());
-        m_swrPar.sampleRate = preferredFormat.sampleRate();
-    } else {
-        m_format.setSampleRate(m_oldPar.sampleRate);
-    }
+    deviceConfig.sampleRate = m_oldPar.sampleRate;
 
     // 调整采样格式
-    // NOTE : 这儿planar格式直接重采样
+    // NOTE : miniaudio只支持packet格式，这儿planar格式需要重采样
     switch (m_oldPar.sampleFormat) { // clang-format off
     case AV_SAMPLE_FMT_NONE: qDebug() << "无效音频采样格式"; return false;
-    case AV_SAMPLE_FMT_U8:   m_format.setSampleFormat(QAudioFormat::UInt8); break;
-    case AV_SAMPLE_FMT_S16:  m_format.setSampleFormat(QAudioFormat::Int16); break;
-    case AV_SAMPLE_FMT_S32:  m_format.setSampleFormat(QAudioFormat::Int32); break;
-    case AV_SAMPLE_FMT_FLT:  m_format.setSampleFormat(QAudioFormat::Float); break;
-    case AV_SAMPLE_FMT_DBL:  m_format.setSampleFormat(QAudioFormat::Float); isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_FLT; break;
-    case AV_SAMPLE_FMT_U8P:  m_format.setSampleFormat(QAudioFormat::UInt8); isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_U8;  break;
-    case AV_SAMPLE_FMT_S16P: m_format.setSampleFormat(QAudioFormat::Int16); isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_S16; break;
-    case AV_SAMPLE_FMT_S32P: m_format.setSampleFormat(QAudioFormat::Int32); isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_S32; break;
-    case AV_SAMPLE_FMT_FLTP: m_format.setSampleFormat(QAudioFormat::Float); isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_FLT; break;
-    case AV_SAMPLE_FMT_DBLP: m_format.setSampleFormat(QAudioFormat::Float); isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_FLT; break;
-    case AV_SAMPLE_FMT_S64:  m_format.setSampleFormat(QAudioFormat::Int32); isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_S32; break;
-    case AV_SAMPLE_FMT_S64P: m_format.setSampleFormat(QAudioFormat::Int32); isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_S32; break;
+    case AV_SAMPLE_FMT_U8:   deviceConfig.playback.format = ma_format_u8;  break;
+    case AV_SAMPLE_FMT_S16:  deviceConfig.playback.format = ma_format_s16; break;
+    case AV_SAMPLE_FMT_S32:  deviceConfig.playback.format = ma_format_s32; break;
+    case AV_SAMPLE_FMT_FLT:  deviceConfig.playback.format = ma_format_f32; break;
+    case AV_SAMPLE_FMT_DBL:  deviceConfig.playback.format = ma_format_f32; isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_FLT; break;
+    case AV_SAMPLE_FMT_U8P:  deviceConfig.playback.format = ma_format_u8;  isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_U8;  break;
+    case AV_SAMPLE_FMT_S16P: deviceConfig.playback.format = ma_format_s16; isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_S16; break;
+    case AV_SAMPLE_FMT_S32P: deviceConfig.playback.format = ma_format_s32; isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_S32; break;
+    case AV_SAMPLE_FMT_FLTP: deviceConfig.playback.format = ma_format_f32; isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_FLT; break;
+    case AV_SAMPLE_FMT_DBLP: deviceConfig.playback.format = ma_format_f32; isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_FLT; break;
+    case AV_SAMPLE_FMT_S64:  deviceConfig.playback.format = ma_format_s32; isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_S32; break;
+    case AV_SAMPLE_FMT_S64P: deviceConfig.playback.format = ma_format_s32; isResample = true; m_swrPar.sampleFormat = AV_SAMPLE_FMT_S32; break;
     default:break;
     } // clang-format on
-    auto supportedSampleFormats = m_audioDevice->supportedSampleFormats();
-    if (!supportedSampleFormats.contains(m_format.sampleFormat())) { // 设备不支持此格式
-        isResample = true;
-        m_format.setSampleFormat(preferredFormat.sampleFormat());
-        m_swrPar.sampleFormat = QtToFFmpegSampleFormat(preferredFormat.sampleFormat());
-    }
 
     // 调整通道布局
-    int minChannelCount = std::max(1, m_audioDevice->minimumChannelCount());                                    // 设备支持的最小通道数量
-    int maxChannelCount = std::min(8, m_audioDevice->maximumChannelCount());                                    // 设备支持的最大通道数量
-    if (m_oldPar.ch_layout.nb_channels < minChannelCount || m_oldPar.ch_layout.nb_channels > maxChannelCount) { // 数量不匹配
-        isResample = true;
-        int tmpChannelCount = m_oldPar.ch_layout.nb_channels < minChannelCount ? minChannelCount : maxChannelCount;
-        m_format.setChannelConfig(channelCountToQtChannelConfig(tmpChannelCount)); // 根据通道数量重新配置通道布局
-
-        av_channel_layout_uninit(&m_swrPar.ch_layout);
-        av_channel_layout_from_mask(&m_swrPar.ch_layout, QtChannelConfigToFFmpegMask(m_format.channelConfig()));
-    } else {
-        bool maskIsEqual = true;
-        m_format.setChannelConfig(FFmpegToQtChannelConfig(m_oldPar.ch_layout, &maskIsEqual));
-        if (m_format.channelConfig() == QAudioFormat::ChannelConfigUnknown) { // 未知格式
-            isResample = true;
-            m_format.setChannelConfig(channelCountToQtChannelConfig(m_oldPar.ch_layout.nb_channels));
-
-            av_channel_layout_uninit(&m_swrPar.ch_layout);
-            av_channel_layout_from_mask(&m_swrPar.ch_layout, QtChannelConfigToFFmpegMask(m_format.channelConfig()));
-        } else if (maskIsEqual == false) { // AV_CHANNEL_ORDER_NATIVE模式下匹配成功，但是原始数据声道数多于QT标准的声道数
-            isResample = true;
-
-            av_channel_layout_uninit(&m_swrPar.ch_layout);
-            av_channel_layout_from_mask(&m_swrPar.ch_layout, QtChannelConfigToFFmpegMask(m_format.channelConfig())); // 多余部分做下采样
-        }
+    int ChannelConfigInitIsOK;
+    isResample |= initChannelConfig(m_oldPar, deviceConfig, channelMap, m_swrPar, ChannelConfigInitIsOK);
+    if (ChannelConfigInitIsOK != 0) {
+        return false;
     }
+
+    deviceConfig.dataCallback = miniaudio_data_callback;
+    deviceConfig.pUserData = this;
+
+    if (ma_device_init(NULL, &deviceConfig, m_audioDevice) != MA_SUCCESS) {
+        printf("Failed to open playback device.\n");
+        return false;
+    }
+    setVolume(m_volume);
 
     // 配置重采样上下文
     if (isResample) {
@@ -160,6 +218,11 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
         *m_swrBuffer = static_cast<uint8_t *>(av_malloc(m_swrBufferSize));
     }
 
+    m_frmItem = {};
+    m_pcmDataSize = 0;
+    m_pcmDataPtr = nullptr;
+    m_pcmDataIndex = 0;
+
     m_forceRefresh = false;
     m_initialized = true;
     m_serial = 0;
@@ -169,20 +232,9 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
 
 bool AudioPlayer::uninit() {
     stop();
-    // 需要在工作线程中销毁
-    //  if (m_audioSink) {
-    //      m_audioSink->stop();
-    //      delete m_audioSink;
-    //      m_audioSink = nullptr;
-    //  }
-    Q_ASSERT(!m_audioSink);
 
-    if (m_audioDevice) {
-        delete m_audioDevice;
-        m_audioDevice = nullptr;
-    }
-
-    m_format = QAudioFormat{};
+    Q_ASSERT(m_audioDevice != nullptr);
+    ma_device_uninit(m_audioDevice);
 
     m_oldPar.reset();
     m_swrPar.reset();
@@ -209,26 +261,32 @@ bool AudioPlayer::uninit() {
 }
 
 void AudioPlayer::start() {
-    if (m_thread && m_thread->isRunning()) {
-        return; // 已经在运行
+    if (!m_initialized) {
+        qDebug() << "AudioPlayer: 尝试启动未初始化的设备";
+        return;
     }
+
+    // 启动设备
+    ma_device_state state = ma_device_get_state(m_audioDevice);
+    Q_ASSERT(state != ma_device_state_uninitialized);
+    if (state != ma_device_state_started && state != ma_device_state_starting) {
+        if (ma_device_start(m_audioDevice) != MA_SUCCESS) {
+            qDebug() << "AudioPlayer: 无法启动 miniaudio 设备";
+            return;
+        }
+    }
+
     m_stop.store(false, std::memory_order_relaxed);
     m_paused.store(false, std::memory_order_relaxed);
-    m_thread = QThread::create([this] {
-        playerLoop();
-    });
-    m_thread->start();
+
+    DeviceStatus::instance().setAudioInitialized(true);
 }
 
 void AudioPlayer::stop() {
-    if (!m_thread) {
-        return; // 已经退出
-    }
     m_stop.store(true, std::memory_order_relaxed);
-    m_thread->quit();
-    m_thread->wait();
-    delete m_thread;
-    m_thread = nullptr;
+    ma_device_uninit(m_audioDevice);
+
+    DeviceStatus::instance().setAudioInitialized(false);
 }
 
 void AudioPlayer::togglePaused() {
@@ -244,45 +302,42 @@ double AudioPlayer::volume() const {
 }
 
 void AudioPlayer::setVolume(double newVolume) {
-    if (m_audioSink) {
-        qreal linearVolume = QAudio::convertVolume(newVolume,
-                                                   QAudio::LogarithmicVolumeScale,
-                                                   QAudio::LinearVolumeScale);
-        m_audioSink->setVolume(linearVolume);
-    }
+    ma_device_set_master_volume(m_audioDevice, newVolume);
     m_volume = newVolume;
 }
 
 bool AudioPlayer::getFrm(AVFrmItem &item) {
-    if (item.frm != nullptr) {
-        if (item.serial != m_frmBuf->serial()) {
-            av_frame_free(&item.frm);
-            m_forceRefresh = true;
-            return false;
+    Q_ASSERT(item.frm == nullptr);
+    // 直到找到序号一致的帧或队列为空
+
+    if (item.serial != m_frmBuf->serial())
+        m_forceRefresh = true;
+
+    while (m_frmBuf->pop(item)) {
+        if (item.serial == m_frmBuf->serial()) {
+            return true;
         }
-        return true;
+        av_frame_free(&item.frm);
     }
 
-    if (!m_frmBuf->pop(item)) { // 空
-        return false;
-    } else if (item.serial != m_frmBuf->serial()) { // 非空 但是序号不同
-        av_frame_free(&item.frm);
-        m_forceRefresh = true;
-        return false;
-    }
-    return true;
+    // 队列空
+    return false;
 }
 
-qint64 AudioPlayer::write(AVFrmItem *item) {
-    if (!item || !item->frm || !m_initialized || !m_audioIO)
-        return -1;
+bool AudioPlayer::updatePcmFromFrameQueue() {
+    av_frame_free(&m_frmItem.frm);
+    m_pcmDataSize = 0;
+    m_pcmDataPtr = nullptr;
+    m_pcmDataIndex = 0;
 
-    AVFrame *frm = item->frm;
-    int dataSize;
-    uint8_t *dataPtr = nullptr;
-    int nb_samples = frm->nb_samples;
+    if (getFrm(m_frmItem) == false) {
+        return false;
+    }
+    AVFrame *frm = m_frmItem.frm;
 
     if (m_swrContext) {
+        int nb_samples;
+
         // 估算需要的输出样本数（带上延迟）
         int out_nb_samples = av_rescale_rnd(
             swr_get_delay(m_swrContext, m_oldPar.sampleRate) + frm->nb_samples,
@@ -291,8 +346,8 @@ qint64 AudioPlayer::write(AVFrmItem *item) {
             AV_ROUND_UP);
 
         // 确保输出缓冲区足够大（单位：字节）
-        int out_channels = m_format.channelCount();                                                          // 通道数
-        int out_bytes_per_sample = av_get_bytes_per_sample(QtToFFmpegSampleFormat(m_format.sampleFormat())); // 单个通道的单个采样大小
+        int out_channels = m_swrPar.ch_layout.nb_channels;                         // 通道数
+        int out_bytes_per_sample = av_get_bytes_per_sample(m_swrPar.sampleFormat); // 单个通道的单个采样大小
         int out_buf_size = out_nb_samples * out_channels * out_bytes_per_sample;
 
         if (out_buf_size > m_swrBufferSize) { // swrbuf大小不够，重新分配
@@ -310,174 +365,79 @@ qint64 AudioPlayer::write(AVFrmItem *item) {
 
         if (nb_samples < 0) {
             qDebug() << "重采样执行失败";
-            return -1;
+            return false;
         }
 
-        dataSize = nb_samples * out_channels * out_bytes_per_sample;
-        dataPtr = *m_swrBuffer;
+        m_pcmDataSize = nb_samples * out_channels * out_bytes_per_sample;
+        m_pcmDataPtr = *m_swrBuffer;
     } else { // 无需重采样
-        dataSize = av_samples_get_buffer_size(nullptr, m_oldPar.ch_layout.nb_channels, frm->nb_samples, m_oldPar.sampleFormat, 1);
+        m_pcmDataSize = av_samples_get_buffer_size(nullptr, m_oldPar.ch_layout.nb_channels, frm->nb_samples, m_oldPar.sampleFormat, 1);
         assert(!av_sample_fmt_is_planar(m_oldPar.sampleFormat));
         assert(m_oldPar.sampleFormat == static_cast<AVSampleFormat>(frm->format));
-        assert(dataSize == frm->linesize[0]);
-        dataPtr = frm->data[0];
+        m_pcmDataPtr = frm->data[0];
     }
 
-    // 写入
-    int writeCnt = 0;
-    while (writeCnt < dataSize) {
-        int bytesFree = m_audioSink->bytesFree();
-        if (bytesFree <= 0) {
-            QThread::msleep(1); // 等待缓冲区空出一点空间
-            continue;
-        }
-
-        int written = m_audioIO->write(
-            reinterpret_cast<const char *>(dataPtr + writeCnt),
-            std::min(bytesFree, dataSize - writeCnt));
-
-        if (written <= 0) {
-            qWarning() << "音频写入失败";
-            break;
-        }
-
-        writeCnt += written;
-    }
-    // 更新音频时钟
-    double nextPts = item->pts + 1.0 * nb_samples / m_format.sampleRate(); // 当前帧全部播完的结束时间
-    // 未播的时间
-    double offsetPts = (m_audioSink->bufferSize() - m_audioSink->bytesFree()) / (double)m_format.bytesForDuration(1e6);
-
-    GlobalClock::instance().setAudioClk(nextPts - offsetPts);
-    GlobalClock::instance().syncExternalClk(ClockType::AUDIO);
-
-    PlaybackStats::instance().audioPTS = nextPts - offsetPts;
-
-    return writeCnt;
+    return true;
 }
 
-void AudioPlayer::playerLoop() {
-    if (!m_initialized) {
-        return;
+void AudioPlayer::fillAudioBuffer(void *pOutput, ma_uint32 frameCount) {
+    uint8_t *pDst = static_cast<uint8_t *>(pOutput);
+    int writeCnt = 0;  // 已经写入的大小(字节)
+    int bytesPerFrame; // 单个PCM帧的大小(字节)
+    int bytesNeeded;   // 需要写入的字节数
+    double nextPts;
+    double bytesPerSec;
+
+    if (m_paused.load(std::memory_order_acquire)) {
+        AVFrmItem peek;
+        // 没发生 seek
+        if (!m_frmBuf->peekFirst(peek) || peek.serial == m_frmBuf->serial()) {
+            goto end; // 默认情况下，miniaudio 会预先将数据回调的输出缓冲区静音
+        }
     }
 
-    // 创建音频输出
-    m_audioSink = new QAudioSink(*m_audioDevice, m_format);
-    m_audioSink->setBufferSize(m_format.bytesForFrames(1));
-    m_audioIO = m_audioSink->start(); ///@note m_audioSink->start()启动非常慢
-    m_audioSink->setVolume(m_volume);
-    DeviceStatus::instance().setAudioInitialized(true);
+    bytesPerFrame = m_swrPar.ch_layout.nb_channels * av_get_bytes_per_sample(m_swrPar.sampleFormat);
+    bytesNeeded = frameCount * bytesPerFrame;
 
-    // 确保音视频设备都完成了基本初始化
-    while (!DeviceStatus::instance().initialized() && !m_stop.load(std::memory_order_relaxed)) {
-        QThread::msleep(5);
-    }
+    while (writeCnt < bytesNeeded) {
+        int remaining = m_pcmDataSize - m_pcmDataIndex;
+        if (remaining > 0) {
+            // 还有数据，拷贝到输出缓冲区
+            int canCopy = std::min((int)(bytesNeeded - writeCnt), remaining);
+            memcpy(pDst + writeCnt, m_pcmDataPtr + m_pcmDataIndex, canCopy);
 
-    AVFrmItem frmItem;
-    while (!m_stop.load(std::memory_order_relaxed)) {
-        bool ok = getFrm(frmItem);
-        if (!ok) {
-            QThread::msleep(5);
-            continue;
-        }
-
-        if (m_serial != m_frmBuf->serial()) {
-            m_serial = m_frmBuf->serial();
-            m_forceRefresh = true;
-        }
-
-        if (!m_forceRefresh && m_paused.load(std::memory_order_relaxed)) {
-            if (m_audioSink->state() == QAudio::ActiveState || m_audioSink->state() == QAudio::IdleState) {
-                m_audioSink->suspend();
+            m_pcmDataIndex += canCopy;
+            writeCnt += canCopy;
+        } else {
+            // 当前段用完了，尝试加载下一帧 AVFrame 并转换为 PCM
+            if (!updatePcmFromFrameQueue()) {
+                Q_ASSERT(m_pcmDataIndex == 0);
+                break;
             }
-            QThread::msleep(5);
-            continue;
-        } else if (m_audioSink->state() == QAudio::SuspendedState) {
-            m_audioSink->resume();
         }
+    }
 
-        // 写如入设备
-        write(&frmItem);
-        av_frame_free(&frmItem.frm);
+    if (m_frmItem.frm) {
+        bytesPerSec = m_swrPar.sampleRate * bytesPerFrame;
+        nextPts = m_frmItem.pts + m_pcmDataIndex / bytesPerSec;
+        GlobalClock::instance().setAudioClk(nextPts);
+        GlobalClock::instance().syncExternalClk(ClockType::AUDIO);
+        PlaybackStats::instance().audioPTS = nextPts;
+    }
 
-        if (m_forceRefresh && GlobalClock::instance().mainClockType() == ClockType::AUDIO) {
+end:
+    if (m_frmItem.frm) {
+        if (m_forceRefresh && GlobalClock::instance().mainClockType() == ClockType::AUDIO)
             emit seeked();
-        }
-
         if (!DeviceStatus::instance().haveVideo() || m_forceRefresh)
             emit playedOneFrame();
 
         m_forceRefresh = false;
     }
-
-    if (m_audioSink) { // 不能在其他线程销毁
-        m_audioSink->stop();
-        delete m_audioSink;
-        m_audioSink = nullptr;
-    }
-    DeviceStatus::instance().setAudioInitialized(false);
-    return;
 }
 
-QAudioFormat::ChannelConfig AudioPlayer::FFmpegToQtChannelConfig(const AVChannelLayout &ch_layout, bool *maskIsEqual) {
-    if (maskIsEqual) {
-        *maskIsEqual = true;
-    }
-    switch (ch_layout.order) { // clang-format off
-    case AV_CHANNEL_ORDER_UNSPEC:   return channelCountToQtChannelConfig(ch_layout.nb_channels);      // 仅指定声道数量，不提供声道顺序
-    case AV_CHANNEL_ORDER_CUSTOM:   return channelCountToQtChannelConfig(ch_layout.nb_channels);      // 声道顺序自定义（TODO: 做个映射）
-    case AV_CHANNEL_ORDER_NATIVE:   return FFmpegMaskToQtChannelConfig(ch_layout.u.mask, maskIsEqual);// 原生声道顺序，即 AVChannel 枚举顺序
-    case AV_CHANNEL_ORDER_AMBISONIC:return QAudioFormat::ChannelConfigUnknown;                        // 不支持 Ambisonic
-    default:                        return QAudioFormat::ChannelConfigUnknown;                        // 未知情况
-    } // clang-format on
-}
-
-AVSampleFormat AudioPlayer::QtToFFmpegSampleFormat(const QAudioFormat::SampleFormat &sampleFormat) {
-    switch (sampleFormat) { // clang-format off
-    case QAudioFormat::Unknown: return AV_SAMPLE_FMT_NONE;
-    case QAudioFormat::UInt8:   return AV_SAMPLE_FMT_U8;
-    case QAudioFormat::Int16:   return AV_SAMPLE_FMT_S16;
-    case QAudioFormat::Int32:   return AV_SAMPLE_FMT_S32;
-    case QAudioFormat::Float:   return AV_SAMPLE_FMT_FLT;
-    default:                    return AV_SAMPLE_FMT_S32;
-    } // clang-format on
-}
-
-QAudioFormat::ChannelConfig AudioPlayer::channelCountToQtChannelConfig(int nbChannels) {
-    // clang-format off
-    switch (nbChannels) {
-    case 0: return QAudioFormat::ChannelConfigUnknown;
-    case 1: return QAudioFormat::ChannelConfigMono;
-    case 2: return QAudioFormat::ChannelConfigStereo;
-    //case 3: return QAudioFormat::ChannelConfig2Dot1; //2.1与3.0都是3通道布局，这儿选择3.0
-    case 3: return QAudioFormat::ChannelConfig3Dot0;
-    case 4: return QAudioFormat::ChannelConfig3Dot1;
-    case 5: return QAudioFormat::ChannelConfigSurround5Dot0;
-    case 6: return QAudioFormat::ChannelConfigSurround5Dot1;
-    case 7: return QAudioFormat::ChannelConfigSurround7Dot0;
-    case 8: return QAudioFormat::ChannelConfigSurround7Dot1;
-    default: return QAudioFormat::ChannelConfigUnknown;
-    }
-    // clang-format on
-}
-
-QAudioFormat::ChannelConfig AudioPlayer::FFmpegMaskToQtChannelConfig(uint64_t ffmpegMask, bool *maskIsEqual) {
-    for (const auto &m : mappings) {
-        if (maskHasAll(ffmpegMask, m.ffmpegMask)) {
-            if (maskIsEqual) {
-                *maskIsEqual = ffmpegMask == m.ffmpegMask;
-            }
-            return m.qtChannelConfig;
-        }
-    }
-    return QAudioFormat::ChannelConfigUnknown;
-}
-
-uint64_t AudioPlayer::QtChannelConfigToFFmpegMask(QAudioFormat::ChannelConfig qtConfig) {
-    for (const auto &m : mappings) {
-        if (m.qtChannelConfig == qtConfig) {
-            return m.ffmpegMask;
-        }
-    }
-    return 0; // 未知
+void AudioPlayer::miniaudio_data_callback(ma_device *pDevice, void *pOutput, const void * /*pInput*/, ma_uint32 frameCount) {
+    AudioPlayer *player = static_cast<AudioPlayer *>(pDevice->pUserData);
+    Q_ASSERT(player != nullptr);
+    player->fillAudioBuffer(pOutput, frameCount);
 }

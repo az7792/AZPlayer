@@ -8,7 +8,6 @@
 #define UTILS_H
 #include "compat/compat.h"
 #include "types/types.h"
-#include <QAudioFormat>
 #include <atomic>
 #include <deque>
 #include <mutex>

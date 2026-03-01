@@ -238,19 +238,25 @@ bool VideoPlayer::getVideoFrm(AVFrmItem &item) {
         if (item.serial != m_frmBuf->serial()) {
             av_frame_free(&item.frm);
             m_forceRefresh = true;
-            return false;
+            // 继续向下去队列里找新序号的帧
+        } else {
+            return true;
         }
-        return true;
     }
 
-    if (!m_frmBuf->pop(item)) { // 空
-        return false;
-    } else if (item.serial != m_frmBuf->serial()) { // 非空 但是序号不同
-        av_frame_free(&item.frm);
+    if (item.serial != m_frmBuf->serial())
         m_forceRefresh = true;
-        return false;
+
+    // 直到找到序号一致的帧或队列为空
+    while (m_frmBuf->pop(item)) {
+        if (item.serial == m_frmBuf->serial()) {
+            return true;
+        }
+        av_frame_free(&item.frm);
     }
-    return true;
+
+    // 队列空
+    return false;
 }
 
 double VideoPlayer::getDuration(const FrameInterval &last, const FrameInterval &now) {

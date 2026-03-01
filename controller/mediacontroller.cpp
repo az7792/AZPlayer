@@ -351,10 +351,6 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
     m_decodeAudio->start();
     m_audioPlayer->start();
 
-    // 由于音频设备启动非常耗时，因此可以先把视频关了再开，这样可以利用DeviceStatus同步设备启动时间
-    m_videoPlayer->stop();
-    m_videoPlayer->start();
-
     m_streams[to_index(MediaIdx::Audio)] = {demuxIdx, streamIdx}; // 更新
 
     return true;

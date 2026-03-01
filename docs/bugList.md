@@ -23,6 +23,7 @@
           if (dec_desc && !(dec_desc->props & AV_CODEC_PROP_TEXT_SUB))
 ```
 
-- [ ] `011`: 在使用某些设备播放某些文件时可能出现qt.multimedia.audioresampler: Resampling failed -1072875851
+- [x] `011`: 在使用某些设备播放某些文件时可能出现qt.multimedia.audioresampler: Resampling failed -1072875851
           - 使用蓝牙连接OPPO Enco Free4 播放 [VCB-Studio] Karakai Jouzu no Takagi-san [02][Ma10p_1080p][x265_flac].mkv 时，手动seek几次就会出现
 - [x] `012`: 播放带封面的音频会导致进度条不更新
+- [ ] `013`: 播放带封面的音频会导致视频pts异常

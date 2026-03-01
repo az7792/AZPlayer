@@ -40,7 +40,8 @@ struct AudioPar {
     AVChannelLayout ch_layout;                        // 通道布局
 
     AudioPar() {
-        av_channel_layout_default(&ch_layout, 0);
+        ch_layout = {};
+        reset();
     }
 
     ~AudioPar() {
@@ -50,7 +51,7 @@ struct AudioPar {
     void reset() {
         sampleRate = 0;
         sampleFormat = AV_SAMPLE_FMT_NONE;
-        av_channel_layout_default(&ch_layout, 0);
+        av_channel_layout_uninit(&ch_layout);
     }
 };
 

@@ -6,10 +6,6 @@
 
 #include "compat/compat.h"
 #include "types/ptrs.h"
-#include <QAudioDevice>
-#include <QAudioFormat>
-#include <QAudioSink>
-#include <QIODevice>
 #include <QObject>
 #include <QThread>
 
@@ -19,8 +15,12 @@ AZ_EXTERN_C_BEGIN
 #include <libswresample/swresample.h>
 AZ_EXTERN_C_END
 
+struct ma_device;
+
 class AudioPlayer : public QObject {
     Q_OBJECT
+private:
+    using ma_uint32 = uint32_t;
 
 public:
     explicit AudioPlayer(QObject *parent = nullptr);
@@ -31,9 +31,9 @@ public:
     // 回到未初始化状态
     bool uninit();
 
-    // 开启解复用线程
+    // 启动
     void start();
-    // 退出解复用线程
+    // 退出
     void stop();
 
     void togglePaused();
@@ -48,22 +48,25 @@ signals:
 private:
     sharedFrmQueue m_frmBuf;
 
-    QAudioSink *m_audioSink = nullptr;     // 向音频输出设备发送音频数据的接口
-    QAudioDevice *m_audioDevice = nullptr; // 用于播放音频的设备
-    QIODevice *m_audioIO = nullptr;        // 音频数据来源
-    QAudioFormat m_format;                 // 播放时使用的音频格式
-    SwrContext *m_swrContext = nullptr;    // 用于重采样的上下文
+    ma_device *m_audioDevice = nullptr; // 音频设备 NOTE: 生命周期与AudioPlayer一致，不要在init或者uninit里重新构造/析构
+    SwrContext *m_swrContext = nullptr; // 用于重采样的上下文
 
     // 缓冲区
     uint8_t **m_swrBuffer = nullptr;
     int m_swrBufferSize = 0;
 
+    // PCM数据
+    AVFrmItem m_frmItem{};
+    int m_pcmDataSize;
+    uint8_t *m_pcmDataPtr = nullptr;
+    int m_pcmDataIndex;
+
+    // ==== FFmmpeg的音频参数 ====
     AudioPar m_oldPar; // 原始音频参数
     AudioPar m_swrPar; // 重采样音频参数，未进行重采样时与m_oldPar一致
 
     bool m_initialized = false; // 是否已经初始化
     int m_serial = 0;
-    QThread *m_thread = nullptr; // AudioSink需要使用QTimer，这而不能用std::thread
     std::atomic<bool> m_stop{true};
     std::atomic<bool> m_paused{false};
     bool m_forceRefresh{false};
@@ -72,26 +75,11 @@ private:
 private:
     bool getFrm(AVFrmItem &item);
 
-    void playerLoop();
-    /**
-     * 写入一帧数据
-     * @warning 方法会阻塞线程
-     */
-    qint64 write(AVFrmItem *item);
+    // 从队列获取一致并更新 PCM 数据
+    bool updatePcmFromFrameQueue();
 
-    /**
-     * FFmpeg通道布局 -> Qt通道格式
-     * @param maskIsEqual 只要在使用mask匹配，且maske是超集但不相等时回传false
-     */
-    QAudioFormat::ChannelConfig FFmpegToQtChannelConfig(const AVChannelLayout &ch_layout, bool *maskIsEqual = nullptr);
-    // Qt采样格式 -> FFmpeg采样格式
-    AVSampleFormat QtToFFmpegSampleFormat(const QAudioFormat::SampleFormat &sampleFormat);
-    // 通道数量 -> Qt通道格式
-    QAudioFormat::ChannelConfig channelCountToQtChannelConfig(int nbChannels);
-    // FFmpeg mask -> Qt ChannelConfig
-    QAudioFormat::ChannelConfig FFmpegMaskToQtChannelConfig(uint64_t ffmpegMask, bool *maskIsEqual = nullptr);
-    // Qt ChannelConfig -> FFmpeg mask
-    uint64_t QtChannelConfigToFFmpegMask(QAudioFormat::ChannelConfig qtConfig);
+    void fillAudioBuffer(void *pOutput, ma_uint32 frameCount);
+    static void miniaudio_data_callback(ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount);
 };
 
 #endif // AUDIOPLAYER_H

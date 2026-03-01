@@ -24,7 +24,6 @@ find_package(Qt6 6.6 REQUIRED COMPONENTS
     Qml
     Quick
     QuickControls2
-    Multimedia
 )
 qt_standard_project_setup()
 
@@ -105,6 +104,11 @@ qt_add_qml_module(appAZPlayer
     RESOURCES resource.qrc
 )
 
+# 宏标志
+target_compile_definitions(appAZPlayer PRIVATE
+    MA_USE_STDINT # 让 miniaudio 使用标准整数类型
+)
+
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
 # explicit, fixed bundle identifier manually though.
@@ -136,7 +140,6 @@ target_link_libraries(appAZPlayer
         Qt6::Quick
         Qt6::Gui
         Qt6::Core
-        Qt6::Multimedia
         avcodec
         avformat
         avutil
