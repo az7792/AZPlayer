@@ -21,6 +21,7 @@ class MediaController : public QObject {
     Q_OBJECT
 public:
     explicit MediaController(QObject *parent = nullptr);
+    ~MediaController();
 
     bool paused() const;
     void setPaused(bool newPaused); // 仅用于修改数值产生信号

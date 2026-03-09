@@ -86,6 +86,14 @@ MediaController::MediaController(QObject *parent)
     m_checkPlayerFinishedTimer.start(100);
 }
 
+MediaController::~MediaController()
+{
+    m_checkPlayerFinishedTimer.stop();
+    m_updatePktAndFrmQueueSizeTimer.stop();
+    m_progressFallbackTimer.stop();
+    close();
+}
+
 bool MediaController::setVideoWindow(QObject *videoWindow) {
     // HACK: 目前仅支持调用一次，多次调用不会清理旧连接
     VideoWindow *wd = static_cast<VideoWindow *>(videoWindow);
