@@ -6,8 +6,8 @@
 #include "stats/playbackstats.h"
 #include <QDebug>
 
-bool DecodeVideo::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
-    bool initok = DecodeBase::init(stream, pktBuf, frmBuf);
+bool DecodeVideo::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf, int threadNum) {
+    bool initok = DecodeBase::init(stream, pktBuf, frmBuf, threadNum);
     if (!initok) {
         return false;
     }

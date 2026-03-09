@@ -125,7 +125,7 @@ bool MediaController::open(const QUrl &URL) {
         const int audioIdx = 0;
         m_demuxs[defDemuxIdx]->switchAudioStream(audioIdx, m_pktAudioBuf, m_frmAudioBuf);
         m_streams[to_index(MediaIdx::Audio)] = {defDemuxIdx, audioIdx};
-        ok &= m_decodeAudio->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Audio), m_pktAudioBuf, m_frmAudioBuf);
+        ok &= m_decodeAudio->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Audio), m_pktAudioBuf, m_frmAudioBuf, 1);
         ok &= m_audioPlayer->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Audio)->codecpar, m_frmAudioBuf);
     }
 
@@ -133,7 +133,8 @@ bool MediaController::open(const QUrl &URL) {
         const int videoIdx = 0;
         m_streams[to_index(MediaIdx::Video)] = {defDemuxIdx, videoIdx};
         m_demuxs[defDemuxIdx]->switchVideoStream(videoIdx, m_pktVideoBuf, m_frmVideoBuf);
-        ok &= m_decodeVideo->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Video), m_pktVideoBuf, m_frmVideoBuf);
+        int cores = std::thread::hardware_concurrency(); // 逻辑核心数
+        ok &= m_decodeVideo->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Video), m_pktVideoBuf, m_frmVideoBuf, cores >= 6 ? 6 : 0);
     }
 
     if (haveVideo && m_demuxs[defDemuxIdx]->haveStream(MediaType::Subtitle)) {
@@ -142,7 +143,7 @@ bool MediaController::open(const QUrl &URL) {
         bool isAssSub;
         m_demuxs[defDemuxIdx]->switchSubtitleStream(subtitleIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub);
         if (!isAssSub)
-            ok &= m_decodeSubtitl->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf);
+            ok &= m_decodeSubtitl->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf, 1);
     }
 
     DeviceStatus::instance().setHaveAudio(haveAudio);
@@ -319,7 +320,7 @@ bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
     bool isAssSub;
     m_demuxs[demuxIdx]->switchSubtitleStream(streamIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub);
     if (!isAssSub) {
-        m_decodeSubtitl->init(m_demuxs[demuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf);
+        m_decodeSubtitl->init(m_demuxs[demuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf, 1);
         m_decodeSubtitl->start();
     }
 
@@ -345,7 +346,7 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
 
     // 打开新的
     m_demuxs[demuxIdx]->switchAudioStream(streamIdx, m_pktAudioBuf, m_frmAudioBuf);
-    m_decodeAudio->init(m_demuxs[demuxIdx]->getStream(MediaType::Audio), m_pktAudioBuf, m_frmAudioBuf);
+    m_decodeAudio->init(m_demuxs[demuxIdx]->getStream(MediaType::Audio), m_pktAudioBuf, m_frmAudioBuf, 1);
     m_audioPlayer->init(m_demuxs[demuxIdx]->getStream(MediaType::Audio)->codecpar, m_frmAudioBuf);
     DeviceStatus::instance().setHaveAudio(true);
     m_decodeAudio->start();

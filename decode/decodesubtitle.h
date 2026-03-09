@@ -9,7 +9,8 @@ public:
     using DecodeBase::DecodeBase;
     bool init(AVStream *stream,
               sharedPktQueue pktBuf,
-              sharedFrmQueue frmBuf);
+              sharedFrmQueue frmBuf,
+              int threadNum);
 
 private:
     void decodingLoop() override;

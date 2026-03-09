@@ -19,8 +19,8 @@ namespace {
     }
 }
 
-bool DecodeSubtitle::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
-    bool initok = DecodeBase::init(stream, pktBuf, frmBuf);
+bool DecodeSubtitle::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf, int threadNum) {
+    bool initok = DecodeBase::init(stream, pktBuf, frmBuf, threadNum);
     if (!initok) {
         return false;
     }
@@ -78,9 +78,8 @@ void DecodeSubtitle::decodingLoop() {
                             goto end;
                         }
                         std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                    }                    
-                }
-                else {
+                    }
+                } else {
                     handleTextSub(frmItem);
                 }
             } else {

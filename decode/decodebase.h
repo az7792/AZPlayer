@@ -19,9 +19,11 @@ class DecodeBase : public QObject {
 public:
     explicit DecodeBase(QObject *parent = nullptr);
     ~DecodeBase();
+    // threadNum <= 0 时为 auto
     bool init(AVStream *stream,
               sharedPktQueue pktBuf,
-              sharedFrmQueue frmBuf);
+              sharedFrmQueue frmBuf,
+              int threadNum);
 
     // 反初始化，恢复到未初始化之前的状态
     bool uninit();

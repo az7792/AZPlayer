@@ -4,8 +4,8 @@
 #include "decodeaudio.h"
 #include <QDebug>
 
-bool DecodeAudio::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
-    bool intok = DecodeBase::init(stream, pktBuf, frmBuf);
+bool DecodeAudio::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf, int threadNum) {
+    bool intok = DecodeBase::init(stream, pktBuf, frmBuf, threadNum);
     if (!intok) {
         return false;
     }

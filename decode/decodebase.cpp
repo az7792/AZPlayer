@@ -11,7 +11,7 @@ DecodeBase::~DecodeBase() {
     uninit();
 }
 
-bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf) {
+bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue frmBuf, int threadNum) {
     if (stream == nullptr) {
         return false;
     }
@@ -44,8 +44,7 @@ bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue fr
 
     // HACK: 使用多线程会加剧部分带封面音频无法显示的问题
     AVDictionary *opts = nullptr;
-    int cores = std::thread::hardware_concurrency();             // 逻辑核心数
-    av_dict_set(&opts, "threads", cores >= 6 ? "6" : "auto", 0); // auto 为自动
+    av_dict_set(&opts, "threads", threadNum <= 0 ? "auto" : std::to_string(threadNum).c_str(), 0);
 
     ret = avcodec_open2(m_codecCtx, m_codec, &opts);
     av_dict_free(&opts);
