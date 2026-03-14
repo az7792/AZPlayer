@@ -100,6 +100,7 @@ qt_add_qml_module(appAZPlayer
             utils/AtomicDoubleBuffer.h
             utils/filehelper.h utils/filehelper.cpp
             stats/playbackstats.h stats/playbackstats.cpp
+            utils/spscbuffer.h utils/spscbuffer.cpp
             3rd/miniaudio/miniaudio.h 3rd/miniaudio/miniaudio.cpp
     RESOURCES resource.qrc
 )

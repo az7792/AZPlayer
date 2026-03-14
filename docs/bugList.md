@@ -16,14 +16,18 @@
 - [x] `009`: ASS字幕有时会~~seek无效~~无法显示
           - 部分复杂ASS字幕的事件刷新速率大于视频帧率导致事件的最晚结束时间小于当前视频时间，例如当前3s,而事件最晚到2s,因此自然渲染不出3s时的字幕
 - [x] `010`: SRT字幕seek时同一条字幕解码出的readorder序号可能不同，导致某些时候字幕不显示
-          - 观察发现SRT字幕解码的序号跟实际解码的顺序有关以及字幕本身的时间有关
-          - 建议ass，srt这种文本字幕建议改为一次性加载一次，通过类似于下面的内容进行判断是否为文本字幕
+      - 观察发现SRT字幕解码的序号跟实际解码的顺序有关以及字幕本身的时间有关
+      - 建议ass，srt这种文本字幕建议改为一次性加载一次，通过类似于下面的内容进行判断是否为文本字幕
 ```
           dec_desc = avcodec_descriptor_get(st->codecpar->codec_id);
           if (dec_desc && !(dec_desc->props & AV_CODEC_PROP_TEXT_SUB))
 ```
 
 - [x] `011`: 在使用某些设备播放某些文件时可能出现qt.multimedia.audioresampler: Resampling failed -1072875851
-          - 使用蓝牙连接OPPO Enco Free4 播放 [VCB-Studio] Karakai Jouzu no Takagi-san [02][Ma10p_1080p][x265_flac].mkv 时，手动seek几次就会出现
+     - 使用蓝牙连接OPPO Enco Free4 播放 [VCB-Studio] Karakai Jouzu no Takagi-san [02][Ma10p_1080p][x265_flac].mkv 时，手动seek几次就会出现
 - [x] `012`: 播放带封面的音频会导致进度条不更新
 - [ ] `013`: 播放带封面的音频会导致视频pts异常
+- [ ] `014`: 播放音频时偶尔会有细微的“滋滋”声
+     - 可能是设备的问题
+- [ ] `015`: 暂停后并seek，然后再播放会有类似缓冲区没清干净的声音
+- [ ] `016`: 帧生成时间异常，在打开监控面板后恢复正常

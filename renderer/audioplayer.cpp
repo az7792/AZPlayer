@@ -118,6 +118,23 @@ namespace {
         // 未知
         return false;
     }
+
+    // 向上舍入到最近的2^n
+    static uint64_t roundUpPow2(uint64_t v) {
+        if (v <= 1)
+            return 1;
+        if (v > (1ull << 63))
+            return 0; // 溢出
+        v--;
+        v |= v >> 1;
+        v |= v >> 2;
+        v |= v >> 4;
+        v |= v >> 8;
+        v |= v >> 16;
+        v |= v >> 32;
+        v++;
+        return v;
+    }
 }
 
 AudioPlayer::AudioPlayer(QObject *parent)
@@ -187,8 +204,14 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
         return false;
     }
 
+    Q_ASSERT(m_pcmBuffer == nullptr);
+    m_pcmFrameSize = m_swrPar.ch_layout.nb_channels * av_get_bytes_per_sample(m_swrPar.sampleFormat);
+    uint64_t pcmBufferSize = (uint64_t)m_swrPar.sampleRate * m_pcmFrameSize * 100 / 1000; // 100ms容量
+    m_pcmBuffer = new SPSCBuffer(roundUpPow2(pcmBufferSize));
+    qDebug() << "pcmBuffer capacity:" << m_pcmBuffer->capacity();
+
     deviceConfig.dataCallback = miniaudio_data_callback;
-    deviceConfig.pUserData = this;
+    deviceConfig.pUserData = this->m_pcmBuffer;
 
     if (ma_device_init(NULL, &deviceConfig, m_audioDevice) != MA_SUCCESS) {
         printf("Failed to open playback device.\n");
@@ -254,6 +277,11 @@ bool AudioPlayer::uninit() {
         m_swrBuffer = nullptr;
     }
 
+    if (m_pcmBuffer) {
+        delete m_pcmBuffer;
+        m_pcmBuffer = nullptr;
+    }
+
     m_swrBufferSize = 0;
     m_frmBuf.reset();
 
@@ -266,25 +294,40 @@ void AudioPlayer::start() {
         return;
     }
 
-    // 启动设备
+    if (m_thread.joinable()) {
+        return;
+    }
+
+    // 启动PCM线程
+    m_stop.store(false, std::memory_order_relaxed);
+    m_paused.store(false, std::memory_order_relaxed);
+    m_thread = std::thread([this] { playerLoop(); });
+
+    // 启动音频设备
     ma_device_state state = ma_device_get_state(m_audioDevice);
     Q_ASSERT(state != ma_device_state_uninitialized);
     if (state != ma_device_state_started && state != ma_device_state_starting) {
         if (ma_device_start(m_audioDevice) != MA_SUCCESS) {
+            m_stop.store(true, std::memory_order_relaxed);
             qDebug() << "AudioPlayer: 无法启动 miniaudio 设备";
             return;
         }
     }
 
-    m_stop.store(false, std::memory_order_relaxed);
-    m_paused.store(false, std::memory_order_relaxed);
-
     DeviceStatus::instance().setAudioInitialized(true);
 }
 
 void AudioPlayer::stop() {
+    if (!m_thread.joinable()) {
+        return; // 已经退出
+    }
+
+    // 关闭设备
     m_stop.store(true, std::memory_order_relaxed);
     ma_device_uninit(m_audioDevice);
+
+    // 关闭PCM线程
+    m_thread.join(); // 阻塞直到 playerLoop 退出
 
     DeviceStatus::instance().setAudioInitialized(false);
 }
@@ -295,6 +338,11 @@ void AudioPlayer::togglePaused() {
     }
     bool paused = m_paused.load(std::memory_order_relaxed);
     m_paused.store(!paused, std::memory_order_release);
+    if (paused) {
+        ma_device_start(m_audioDevice);
+    } else {
+        ma_device_stop(m_audioDevice);
+    }
 }
 
 double AudioPlayer::volume() const {
@@ -324,6 +372,68 @@ bool AudioPlayer::getFrm(AVFrmItem &item) {
     return false;
 }
 
+void AudioPlayer::playerLoop() {
+    if (!m_initialized) {
+        return;
+    }
+
+    while (!m_stop.load(std::memory_order_relaxed)) {
+        bool ok = updatePcmFromFrameQueue();
+        if (!ok) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            continue;
+        }
+
+        if (m_serial != m_frmBuf->serial()) {
+            m_serial = m_frmBuf->serial();
+            m_pcmBuffer->requestClearOldData();
+            if (m_swrContext) {
+                swr_init(m_swrContext);
+            }
+            m_forceRefresh = true;
+        }
+
+        // 写入帧到PCMBuffer中
+        writePCM();
+
+        if (m_forceRefresh && GlobalClock::instance().mainClockType() == ClockType::AUDIO)
+            emit seeked();
+
+        if (m_forceRefresh || !DeviceStatus::instance().haveVideo())
+            emit playedOneFrame();
+
+        m_forceRefresh = false;
+    }
+
+    return;
+}
+
+void AudioPlayer::writePCM() {
+    while (m_pcmDataIndex < m_pcmDataSize) {
+        uint64_t len = m_pcmDataSize - m_pcmDataIndex;
+        uint64_t written = m_pcmBuffer->write(m_pcmDataPtr + m_pcmDataIndex, len);
+        m_pcmDataIndex += written;
+        if (written != len) {
+            if (m_stop.load(std::memory_order_relaxed))
+                return;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    }
+
+    // 更新音频时钟
+    double bytesPerSec = m_swrPar.sampleRate * m_pcmFrameSize;
+    double nextPts = m_frmItem.pts + m_pcmDataSize / bytesPerSec;  // 当前帧全部播完的结束时间
+    double offsetPts = m_pcmBuffer->readAvailable() / bytesPerSec; // 未播的时间
+
+    // NOTE: 表示已经送入设备的音频pts，设备本身还有缓冲区，因此该pts会略微领先实际听到的pts
+    GlobalClock::instance().setAudioClk(nextPts - offsetPts);
+    GlobalClock::instance().syncExternalClk(ClockType::AUDIO);
+
+    PlaybackStats::instance().audioPTS = nextPts - offsetPts;
+
+    return;
+}
+
 bool AudioPlayer::updatePcmFromFrameQueue() {
     av_frame_free(&m_frmItem.frm);
     m_pcmDataSize = 0;
@@ -351,7 +461,6 @@ bool AudioPlayer::updatePcmFromFrameQueue() {
         int out_buf_size = out_nb_samples * out_channels * out_bytes_per_sample;
 
         if (out_buf_size > m_swrBufferSize) { // swrbuf大小不够，重新分配
-            m_swrBuffer = (uint8_t **)av_realloc(m_swrBuffer, sizeof(uint8_t *));
             *m_swrBuffer = (uint8_t *)av_realloc(*m_swrBuffer, out_buf_size);
             m_swrBufferSize = out_buf_size;
         }
@@ -371,73 +480,33 @@ bool AudioPlayer::updatePcmFromFrameQueue() {
         m_pcmDataSize = nb_samples * out_channels * out_bytes_per_sample;
         m_pcmDataPtr = *m_swrBuffer;
     } else { // 无需重采样
-        m_pcmDataSize = av_samples_get_buffer_size(nullptr, m_oldPar.ch_layout.nb_channels, frm->nb_samples, m_oldPar.sampleFormat, 1);
         assert(!av_sample_fmt_is_planar(m_oldPar.sampleFormat));
         assert(m_oldPar.sampleFormat == static_cast<AVSampleFormat>(frm->format));
+        m_pcmDataSize = frm->nb_samples * m_pcmFrameSize;
         m_pcmDataPtr = frm->data[0];
     }
 
     return true;
 }
 
-void AudioPlayer::fillAudioBuffer(void *pOutput, ma_uint32 frameCount) {
-    uint8_t *pDst = static_cast<uint8_t *>(pOutput);
-    int writeCnt = 0;  // 已经写入的大小(字节)
-    int bytesPerFrame; // 单个PCM帧的大小(字节)
-    int bytesNeeded;   // 需要写入的字节数
-    double nextPts;
-    double bytesPerSec;
-
-    if (m_paused.load(std::memory_order_acquire)) {
-        AVFrmItem peek;
-        // 没发生 seek
-        if (!m_frmBuf->peekFirst(peek) || peek.serial == m_frmBuf->serial()) {
-            goto end; // 默认情况下，miniaudio 会预先将数据回调的输出缓冲区静音
-        }
-    }
-
-    bytesPerFrame = m_swrPar.ch_layout.nb_channels * av_get_bytes_per_sample(m_swrPar.sampleFormat);
-    bytesNeeded = frameCount * bytesPerFrame;
-
-    while (writeCnt < bytesNeeded) {
-        int remaining = m_pcmDataSize - m_pcmDataIndex;
-        if (remaining > 0) {
-            // 还有数据，拷贝到输出缓冲区
-            int canCopy = std::min((int)(bytesNeeded - writeCnt), remaining);
-            memcpy(pDst + writeCnt, m_pcmDataPtr + m_pcmDataIndex, canCopy);
-
-            m_pcmDataIndex += canCopy;
-            writeCnt += canCopy;
-        } else {
-            // 当前段用完了，尝试加载下一帧 AVFrame 并转换为 PCM
-            if (!updatePcmFromFrameQueue()) {
-                Q_ASSERT(m_pcmDataIndex == 0);
-                break;
-            }
-        }
-    }
-
-    if (m_frmItem.frm) {
-        bytesPerSec = m_swrPar.sampleRate * bytesPerFrame;
-        nextPts = m_frmItem.pts + m_pcmDataIndex / bytesPerSec;
-        GlobalClock::instance().setAudioClk(nextPts);
-        GlobalClock::instance().syncExternalClk(ClockType::AUDIO);
-        PlaybackStats::instance().audioPTS = nextPts;
-    }
-
-end:
-    if (m_frmItem.frm) {
-        if (m_forceRefresh && GlobalClock::instance().mainClockType() == ClockType::AUDIO)
-            emit seeked();
-        if (!DeviceStatus::instance().haveVideo() || m_forceRefresh)
-            emit playedOneFrame();
-
-        m_forceRefresh = false;
-    }
-}
-
 void AudioPlayer::miniaudio_data_callback(ma_device *pDevice, void *pOutput, const void * /*pInput*/, ma_uint32 frameCount) {
-    AudioPlayer *player = static_cast<AudioPlayer *>(pDevice->pUserData);
-    Q_ASSERT(player != nullptr);
-    player->fillAudioBuffer(pOutput, frameCount);
+    SPSCBuffer *buffer = static_cast<SPSCBuffer *>(pDevice->pUserData);
+
+    const uint32_t bytesPerSample = ma_get_bytes_per_sample(pDevice->playback.format);
+    const uint32_t frameSize = pDevice->playback.channels * bytesPerSample;
+
+    uint8_t *pDst = static_cast<uint8_t *>(pOutput);
+    int writeCnt = 0; // 已经写入的大小(字节)
+    int bytesNeeded;  // 需要写入的字节数
+
+    bytesNeeded = frameCount * frameSize;
+
+    while (0 < bytesNeeded) {
+        uint64_t len = buffer->read(pDst + writeCnt, bytesNeeded);
+        bytesNeeded -= len;
+        writeCnt += len;
+
+        if (len == 0)
+            return; // 无数据
+    }
 }
