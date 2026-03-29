@@ -63,6 +63,7 @@ private:
     uint8_t *m_pcmDataPtr = nullptr;
     int m_pcmDataIndex;
     int m_pcmFrameSize; // 一个PCM帧的字节大小
+    double m_bufferedEndPts; // 已经写入 m_pcmBuffer 的最新数据所表示的pts
 
     // ==== FFmmpeg的音频参数 ====
     AudioPar m_oldPar; // 原始音频参数

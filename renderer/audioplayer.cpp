@@ -211,7 +211,7 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
     qDebug() << "pcmBuffer capacity:" << m_pcmBuffer->capacity();
 
     deviceConfig.dataCallback = miniaudio_data_callback;
-    deviceConfig.pUserData = this->m_pcmBuffer;
+    deviceConfig.pUserData = this;
 
     if (ma_device_init(NULL, &deviceConfig, m_audioDevice) != MA_SUCCESS) {
         printf("Failed to open playback device.\n");
@@ -409,9 +409,14 @@ void AudioPlayer::playerLoop() {
 }
 
 void AudioPlayer::writePCM() {
+    m_bufferedEndPts = m_frmItem.pts;
+    double bytesPerSec = m_swrPar.sampleRate * m_pcmFrameSize;
+    GlobalClock::instance().syncExternalClk(ClockType::AUDIO);
+
     while (m_pcmDataIndex < m_pcmDataSize) {
         uint64_t len = m_pcmDataSize - m_pcmDataIndex;
         uint64_t written = m_pcmBuffer->write(m_pcmDataPtr + m_pcmDataIndex, len);
+        m_bufferedEndPts += written / bytesPerSec;
         m_pcmDataIndex += written;
         if (written != len) {
             if (m_stop.load(std::memory_order_relaxed))
@@ -420,17 +425,7 @@ void AudioPlayer::writePCM() {
         }
     }
 
-    // 更新音频时钟
-    double bytesPerSec = m_swrPar.sampleRate * m_pcmFrameSize;
-    double nextPts = m_frmItem.pts + m_pcmDataSize / bytesPerSec;  // 当前帧全部播完的结束时间
-    double offsetPts = m_pcmBuffer->readAvailable() / bytesPerSec; // 未播的时间
-
-    // NOTE: 表示已经送入设备的音频pts，设备本身还有缓冲区，因此该pts会略微领先实际听到的pts
-    GlobalClock::instance().setAudioClk(nextPts - offsetPts);
-    GlobalClock::instance().syncExternalClk(ClockType::AUDIO);
-
-    PlaybackStats::instance().audioPTS = nextPts - offsetPts;
-
+    PlaybackStats::instance().audioPTS = GlobalClock::instance().audioPts();
     return;
 }
 
@@ -490,10 +485,16 @@ bool AudioPlayer::updatePcmFromFrameQueue() {
 }
 
 void AudioPlayer::miniaudio_data_callback(ma_device *pDevice, void *pOutput, const void * /*pInput*/, ma_uint32 frameCount) {
-    SPSCBuffer *buffer = static_cast<SPSCBuffer *>(pDevice->pUserData);
+    AudioPlayer *audioPlayer = static_cast<AudioPlayer *>(pDevice->pUserData);
+    SPSCBuffer *buffer = audioPlayer->m_pcmBuffer;
+    double nextPtr = audioPlayer->m_bufferedEndPts;
 
     const uint32_t bytesPerSample = ma_get_bytes_per_sample(pDevice->playback.format);
     const uint32_t frameSize = pDevice->playback.channels * bytesPerSample;
+
+    double bytesPerSec = frameSize * pDevice->sampleRate;
+    double offsetPts = buffer->readAvailable() / bytesPerSec; // 未播的时间
+    GlobalClock::instance().setAudioClk(nextPtr - offsetPts);
 
     uint8_t *pDst = static_cast<uint8_t *>(pOutput);
     int writeCnt = 0; // 已经写入的大小(字节)
