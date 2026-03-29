@@ -7,12 +7,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTORCC ON)
 # 设置 FFmpeg 路径
-set(FFMPEG_DIR D:/ffmpeg-8.0-full_build-shared)
+set(FFMPEG_DIR C:/Development/SDKs/ffmpeg-8.0-full_build-shared)
 set(FFMPEG_INCLUDE_DIR ${FFMPEG_DIR}/include)
 set(FFMPEG_LIB_DIR ${FFMPEG_DIR}/lib)
 set(FFMPEG_BIN_DIR ${FFMPEG_DIR}/bin)
 # 设置 libass 路径
-set(ASS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd/libass)
+set(ASS_DIR C:/Development/SDKs/libass)
 set(ASS_INCLUDE_DIR ${ASS_DIR}/include)
 set(ASS_LIB_DIR ${ASS_DIR}/lib)
 set(ASS_BIN_DIR ${ASS_DIR}/bin)
@@ -102,7 +102,8 @@ qt_add_qml_module(appAZPlayer
             stats/playbackstats.h stats/playbackstats.cpp
             utils/spscbuffer.h utils/spscbuffer.cpp
             3rd/miniaudio/miniaudio.h 3rd/miniaudio/miniaudio.cpp
-    RESOURCES resource.qrc
+            utils/powermanager.h utils/powermanager.cpp
+    RESOURCES resource.qrc    
 )
 
 # 宏标志

@@ -11,6 +11,7 @@
 #include "renderer/videorenderer.h"
 #include "stats/playbackstats.h"
 #include "utils/filehelper.h"
+#include "utils/powermanager.h"
 
 int main(int argc, char *argv[]) {
     // 支持使用文件和文件夹作为启动参数
@@ -19,21 +20,21 @@ int main(int argc, char *argv[]) {
         startupFiles << QString::fromLocal8Bit(argv[i]);
     QVariantList mediaFiles = FileHelper::instance().expandFiles(startupFiles);
 
-    // for (const QVariant &item : list) {
-    //     QVariantMap map = item.toMap();
-    //     qDebug() << "text:" << map["text"].toString() << ", fileUrl:" << map["fileUrl"].toString();
-    // }
-
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL); // 绘图使用的FBO只有在OpenGL模式下才生效
 
     QGuiApplication app(argc, argv);
     QQuickStyle::setStyle("Basic");
 
     MediaController mc;
+    QObject::connect(&mc, &MediaController::pausedChanged, &app, [&mc]() {
+        bool shouldKeepAwake = !mc.paused();
+        PowerManager::instance().setKeepScreenOn(shouldKeepAwake);
+        qDebug() << "AZPlayer Power State Sync:" << (shouldKeepAwake ? "Awake" : "Allow Sleep");
+    });
 
     QQmlApplicationEngine engine;
     qmlRegisterType<VideoWindow>("VideoWindow", 1, 0, "VideoWindow");
-    engine.rootContext()->setContextProperty("MediaCtrl", &mc);
+    engine.rootContext()->setContextProperty("MediaCtrl", &mc);    
     engine.rootContext()->setContextProperty("PlaybackStats", &PlaybackStats::instance());
     engine.rootContext()->setContextProperty("appDirPath", QCoreApplication::applicationDirPath());
 
