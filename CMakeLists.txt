@@ -158,6 +158,7 @@ target_link_libraries(appAZPlayer
         harfbuzz
         libpng16
         zlib
+        winmm
 )
 
 add_custom_command(TARGET appAZPlayer POST_BUILD

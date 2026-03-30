@@ -7,6 +7,22 @@
 #include <QQuickStyle>
 #include <QQuickWindow>
 
+// 针对 Windows 的高精度定时器支持
+#ifdef Q_OS_WIN
+#include <windows.h>
+class TimerResolution {
+public:
+    TimerResolution() { timeBeginPeriod(1); }
+    ~TimerResolution() { timeEndPeriod(1); }
+};
+#else
+class TimerResolution {
+public:
+    TimerResolution() {}
+    ~TimerResolution() {}
+};
+#endif
+
 #include "controller/mediacontroller.h"
 #include "renderer/videorenderer.h"
 #include "stats/playbackstats.h"
@@ -14,6 +30,8 @@
 #include "utils/powermanager.h"
 
 int main(int argc, char *argv[]) {
+    TimerResolution timerResolution{};
+
     // 支持使用文件和文件夹作为启动参数
     QStringList startupFiles;
     for (int i = 1; i < argc; ++i)
