@@ -19,6 +19,7 @@
 - [x] 播放文本字幕(已支持ASS、SRT字幕)
 - [x] 章节显示与跳转
 - [x] 拖拽文件文件夹启动时自动加载并播放
+- [x] 音频设备跟随系统自动切换
 - [ ] 倍速
 - [ ] 截图
 - [ ] 单帧播放
@@ -27,60 +28,20 @@
 - [ ] 加载B站弹幕
 - [ ] 硬解
 - [ ] 拖动文件文件夹到界面后自动播放并添加到列表
-- [ ] 处理不同音频设备切换
 
 ## 下载
 
-目前仅支持Windows平台，可以通过本页面的[Releases](https://github.com/az7792/AZPlayer/releases)选项卡进行下载，下载解压后运行appAZPlayer.exe启动程序
+目前仅支持Windows平台，可以通过本页面的[Releases](https://github.com/az7792/AZPlayer/releases)选项卡进行下载，下载后运行安装程序进行安装。
 
 ## 编译
 
 1. 准备环境：Qt 6.6.3， CMake 3.16， [FFmpeg 8.0](https://www.gyan.dev/ffmpeg/builds/), MinGW / MSVC
-2. 修改CMakeLists.txt，需要修改 `FFMPEG_DIR` 指向本地自己准备的FFmpeg发行包路径，还需要修改`libass`的路径，可以从[libass](https://github.com/az7792/AZPlayer/releases/tag/v0.1.0-beta.1)下载或者自己准备，确保 bin/lib/include 完整，并检查动态链接库版本是否一致，若不一致需要根据实际情况进行修改
+2. 复制 ./camke/local.cmake.example 并重命名为 local.cmake。
+3. 修改 local.cmake，需要修改 `FFMPEG_DIR` 指向本地自己准备的FFmpeg发行包路径，还需要修改`libass`的路径，可以从[libass](https://github.com/az7792/AZPlayer/releases/tag/v0.1.0-beta.1)下载或者自己准备，确保 bin/lib/include 完整。
 
 ```cmake
-...
-
-# 在这儿设置你自己的 FFmpeg 路径
-set(FFMPEG_DIR D:/ffmpeg-8.0-full_build-shared)
-set(FFMPEG_INCLUDE_DIR ${FFMPEG_DIR}/include)
-set(FFMPEG_LIB_DIR ${FFMPEG_DIR}/lib)
-set(FFMPEG_BIN_DIR ${FFMPEG_DIR}/bin)
-# 在这儿设置 libass 路径，可以直接放项目根目录下
-set(ASS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libass)
-set(ASS_INCLUDE_DIR ${ASS_DIR}/include)
-set(ASS_LIB_DIR ${ASS_DIR}/lib)
-set(ASS_BIN_DIR ${ASS_DIR}/bin)
-
-...
-
-# 在这儿设置FFmpeg 和 libass及其依赖 的动态链接库
-add_custom_command(TARGET appAZPlayer POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${FFMPEG_BIN_DIR}/avutil-60.dll
-            ${FFMPEG_BIN_DIR}/avcodec-62.dll
-            ${FFMPEG_BIN_DIR}/avformat-62.dll
-            ${FFMPEG_BIN_DIR}/swscale-9.dll
-            ${FFMPEG_BIN_DIR}/swresample-6.dll
-            ${ASS_BIN_DIR}/ass.dll
-            ${ASS_BIN_DIR}/brotlicommon.dll
-            ${ASS_BIN_DIR}/brotlidec.dll
-            ${ASS_BIN_DIR}/brotlienc.dll
-            ${ASS_BIN_DIR}/bz2.dll
-            ${ASS_BIN_DIR}/freetype.dll
-            ${ASS_BIN_DIR}/fribidi-0.dll
-            ${ASS_BIN_DIR}/harfbuzz-subset.dll
-            ${ASS_BIN_DIR}/harfbuzz.dll
-            ${ASS_BIN_DIR}/libpng16.dll
-            ${ASS_BIN_DIR}/zlib1.dll
-            $<TARGET_FILE_DIR:appAZPlayer>        
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_CURRENT_SOURCE_DIR}/LICENSES
-            $<TARGET_FILE_DIR:appAZPlayer>/LICENSES
-        COMMENT "拷贝DLL和LICENSES"
-    )    
-    
-...
+set(FFMPEG_DIR "C:/path/to/ffmpeg")
+set(ASS_DIR    "C:/path/to/libass")
 ```
 
 ## 打包发布
@@ -128,6 +89,7 @@ $WindeployqtPath = "D:\Qt\6.6.3\msvc2019_64\bin\windeployqt.exe"
 ![](./static/architecture.png)
 
 > 其中两个副解复用器用于从外部加载音频和字幕
+>
 > 文本字幕是一次性加载的，后续帧数据全部由文本字幕渲染器提供
 
 ## 图标

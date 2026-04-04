@@ -2,17 +2,48 @@ cmake_minimum_required(VERSION 3.16)
 
 project(AZPlayer VERSION 0.1 LANGUAGES CXX)
 
+# 简单校验依赖，参数为：名称, 存放路径的变量
+function(check_sdk_layout NAME PATH_VAR)
+    set(ROOT_PATH "${${PATH_VAR}}")
+    
+    # 检查根路径是否存在
+    if(NOT ROOT_PATH OR NOT EXISTS "${ROOT_PATH}")
+        message(FATAL_ERROR 
+            "\n[AZPlayer 错误]: 未能找到 ${NAME} 根目录！\n请参考README并检查 ./cmake/local.cmake 中的设置。\n")
+    endif()
+
+    # 检查必要的子目录
+    set(SUB_DIRS "include" "lib" "bin")
+    foreach(DIR ${SUB_DIRS})
+        if(NOT EXISTS "${ROOT_PATH}/${DIR}")
+            message(FATAL_ERROR 
+                "\n[AZPlayer 错误]: ${NAME} 目录结构完整性校验失败！\n"
+                "在路径: ${ROOT_PATH} 下找不到关键子目录: '${DIR}'。")
+        endif()
+    endforeach()
+
+endfunction()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTORCC ON)
-# 设置 FFmpeg 路径
-set(FFMPEG_DIR C:/Development/SDKs/ffmpeg-8.0-full_build-shared)
+
+# 设置 FFmpeg 和 libass 路径
+if(EXISTS ${CMAKE_SOURCE_DIR}/cmake/local.cmake) 
+    include(${CMAKE_SOURCE_DIR}/cmake/local.cmake)
+else()
+    message(FATAL_ERROR "\n[AZPlayer 错误]: 未找到 ./cmake/local.cmake !!!请参考README\n")
+endif()
+
+check_sdk_layout("FFmpeg" FFMPEG_DIR)
+check_sdk_layout("libass" ASS_DIR)
+
+# 设置 FFmpeg
 set(FFMPEG_INCLUDE_DIR ${FFMPEG_DIR}/include)
 set(FFMPEG_LIB_DIR ${FFMPEG_DIR}/lib)
 set(FFMPEG_BIN_DIR ${FFMPEG_DIR}/bin)
-# 设置 libass 路径
-set(ASS_DIR C:/Development/SDKs/libass)
+# 设置 libass
 set(ASS_INCLUDE_DIR ${ASS_DIR}/include)
 set(ASS_LIB_DIR ${ASS_DIR}/lib)
 set(ASS_BIN_DIR ${ASS_DIR}/bin)
@@ -161,30 +192,28 @@ target_link_libraries(appAZPlayer
         winmm
 )
 
+file(GLOB FFMPEG_DLLS
+    "${FFMPEG_BIN_DIR}/avcodec-*.dll"
+    "${FFMPEG_BIN_DIR}/avformat-*.dll"
+    "${FFMPEG_BIN_DIR}/avutil-*.dll"
+    "${FFMPEG_BIN_DIR}/swscale-*.dll"
+    "${FFMPEG_BIN_DIR}/swresample-*.dll"
+)
+
+file(GLOB ASS_DLLS
+    "${ASS_BIN_DIR}/*.dll"
+)
+
 add_custom_command(TARGET appAZPlayer POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${FFMPEG_BIN_DIR}/avutil-60.dll
-            ${FFMPEG_BIN_DIR}/avcodec-62.dll
-            ${FFMPEG_BIN_DIR}/avformat-62.dll
-            ${FFMPEG_BIN_DIR}/swscale-9.dll
-            ${FFMPEG_BIN_DIR}/swresample-6.dll
-            ${ASS_BIN_DIR}/ass.dll
-            ${ASS_BIN_DIR}/brotlicommon.dll
-            ${ASS_BIN_DIR}/brotlidec.dll
-            ${ASS_BIN_DIR}/brotlienc.dll
-            ${ASS_BIN_DIR}/bz2.dll
-            ${ASS_BIN_DIR}/freetype.dll
-            ${ASS_BIN_DIR}/fribidi-0.dll
-            ${ASS_BIN_DIR}/harfbuzz-subset.dll
-            ${ASS_BIN_DIR}/harfbuzz.dll
-            ${ASS_BIN_DIR}/libpng16.dll
-            ${ASS_BIN_DIR}/zlib1.dll
-            $<TARGET_FILE_DIR:appAZPlayer>        
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_CURRENT_SOURCE_DIR}/LICENSES
-            $<TARGET_FILE_DIR:appAZPlayer>/LICENSES
-        COMMENT "拷贝DLL和LICENSES"
-    )
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${FFMPEG_DLLS}
+        ${ASS_DLLS}
+        $<TARGET_FILE_DIR:appAZPlayer>
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/LICENSES
+        $<TARGET_FILE_DIR:appAZPlayer>/LICENSES
+    COMMAND_EXPAND_LISTS
+)
 
 include(GNUInstallDirs)
 install(TARGETS appAZPlayer

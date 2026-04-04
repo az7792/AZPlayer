@@ -1,0 +1,6 @@
+# 复制此文件并重命名为 local.cmake
+# 路径请使用 '/' 而不是 '\' !
+# 路径请使用 '/' 而不是 '\' !!
+# 路径请使用 '/' 而不是 '\' !!!
+set(FFMPEG_DIR "C:/path/to/ffmpeg")
+set(ASS_DIR    "C:/path/to/libass")
