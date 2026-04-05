@@ -141,7 +141,7 @@ AZWindow {
             id: playbackStatsArea
             visible: false
             font.family: "Consolas"
-            font.pixelSize: Math.max(12, parent.width * Screen.devicePixelRatio * 0.02)
+            font.pixelSize: Math.max(12, parent.width * 0.025)
             anchors.fill: parent
         }
     }
