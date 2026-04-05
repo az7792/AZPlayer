@@ -36,33 +36,32 @@
 ## 编译
 
 1. 准备环境：Qt 6.6.3， CMake 3.16， [FFmpeg 8.0](https://www.gyan.dev/ffmpeg/builds/), MinGW / MSVC
-2. 复制 ./camke/local.cmake.example 并重命名为 local.cmake。
-3. 修改 local.cmake，需要修改 `FFMPEG_DIR` 指向本地自己准备的FFmpeg发行包路径，还需要修改`libass`的路径，可以从[libass](https://github.com/az7792/AZPlayer/releases/tag/v0.1.0-beta.1)下载或者自己准备，确保 bin/lib/include 完整。
+2. 复制 `./config/env.json.example` 并重命名为 `env.json`。
+3. 修改 `env.json`，根据实际情况配置以下路径：
 
-```cmake
-set(FFMPEG_DIR "C:/path/to/ffmpeg")
-set(ASS_DIR    "C:/path/to/libass")
+```json
+{
+    "FFMPEG_DIR": "D:/ffmpeg-8.0-full_build-shared",
+    "ASS_DIR": "D:/QTproject/AZPlayer/3rd/libass",
+    "WINDEPLOYQT_EXE": "D:/Qt/6.6.3/msvc2019_64/bin/windeployqt.exe",
+    "TARGET_EXE_PATH": "./out/build/release/appAZPlayer.exe"
+}
 ```
+
+配置项说明：
+- `FFMPEG_DIR`: FFmpeg SDK 的根目录路径（需包含 include、lib、bin 子目录）
+- `ASS_DIR`: libass SDK 的根目录路径（需包含 include、lib、bin 子目录）
+- `WINDEPLOYQT_EXE`: 用于发布打包程序的 Qt 部署工具的完整路径，请确保此工具与编译主程序时使用的套件一致 (如均为 MinGW 或均为 MSVC)
+- `TARGET_EXE_PATH`: 编译后的可执行文件路径
+
+> **注意：路径请使用 '/' 而不是 '\\'**  
+> `TARGET_EXE_PATH`可使用相对(相对于项目根目录)或绝对路径，其他配置项请使用绝对路径
 
 ## 打包发布
 
 1. 首先使用 `release` 模式编译一遍程序
-2. 将 `release.ps1` 脚本中的4个常量根据实际情况改成你自己的
-```
-# [常量1] 编译后的可执行文件路径
-$ExeSourcePath = ".\out\build\release\appAZPlayer.exe"
-
-# [常量2] libass/bin 的文件夹路径
-$LibAssBinPath = ".\libass\bin"
-
-# [常量3] ffmpeg/bin 的文件夹路径
-$FfmpegBinPath = "D:\ffmpeg-8.0-full_build-shared\bin"
-
-# [常量4] windeployqt.exe 所在路径
-# !!! 提示：请确保此工具与编译主程序时使用的套件一致 (如均为 MinGW 或均为 MSVC)
-$WindeployqtPath = "D:\Qt\6.6.3\msvc2019_64\bin\windeployqt.exe"
-```
-3. 执行该脚本
+2. 确保 `config/env.json` 中的配置正确
+3. 执行 `release.ps1` 脚本
 4. 脚本执行完成后程序会被打包到当前文件夹下的 `release` 文件夹里
 
 ## 文件/程序结构
@@ -88,8 +87,7 @@ $WindeployqtPath = "D:\Qt\6.6.3\msvc2019_64\bin\windeployqt.exe"
 
 ![](./static/architecture.png)
 
-> 其中两个副解复用器用于从外部加载音频和字幕
->
+> 其中两个副解复用器用于从外部加载音频和字幕  
 > 文本字幕是一次性加载的，后续帧数据全部由文本字幕渲染器提供
 
 ## 图标

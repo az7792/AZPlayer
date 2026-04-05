@@ -83,4 +83,4 @@ libass/
 release/
 InnoSetup.iss
 release.7z
-local.cmake
+env.json

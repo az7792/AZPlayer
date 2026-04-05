@@ -9,7 +9,7 @@ function(check_sdk_layout NAME PATH_VAR)
     # 检查根路径是否存在
     if(NOT ROOT_PATH OR NOT EXISTS "${ROOT_PATH}")
         message(FATAL_ERROR 
-            "\n[AZPlayer 错误]: 未能找到 ${NAME} 根目录！\n请参考README并检查 ./cmake/local.cmake 中的设置。\n")
+            "\n[AZPlayer 错误]: 未能找到 ${NAME} 根目录！\n请参考README并检查 ./config/config.json 中的设置。\n")
     endif()
 
     # 检查必要的子目录
@@ -29,11 +29,29 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTORCC ON)
 
-# 设置 FFmpeg 和 libass 路径
-if(EXISTS ${CMAKE_SOURCE_DIR}/cmake/local.cmake) 
-    include(${CMAKE_SOURCE_DIR}/cmake/local.cmake)
-else()
-    message(FATAL_ERROR "\n[AZPlayer 错误]: 未找到 ./cmake/local.cmake !!!请参考README\n")
+# 从 config/env.json 读取配置
+set(CONFIG_FILE "${CMAKE_SOURCE_DIR}/config/env.json")
+if(NOT EXISTS "${CONFIG_FILE}")
+    message(FATAL_ERROR "\n[AZPlayer 错误]: 未找到 ./config/env.json !!!请参考README\n")
+endif()
+
+# 使用 CMake 的 file 命令读取 JSON 文件并解析
+file(READ "${CONFIG_FILE}" CONFIG_JSON_CONTENT)
+
+# 提取 FFMPEG_DIR
+string(JSON FFMPEG_DIR GET "${CONFIG_JSON_CONTENT}" "FFMPEG_DIR")
+if(NOT FFMPEG_DIR OR NOT EXISTS "${FFMPEG_DIR}")
+    message(FATAL_ERROR 
+        "\n[AZPlayer 错误]: 未能从 env.json 中获取有效的 FFMPEG_DIR！\n"
+        "当前值: ${FFMPEG_DIR}\n请参考README并检查 ./config/env.json 中的设置。\n")
+endif()
+
+# 提取 ASS_DIR
+string(JSON ASS_DIR GET "${CONFIG_JSON_CONTENT}" "ASS_DIR")
+if(NOT ASS_DIR OR NOT EXISTS "${ASS_DIR}")
+    message(FATAL_ERROR 
+        "\n[AZPlayer 错误]: 未能从 env.json 中获取有效的 ASS_DIR！\n"
+        "当前值: ${ASS_DIR}\n请参考README并检查 ./config/env.json 中的设置。\n")
 endif()
 
 check_sdk_layout("FFmpeg" FFMPEG_DIR)

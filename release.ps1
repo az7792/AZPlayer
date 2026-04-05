@@ -1,33 +1,48 @@
 ﻿# ==========================================
-#              用户配置区域(需要全部配置)
+#              AZPlayer 发布脚本
 # ==========================================
 
-# [常量1] 编译后的可执行文件路径
-$ExeSourcePath = ".\out\build\release\appAZPlayer.exe"
-
-# [常量2] libass/bin 的文件夹路径
-$LibAssBinPath = ".\3rd\libass\bin"
-
-# [常量3] ffmpeg/bin 的文件夹路径
-$FfmpegBinPath = "D:\ffmpeg-8.0-full_build-shared\bin"
-
-# [常量4] windeployqt.exe 所在路径
-# !!! 提示：请确保此工具与编译主程序时使用的套件一致 (如均为 MinGW 或均为 MSVC)
-$WindeployqtPath = "D:\Qt\6.6.3\msvc2019_64\bin\windeployqt.exe"
-
-# ==========================================
-#              自动转换与检查逻辑
-# ==========================================
+function Stop-WithPause {
+    param([int]$ExitCode = 0)
+    Write-Host "`n按任意键退出..." -ForegroundColor Gray
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit $ExitCode
+}
 
 # 获取脚本所在的根目录
 $RootDir = $PSScriptRoot
 Set-Location $RootDir
+
+# 从 config/env.json 读取配置
+$ConfigFile = Join-Path $RootDir "config/env.json"
+
+if (-not (Test-Path $ConfigFile)) {
+    Write-Host "--- 配置错误 ---" -ForegroundColor Red
+    Write-Host "未找到配置文件: config/env.json" -ForegroundColor Yellow
+    Write-Host "请参考README并创建配置文件。" -ForegroundColor Cyan
+    Stop-WithPause 1
+}
+
+try {
+    $Config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+} catch {
+    Write-Host "--- 配置错误 ---" -ForegroundColor Red
+    Write-Host "无法解析 config/env.json，请检查 JSON 格式是否正确。" -ForegroundColor Yellow
+    Write-Error $_
+    Stop-WithPause 1
+}
 
 # 辅助函数：将相对路径转为绝对路径
 function Get-AbsolutePath($Path) {
     if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
     return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
 }
+
+# 从配置中读取路径
+$ExeSourcePath = $Config.TARGET_EXE_PATH
+$LibAssBinPath = Join-Path $Config.ASS_DIR "bin"
+$FfmpegBinPath = Join-Path $Config.FFMPEG_DIR "bin"
+$WindeployqtPath = $Config.WINDEPLOYQT_EXE
 
 $FullExePath = Get-AbsolutePath $ExeSourcePath
 $FullLibAssPath = Get-AbsolutePath $LibAssBinPath
@@ -36,16 +51,16 @@ $FullQtPath = Get-AbsolutePath $WindeployqtPath
 
 # 1. 初始化检查
 $MissingConfigs = @()
-if ([string]::IsNullOrWhiteSpace($ExeSourcePath)) { $MissingConfigs += "常量1: 可执行文件路径" }
-if ([string]::IsNullOrWhiteSpace($LibAssBinPath)) { $MissingConfigs += "常量2: libass 路径" }
-if ([string]::IsNullOrWhiteSpace($FfmpegBinPath)) { $MissingConfigs += "常量3: ffmpeg 路径" }
-if ([string]::IsNullOrWhiteSpace($WindeployqtPath)) { $MissingConfigs += "常量4: windeployqt 路径" }
+if ([string]::IsNullOrWhiteSpace($ExeSourcePath)) { $MissingConfigs += "TARGET_EXE_PATH" }
+if ([string]::IsNullOrWhiteSpace($LibAssBinPath)) { $MissingConfigs += "ASS_DIR" }
+if ([string]::IsNullOrWhiteSpace($FfmpegBinPath)) { $MissingConfigs += "FFMPEG_DIR" }
+if ([string]::IsNullOrWhiteSpace($WindeployqtPath)) { $MissingConfigs += "WINDEPLOYQT_EXE" }
 
 if ($MissingConfigs.Count -gt 0) {
     Write-Host "--- 配置错误 ---" -ForegroundColor Red
     $MissingConfigs | ForEach-Object { Write-Host "缺少配置: $_" -ForegroundColor Yellow }
-    Write-Host "请编辑脚本顶部常量后再运行。" -ForegroundColor Cyan
-    exit 1
+    Write-Host "请检查 config/env.json 文件。" -ForegroundColor Cyan
+    Stop-WithPause 1
 }
 
 # 2. 目录准备
@@ -66,7 +81,7 @@ if (Test-Path $LicenseSource) {
     Write-Host "LICENSES 拷贝成功。" -ForegroundColor Gray
 } else {
     Write-Warning "未在当前目录下找到 LICENSES 文件夹。" -ForegroundColor Red
-    exit 1
+    exiStop-WithPauset 1
 }
 
 # 4. 拷贝主程序
@@ -95,7 +110,7 @@ foreach ($pattern in $FfmpegPatterns) {
         Write-Host "错误：在 FFmpeg 目录中未找到关键组件 [$pattern]" -ForegroundColor Red
         Write-Host "搜索路径: $FullFfmpegPath" -ForegroundColor Yellow
         Write-Host "请检查 FFmpeg 目录配置是否正确或文件是否缺失。" -ForegroundColor Cyan
-        exit 1  # 终止脚本运行
+        Stop-WithPause 1  # 终止脚本运行
     }
 }
 
@@ -113,3 +128,5 @@ try {
     Write-Host "打包过程中出现意外错误。" -ForegroundColor Red
     Write-Error $_
 }
+
+Stop-WithPause 0
