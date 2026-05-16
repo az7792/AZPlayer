@@ -59,5 +59,6 @@
         <file>qml/playerState/AZPlayerState.qml</file>
         <file>qml/videoArea/AZPlaybackStatsArea.qml</file>
         <file>qml/videoArea/AZVideoAngleDialArea.qml</file>
+        <file>qml/settings/AZSettings.qml</file>
     </qresource>
 </RCC>

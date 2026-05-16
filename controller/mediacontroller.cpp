@@ -250,12 +250,6 @@ void MediaController::togglePaused() {
 }
 
 void MediaController::toggleMuted() {
-    // 不需要用setVolume(x);
-    if (m_muted) {
-        m_audioPlayer->setVolume(m_volume);
-    } else {
-        m_audioPlayer->setVolume(0.0);
-    }
     setMuted(!m_muted);
 }
 
@@ -267,6 +261,8 @@ void MediaController::setMuted(bool newMuted) {
     if (m_muted == newMuted)
         return;
     m_muted = newMuted;
+    // 不要使用 MediaController::setVolume, 因为设置音量时会强制解除静音
+    m_audioPlayer->setVolume(m_muted ? 0.0 : m_volume);
     emit mutedChanged();
 }
 

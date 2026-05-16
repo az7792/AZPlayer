@@ -93,6 +93,7 @@ qt_add_executable(appAZPlayer
 set_source_files_properties(
     qml/controls/AZTooltip.qml
     qml/playerState/AZPlayerState.qml
+    qml/settings/AZSettings.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
 
@@ -129,6 +130,7 @@ qt_add_qml_module(appAZPlayer
               qml/playerState/AZPlayerState.qml
               qml/videoArea/AZPlaybackStatsArea.qml
               qml/videoArea/AZVideoAngleDialArea.qml
+              qml/settings/AZSettings.qml
     SOURCES demux/demux.h demux/demux.cpp
             decode/decodebase.h decode/decodebase.cpp
             decode/decodeaudio.h decode/decodeaudio.cpp

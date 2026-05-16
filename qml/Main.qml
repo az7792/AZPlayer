@@ -17,9 +17,21 @@ AZWindow {
     title: qsTr("AZPlayer")
     backgroundColor: "black"
 
-    // 全局提示工具
+    // 初始化
     Component.onCompleted: {
-        AZTooltip.mainWindow = mainWin
+        AZTooltip.mainWindow = mainWin // 全局提示工具
+
+        // 加载设置
+        // 需要先设置音量再设置是否静音，因为设置音量时会强制解除静音
+        MediaCtrl.setVolume(AZSettings.volume)
+        MediaCtrl.setMuted(AZSettings.muted)
+    }
+
+    // 同步设置
+    Connections {
+        target: MediaCtrl
+        function onMutedChanged() { AZSettings.muted = MediaCtrl.muted }
+        function onVolumeChanged() { AZSettings.volume = MediaCtrl.volume }
     }
 
     // 启动参数

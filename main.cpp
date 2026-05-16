@@ -41,6 +41,8 @@ int main(int argc, char *argv[]) {
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL); // 绘图使用的FBO只有在OpenGL模式下才生效
 
     QGuiApplication app(argc, argv);
+    app.setOrganizationName("az7792");
+    app.setApplicationName("AZPlayer");
     QQuickStyle::setStyle("Basic");
 
     MediaController mc;

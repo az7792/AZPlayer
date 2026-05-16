@@ -29,7 +29,6 @@ public:
     double volume() const;
 
     bool muted() const;
-    void setMuted(bool newMuted); // 仅用于修改数值产生信号
 
     int duration() const;
     void setDuration(int newDuration); // 仅用于修改数值产生信号
@@ -59,6 +58,7 @@ public slots:
     bool close();                             // 关闭当前播放的文件
 
     void togglePaused();              // 切换是否暂停
+    void setMuted(bool newMuted);     // 设置是否静音
     void toggleMuted();               // 切换是否静音
     void setVolume(double newVolume); // 设置音量
     void addVolum();                  // 增加0.04音量
