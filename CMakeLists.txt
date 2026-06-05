@@ -5,10 +5,10 @@ project(AZPlayer VERSION 0.1 LANGUAGES CXX)
 # 简单校验依赖，参数为：名称, 存放路径的变量
 function(check_sdk_layout NAME PATH_VAR)
     set(ROOT_PATH "${${PATH_VAR}}")
-    
+
     # 检查根路径是否存在
     if(NOT ROOT_PATH OR NOT EXISTS "${ROOT_PATH}")
-        message(FATAL_ERROR 
+        message(FATAL_ERROR
             "\n[AZPlayer 错误]: 未能找到 ${NAME} 根目录！\n请参考README并检查 ./config/config.json 中的设置。\n")
     endif()
 
@@ -16,13 +16,18 @@ function(check_sdk_layout NAME PATH_VAR)
     set(SUB_DIRS "include" "lib" "bin")
     foreach(DIR ${SUB_DIRS})
         if(NOT EXISTS "${ROOT_PATH}/${DIR}")
-            message(FATAL_ERROR 
+            message(FATAL_ERROR
                 "\n[AZPlayer 错误]: ${NAME} 目录结构完整性校验失败！\n"
                 "在路径: ${ROOT_PATH} 下找不到关键子目录: '${DIR}'。")
         endif()
     endforeach()
 
 endfunction()
+
+# 让 SYSTEM include 目录使用 MSVC /external:I 标志，抑制外部库警告
+if(POLICY CMP0140)
+    cmake_policy(SET CMP0140 NEW)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -41,7 +46,7 @@ file(READ "${CONFIG_FILE}" CONFIG_JSON_CONTENT)
 # 提取 FFMPEG_DIR
 string(JSON FFMPEG_DIR GET "${CONFIG_JSON_CONTENT}" "FFMPEG_DIR")
 if(NOT FFMPEG_DIR OR NOT EXISTS "${FFMPEG_DIR}")
-    message(FATAL_ERROR 
+    message(FATAL_ERROR
         "\n[AZPlayer 错误]: 未能从 env.json 中获取有效的 FFMPEG_DIR！\n"
         "当前值: ${FFMPEG_DIR}\n请参考README并检查 ./config/env.json 中的设置。\n")
 endif()
@@ -49,7 +54,7 @@ endif()
 # 提取 ASS_DIR
 string(JSON ASS_DIR GET "${CONFIG_JSON_CONTENT}" "ASS_DIR")
 if(NOT ASS_DIR OR NOT EXISTS "${ASS_DIR}")
-    message(FATAL_ERROR 
+    message(FATAL_ERROR
         "\n[AZPlayer 错误]: 未能从 env.json 中获取有效的 ASS_DIR！\n"
         "当前值: ${ASS_DIR}\n请参考README并检查 ./config/env.json 中的设置。\n")
 endif()
@@ -154,7 +159,7 @@ qt_add_qml_module(appAZPlayer
             utils/spscbuffer.h utils/spscbuffer.cpp
             3rd/miniaudio/miniaudio.h 3rd/miniaudio/miniaudio.cpp
             utils/powermanager.h utils/powermanager.cpp
-    RESOURCES resource.qrc    
+    RESOURCES resource.qrc
 )
 
 # 宏标志
@@ -175,7 +180,7 @@ set_target_properties(appAZPlayer PROPERTIES
 
 # 添加头文件搜索路径
 target_include_directories(appAZPlayer
-    PRIVATE
+    SYSTEM PRIVATE
         ${FFMPEG_INCLUDE_DIR}
         ${ASS_INCLUDE_DIR}
 )

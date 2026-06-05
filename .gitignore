@@ -84,3 +84,6 @@ release/
 InnoSetup.iss
 release.7z
 env.json
+compile_commands.json
+opencode.json
+AGENTS.md

@@ -10,7 +10,7 @@ namespace {
         for (unsigned i = 0; i < frmItem.sub.num_rects; ++i) {
             AVSubtitleRect *subRect = frmItem.sub.rects[i];
             if (subRect->type == SUBTITLE_ASS) {
-                ASSRender::instance().addEvent(subRect->ass, strlen(subRect->ass), frmItem.pts, frmItem.duration);
+                ASSRender::instance().addEvent(subRect->ass, static_cast<int>(strlen(subRect->ass)), frmItem.pts, frmItem.duration);
             } else if (subRect->type == SUBTITLE_TEXT) {
                 // TODO
             }

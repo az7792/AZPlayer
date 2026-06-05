@@ -5,19 +5,20 @@
 #define ATOMICDOUBLEBUFFER_H
 
 #include "compat/compat.h"
+#include <atomic>
+#include <functional>
+#include <qdebug.h>
+#include <thread>
 
 // 读线程可以复用数据
 // #define REUSABLE_ATOMIC_DOUBLE_BUFFER
 
 #ifdef _MSC_VER
-#pragma warning(disable : 4324)
+#pragma warning(push)
+#pragma warning(disable : 4324) // 因对齐说明符填充结构是预期的（cache line padding）
 #endif
 
 #ifdef REUSABLE_ATOMIC_DOUBLE_BUFFER
-#include <atomic>
-#include <functional>
-#include <qdebug.h>
-#include <thread>
 
 template <typename T>
 class AtomicDoubleBuffer {
@@ -155,11 +156,6 @@ private:
 };
 
 #else
-
-#include <atomic>
-#include <functional>
-#include <qdebug.h>
-#include <thread>
 
 /**
  * @class AtomicDoubleBuffer
@@ -344,5 +340,9 @@ private:
     static constexpr uint8_t READY_BIT = 0x08;   // 写线程权限0->1 读线程权限1->0
 };
 #endif // REUSABLE_ATOMIC_DOUBLE_BUFFER
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #endif // ATOMICDOUBLEBUFFER_H

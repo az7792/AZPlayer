@@ -526,21 +526,21 @@ QVariantList MediaController::getChaptersInfo() const {
 int MediaController::getSubtitleIdx() const {
     if (m_streams[to_index(MediaIdx::Subtitle)].first == -1)
         return -1;
-    int idx = 0;
+    size_t idx = 0;
     for (int i = 0; i < m_streams[to_index(MediaIdx::Subtitle)].first; ++i) {
         idx += m_demuxs[i]->getStreamsCount()[to_index(MediaIdx::Subtitle)];
     }
-    return idx + m_streams[to_index(MediaIdx::Subtitle)].second;
+    return static_cast<int>(idx) + m_streams[to_index(MediaIdx::Subtitle)].second;
 }
 
 int MediaController::getAudioIdx() const {
     if (m_streams[to_index(MediaIdx::Audio)].first == -1)
         return -1;
-    int idx = 0;
+    size_t idx = 0;
     for (int i = 0; i < m_streams[to_index(MediaIdx::Audio)].first; ++i) {
         idx += m_demuxs[i]->getStreamsCount()[to_index(MediaIdx::Audio)];
     }
-    return idx + m_streams[to_index(MediaIdx::Audio)].second;
+    return static_cast<int>(idx) + m_streams[to_index(MediaIdx::Audio)].second;
 }
 
 int MediaController::duration() const {

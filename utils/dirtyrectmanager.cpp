@@ -60,7 +60,7 @@ const std::vector<QRect> &DirtyRectManager::getRects() const {
     return m_rects;
 }
 
-const QRect &DirtyRectManager::operator[](int index) const {
+const QRect &DirtyRectManager::operator[](size_t index) const {
     return m_rects[index];
 }
 

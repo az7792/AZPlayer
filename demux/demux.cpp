@@ -452,7 +452,7 @@ bool Demux::switchStream(MediaType type, int streamIdx, weakPktQueue wpq, weakFr
         closeStream(type);
     }
 
-    Q_ASSERT(streamIdx < idxVec->size());
+    Q_ASSERT(streamIdx < static_cast<int>(idxVec->size()));
 
     // 更新队列和当前流
     {

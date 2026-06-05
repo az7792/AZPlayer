@@ -24,7 +24,7 @@ public:
     const std::vector<QRect> &getRects() const;
 
     // 获取指定索引的矩形
-    const QRect &operator[](int index) const;
+    const QRect &operator[](size_t index) const;
 
     size_t size() const;
 

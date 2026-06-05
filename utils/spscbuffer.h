@@ -7,6 +7,11 @@
 #include "compat/compat.h"
 #include <atomic>
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4324) // 因对齐说明符填充结构是预期的（cache line padding）
+#endif
+
 class SPSCBuffer {
     SPSCBuffer(const SPSCBuffer &) = delete;
     SPSCBuffer &operator=(const SPSCBuffer &) = delete;
@@ -40,5 +45,9 @@ private:
     const uint64_t m_mask;
     uint8_t *m_buffer;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #endif // SPSCBUFFER_H

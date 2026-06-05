@@ -28,13 +28,13 @@ public:
 
 public:
     // ==== 队列长度 ====
-    int audioPacketCount{};
-    int videoPacketCount{};
-    int subtitlePacketCount{};
+    size_t audioPacketCount{};
+    size_t videoPacketCount{};
+    size_t subtitlePacketCount{};
 
-    int audioFrameCount{};
-    int videoFrameCount{};
-    int subtitleFrameCount{};
+    size_t audioFrameCount{};
+    size_t videoFrameCount{};
+    size_t subtitleFrameCount{};
 
     // ==== 视频/字幕尺寸 ====
     QSize videoSize{};

@@ -166,7 +166,7 @@ int ASSRender::renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vect
         unpremultiplyAlpha(buffer); // 反预乘
     }
 
-    return rects.size();
+    return static_cast<int>(rects.size());
 }
 
 bool ASSRender::initFromDemux(AVFormatContext *fmt, int subStreamIdx) {
@@ -221,7 +221,7 @@ bool ASSRender::initFromDemux(AVFormatContext *fmt, int subStreamIdx) {
                     char *ass_line = sub.rects[i]->ass;
                     if (!ass_line)
                         break;
-                    ass_process_chunk(m_track, ass_line, strlen(ass_line),
+                    ass_process_chunk(m_track, ass_line, static_cast<int>(strlen(ass_line)),
                                       start_time, sub.end_display_time);
                 }
             }
