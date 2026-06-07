@@ -31,8 +31,8 @@ namespace {
      */
     int getAlignment(const void *data, size_t originLen, size_t nowLen) {
         // alignment 只能是 1,2,4,8 之一
-        int possibleAlignments[] = {8, 4, 2, 1};
-        uintptr_t dataVal = reinterpret_cast<uintptr_t>(data);
+        static constexpr int possibleAlignments[] = {8, 4, 2, 1};
+        const uintptr_t dataVal = reinterpret_cast<uintptr_t>(data);
         for (int align : possibleAlignments) {
             if (dataVal % align != 0 || nowLen % align != 0)
                 continue;
@@ -92,7 +92,7 @@ void VideoRenderData::splitComponentToPlane(int c, const AVPixFmtDescriptor *des
     void *plane_ptr;
     const uint8_t *frmData[4];
     int linesize[4];
-    int read_pal_component = (desc->flags & AV_PIX_FMT_FLAG_PAL);
+    const int read_pal_component = (desc->flags & AV_PIX_FMT_FLAG_PAL);
     int dst_element_size = 2;
 
     std::copy(frm->linesize, frm->linesize + 4, linesize);
@@ -139,14 +139,14 @@ void VideoRenderData::updateFormat(AVFrmItem &newItem) {
     newItem.frm = nullptr;
     AVFrame *frm = frmItem.frm;
 
-    AVPixelFormat avFmt = (AVPixelFormat)frm->format;
+    const AVPixelFormat avFmt = (AVPixelFormat)frm->format;
     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(avFmt);
-    uint64_t flags = desc->flags;
+    const uint64_t flags = desc->flags;
 
     // 可以直接上传到opengl
     if (GLParaMap.find(avFmt) != GLParaMap.end()) {
         pixFormat = (flags & AV_PIX_FMT_FLAG_ALPHA) ? PixFormat::RGBA_PACKED : PixFormat::RGB_PACKED;
-        GLParaArr[0] = GLParaMap[avFmt];
+        GLParaArr[0] = GLParaMap.at(avFmt);
         componentSizeArr[0] = {frm->width, frm->height};
         dataArr[0] = frm->data[0]; // or frm->data[desc->comp[0|1|2|3].plane]?
         int bytes_per_pixel = (av_get_padded_bits_per_pixel(desc) / 8);
@@ -185,7 +185,7 @@ void VideoRenderData::updateFormat(AVFrmItem &newItem) {
     // 非完整类型
     // qint64 now = QDateTime::currentMSecsSinceEpoch();
     for (int i = 0; i < desc->nb_components; ++i) {
-        int tmp = desc->comp[i].depth;
+        const int tmp = desc->comp[i].depth;
         if (tmp != 8 && tmp != 16) {
             splitFrameComponentsToPlanes(desc);
             updateGLParaArr(pixFormat);
@@ -302,15 +302,15 @@ void SubRenderData::updateBitmapImage(AVFrmItem *newItem, int videoWidth, int vi
                                          subRect->w, subRect->h, AV_PIX_FMT_RGBA,
                                          0, NULL, NULL, NULL);
 
-        int dstStride[1] = {linesizeArr[i] * 4};
-        uint8_t *dst[1] = {dataArr[i].data()};
+        const int dstStride[1] = {linesizeArr[i] * 4};
+        uint8_t *const dst[1] = {dataArr[i].data()};
         sws_scale(subSwsCtx, (const uint8_t *const *)subRect->data, subRect->linesize, 0, subRect->h, dst, dstStride);
     }
 }
 
 void SubRenderData::updateASSImage(double pts, int videoWidth, int videoHeight) {
     subtitleType = SUBTITLE_ASS;
-    size_t rectsSize;
+    size_t rectsSize; // ASS每帧的rects数量
     const ASS_Image *assImg = ASSRender::instance().getASSImage(rectsSize, QSize{videoWidth, videoHeight}, pts);
     prepareBuffers(rectsSize);
 

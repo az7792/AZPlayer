@@ -35,6 +35,7 @@ private:
     QSize m_subtitleSize{}; // 字幕的宽高
 
     AVPixelFormat m_AVPixelFormat = AV_PIX_FMT_NONE;
+    AVSubtitleType lastSubType = SUBTITLE_NONE;
     /**
      * Y | R | RGB | RGBA
      * U | G
@@ -75,9 +76,9 @@ private:
     // 初始化字幕纹理
     void initSubtitleTex(SubRenderData *subRenderData);
 
-    bool updateTex(VideoRenderData::PixFormat fmt);
+    [[nodiscard]] bool updateTex(VideoRenderData::PixFormat fmt);
     // 字幕纹理固定 RGBA_PACKED 格式
-    bool updateSubTex(SubRenderData &renData);
+    [[nodiscard]] bool updateSubTex(SubRenderData &renData);
 
     /**
      * @brief 初始化或重建一个 2D OpenGL 纹理
@@ -101,7 +102,7 @@ private:
      */
     void initTex(GLuint &tex, const QSize &size, const std::array<unsigned int, 3> &para, uint8_t *fill = nullptr);
 
-    QMatrix4x4 getTransformMat(); // 获取当前的变换矩阵
+    [[nodiscard]] QMatrix4x4 getTransformMat() const; // 获取当前的变换矩阵
 
     // 把纹理单元和纹理对象绑定
     void bindAllTexturesForDraw();
@@ -197,10 +198,10 @@ public:
     Q_INVOKABLE void subAngle() { setAngle(m_angle - 1.f); }
 
     // Getter
-    Q_INVOKABLE int scale() const { return m_scale; }
-    Q_INVOKABLE float angle() const { return m_angle; }
-    Q_INVOKABLE float tx() const { return m_tx; }
-    Q_INVOKABLE float ty() const { return m_ty; }
+    Q_INVOKABLE [[nodiscard]] int scale() const { return m_scale; }
+    Q_INVOKABLE [[nodiscard]] float angle() const { return m_angle; }
+    Q_INVOKABLE [[nodiscard]] float tx() const { return m_tx; }
+    Q_INVOKABLE [[nodiscard]] float ty() const { return m_ty; }
 
 public slots:
     void updateRenderData(VideoDoubleBuf *vidData, SubtitleDoubleBuf *subData);

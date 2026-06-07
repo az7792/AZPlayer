@@ -12,7 +12,7 @@ namespace {
 }
 
 double getRelativeSeconds() {
-    auto nowTime = std::chrono::steady_clock::now();
+    const auto nowTime = std::chrono::steady_clock::now();
     return std::chrono::duration<double>(nowTime.time_since_epoch()).count();
 }
 
@@ -29,15 +29,15 @@ void Clock::setClock(double pts, double time) {
     m_updateTime = time;
 }
 
-ClockType Clock::type() {
+ClockType Clock::type() const {
     return m_type;
 }
 
-bool Clock::isvalidated() {
+bool Clock::isvalidated() const {
     return !std::isnan(m_updatePts);
 }
 
-double Clock::getPts() {
+double Clock::getPts() const {
     if (m_paused) {
         return m_updatePts;
     } else {
@@ -55,8 +55,8 @@ void Clock::setSpeed(double newSpeed) {
 }
 
 void Clock::syncToClock(Clock &clk) {
-    double nowPts = getPts();
-    double newPts = clk.getPts();
+    const double nowPts = getPts();
+    const double newPts = clk.getPts();
     if (!std::isnan(newPts) && (std::isnan(nowPts) || std::abs(newPts - nowPts) > 10.0)) {
         setClock(newPts);
     }
@@ -85,7 +85,7 @@ GlobalClock &GlobalClock::instance() {
     return gl;
 }
 
-double GlobalClock::getMainPts() {
+double GlobalClock::getMainPts() const {
     switch (m_mainClockType) {
     case ClockType::AUDIO:
         return m_audioClk.getPts();
@@ -98,7 +98,7 @@ double GlobalClock::getMainPts() {
     }
 }
 
-ClockType GlobalClock::mainClockType() {
+ClockType GlobalClock::mainClockType() const {
     return m_mainClockType;
 }
 
@@ -108,19 +108,19 @@ void GlobalClock::togglePaused() {
     m_externalClk.togglePaused();
 }
 
-double GlobalClock::audioPts() {
+double GlobalClock::audioPts() const {
     return m_audioClk.getPts();
 }
 
-double GlobalClock::videoPts() {
+double GlobalClock::videoPts() const {
     return m_videoClk.getPts();
 }
 
-double GlobalClock::externalPts() {
+double GlobalClock::externalPts() const {
     return m_externalClk.getPts();
 }
 
-double GlobalClock::maxFrameDuration() {
+double GlobalClock::maxFrameDuration() const {
     return m_maxFrameDuration;
 }
 

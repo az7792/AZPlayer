@@ -82,7 +82,7 @@ fail:
     return false;
 }
 
-bool ASSRender::uninit() {
+void ASSRender::uninit() {
     m_initialized.store(false, std::memory_order_relaxed);
     ass_free_track(m_track);
     m_track = nullptr;
@@ -90,10 +90,9 @@ bool ASSRender::uninit() {
     m_assRenderer = nullptr;
     ass_library_done(m_assLibrary);
     m_assLibrary = nullptr;
-    return true;
 }
 
-bool ASSRender::initialized() {
+bool ASSRender::initialized() const {
     return m_initialized.load(std::memory_order_relaxed);
 }
 
@@ -101,8 +100,8 @@ bool ASSRender::addEvent(const char *data, int size, double startTime, double du
     if (!m_initialized.load(std::memory_order_relaxed))
         return false;
 
-    long long st = startTime * 1000;
-    long long dur = duration * 1000;
+    const long long st = startTime * 1000;
+    const long long dur = duration * 1000;
     ass_process_chunk(m_track, data, size, st, dur);
     return true;
 }
@@ -139,15 +138,15 @@ const ASS_Image *ASSRender::getASSImage(size_t &size, const QSize &videoSize, do
     return img;
 }
 
-int ASSRender::renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const ASS_Image *assImg) {
+void ASSRender::renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const ASS_Image *assImg) {
     if (!m_initialized.load(std::memory_order_relaxed))
-        return 0;
+        return;
 
     if (m_dirtyRectManager.size() <= 0 || assImg == nullptr) {
-        return 0;
+        return;
     }
 
-    size_t size = m_dirtyRectManager.size();
+    const size_t size = m_dirtyRectManager.size();
     Q_ASSERT(size <= dataArr.size());
     Q_ASSERT(size <= rects.size());
 
@@ -165,8 +164,6 @@ int ASSRender::renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vect
     for (auto &buffer : dataArr) {
         unpremultiplyAlpha(buffer); // 反预乘
     }
-
-    return static_cast<int>(rects.size());
 }
 
 bool ASSRender::initFromDemux(AVFormatContext *fmt, int subStreamIdx) {
@@ -241,17 +238,17 @@ fail:
 
 void ASSRender::unpremultiplyAlpha(std::vector<uint8_t> &buffer) {
     unsigned char *data = buffer.data();
-    size_t pixelCount = buffer.size() / 4;
+    const size_t pixelCount = buffer.size() / 4;
     Q_ASSERT(buffer.size() % 4 == 0);
     for (size_t i = 0; i < pixelCount; ++i) {
-        size_t idx = i * 4;
+        const size_t idx = i * 4;
         const unsigned char alpha = data[idx + 3];
         if (alpha && alpha < 255) {
             // For each color channel c:
             //   c = c / (255.0 / alpha)
             // but only using integers and a biased rounding offset
             const uint32_t offs = (uint32_t)1 << 15;
-            uint32_t inv = ((uint32_t)255 << 16) / alpha + 1;
+            const uint32_t inv = ((uint32_t)255 << 16) / alpha + 1;
             data[idx + 0] = (data[idx + 0] * inv + offs) >> 16;
             data[idx + 1] = (data[idx + 1] * inv + offs) >> 16;
             data[idx + 2] = (data[idx + 2] * inv + offs) >> 16;
@@ -260,39 +257,39 @@ void ASSRender::unpremultiplyAlpha(std::vector<uint8_t> &buffer) {
 }
 
 void ASSRender::blendSingleOnly(std::vector<std::vector<uint8_t>> &dataArr, const ASS_Image *img) {
-    QRect rect(img->dst_x, img->dst_y, img->w, img->h);
-    int rect_idx = m_dirtyRectManager.findFirstIntersect(rect);
+    const QRect rect(img->dst_x, img->dst_y, img->w, img->h);
+    const int rect_idx = m_dirtyRectManager.findFirstIntersect(rect);
     if (rect_idx < 0)
         return;
-    unsigned char r = img->color >> 24;
-    unsigned char g = (img->color >> 16) & 0xFF;
-    unsigned char b = (img->color >> 8) & 0xFF;
-    unsigned char a = 255 - (img->color & 0xFF);
+    const unsigned char r = img->color >> 24;
+    const unsigned char g = (img->color >> 16) & 0xFF;
+    const unsigned char b = (img->color >> 8) & 0xFF;
+    const unsigned char a = 255 - (img->color & 0xFF);
 
     const QRect &targetRect = m_dirtyRectManager[rect_idx];
     Q_ASSERT(targetRect.contains(rect, false)); // img 位于targetRect内，包括边缘
 
     // 计算局部偏移
     // img 在 targetRect 内部的起点坐标
-    int offsetX = img->dst_x - targetRect.x();
-    int offsetY = img->dst_y - targetRect.y();
+    const int offsetX = img->dst_x - targetRect.x();
+    const int offsetY = img->dst_y - targetRect.y();
 
     unsigned char *src = img->bitmap;
-    unsigned char *dst = dataArr[rect_idx].data();
-    int targetW = targetRect.width();
+    unsigned char *const dst = dataArr[rect_idx].data();
+    const int targetW = targetRect.width();
 
     for (int y = 0; y < img->h; ++y) {
         // 计算当前行在目标 buffer 中的起始位置
         // (y + offsetY) 是行索引，乘以 targetW 得到行首，再加上 offsetX 得到像素起点
-        int dst_row_start = ((y + offsetY) * targetW + offsetX) * 4;
+        const int dst_row_start = ((y + offsetY) * targetW + offsetX) * 4;
 
         for (int x = 0; x < img->w; ++x) {
-            int idx = dst_row_start + (x * 4);
+            const int idx = dst_row_start + (x * 4);
 
-            unsigned k = ((unsigned)src[x]) * a;
+            const unsigned k = ((unsigned)src[x]) * a;
             // For high-quality output consider using dithering instead;
             // this static offset results in biased rounding but is faster
-            unsigned rounding_offset = 255 * 255 / 2;
+            constexpr unsigned rounding_offset = 255 * 255 / 2;
             // If the original frame is not in premultiplied alpha, convert it beforehand or adjust
             // the blending code. For fully-opaque output frames there's no difference either way.
             dst[idx + 0] = (k * r + (255 * 255 - k) * dst[idx + 0] + rounding_offset) / (255 * 255);

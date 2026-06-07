@@ -21,12 +21,12 @@ bool VideoPlayer::init(sharedFrmQueue frmBuf, sharedFrmQueue subFrmBuf) {
     m_forceRefresh = false;
     m_frmBuf = frmBuf;
     m_subFrmBuf = subFrmBuf;
-    m_videoRenderData.reset([](VideoRenderData &b1, VideoRenderData &b2) -> bool {
+    (void)m_videoRenderData.reset([](VideoRenderData &b1, VideoRenderData &b2) -> bool {
         b1.reset();
         b2.reset();
         return true;
     });
-    m_subRenderData.reset([](SubRenderData &b1, SubRenderData &b2) -> bool {
+    (void)m_subRenderData.reset([](SubRenderData &b1, SubRenderData &b2) -> bool {
         b1.reset();
         b2.reset();
         return true;
@@ -41,23 +41,22 @@ bool VideoPlayer::init(sharedFrmQueue frmBuf, sharedFrmQueue subFrmBuf) {
     return true;
 }
 
-bool VideoPlayer::uninit() {
+void VideoPlayer::uninit() {
     stop();
 
     m_frmBuf.reset();
     m_subFrmBuf.reset();
-    m_videoRenderData.reset([](VideoRenderData &b1, VideoRenderData &b2) -> bool {
+    (void)m_videoRenderData.reset([](VideoRenderData &b1, VideoRenderData &b2) -> bool {
         b1.reset();
         b2.reset();
         return true;
     });
-    m_subRenderData.reset([](SubRenderData &b1, SubRenderData &b2) -> bool {
+    (void)m_subRenderData.reset([](SubRenderData &b1, SubRenderData &b2) -> bool {
         b1.reset();
         b2.reset();
         return true;
     });
     emit renderDataReady(nullptr, nullptr);
-    return true;
 }
 
 void VideoPlayer::start() {
@@ -120,7 +119,9 @@ void VideoPlayer::playerLoop() {
         }
 
         // 写如入设备
-        write(frmItem);
+        if (frmItem.frm) {
+            write(frmItem);
+        }
 
         if (m_forceRefresh && GlobalClock::instance().mainClockType() == ClockType::VIDEO) {
             emit seeked();
@@ -131,23 +132,19 @@ void VideoPlayer::playerLoop() {
     return;
 }
 
-bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
-    if (!videoFrmitem.frm) {
-        return false;
-    }
-
+void VideoPlayer::write(AVFrmItem &videoFrmitem) {
     // 更新视频宽高
     m_width = videoFrmitem.frm->width;
     m_height = videoFrmitem.frm->height;
 
-    FrameInterval nowVideoFrameInterval = qMakePair(videoFrmitem.pts, videoFrmitem.duration);
+    const FrameInterval nowVideoFrameInterval = qMakePair(videoFrmitem.pts, videoFrmitem.duration);
     // 上一帧持续时间
     double delay = getDuration(m_lastVideoFrameInterval, nowVideoFrameInterval);
 
     // 处理字幕seek/切流
     AVFrmItem subFrmItem;
     while (m_subFrmBuf->peekFirst(subFrmItem) && subFrmItem.serial != m_subFrmBuf->serial()) {
-        m_subFrmBuf->pop(subFrmItem);
+        (void)m_subFrmBuf->pop(subFrmItem); // 能 peekFirst，说明一定能 pop 成功
         avsubtitle_free(&subFrmItem.sub);
         m_forceRefresh = true;
     }
@@ -155,7 +152,7 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
     // ==============在渲染之前准备好数据==============
     // clang-format off
     double startTime = getRelativeSeconds();
-    m_videoRenderData.write([&](VideoRenderData &renData, [[maybe_unused]] int idx) -> bool {
+    (void)m_videoRenderData.write([&](VideoRenderData &renData, [[maybe_unused]] int idx) -> bool {
         m_lastVideoFrameInterval = nowVideoFrameInterval;
         renData.updateFormat(videoFrmitem);
         return true;
@@ -181,10 +178,10 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
     // ==============渲染数据准备完毕==============
 
     // 同步主时钟
-    double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
-    double diff = GlobalClock::instance().videoPts() - GlobalClock::instance().getMainPts();
+    const double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
+    const double diff = GlobalClock::instance().videoPts() - GlobalClock::instance().getMainPts();
     // //[0.004 - 1/fps -  0.01]与主时钟差距保证在范围外需要同步 //NOTE： ffplay用的[0.04-0.1]
-    double syncThreshold = std::max(0.004, std::min(0.01, delay));
+    const double syncThreshold = std::max(0.004, std::min(0.01, delay));
     if (!std::isnan(diff) && std::abs(diff) < maxFrameDuration) {
         if (diff <= -syncThreshold) { // 落后太多，尝试直接播放
             PlaybackStats::instance().lateFrameCount++;
@@ -230,7 +227,6 @@ bool VideoPlayer::write(AVFrmItem &videoFrmitem) {
 
     PlaybackStats::instance().videoPTS = videoFrmitem.pts;
     PlaybackStats::instance().avPtsDiff = GlobalClock::instance().getMainPts() - GlobalClock::instance().videoPts();
-    return true;
 }
 
 bool VideoPlayer::getVideoFrm(AVFrmItem &item) {
@@ -260,7 +256,7 @@ bool VideoPlayer::getVideoFrm(AVFrmItem &item) {
 }
 
 double VideoPlayer::getDuration(const FrameInterval &last, const FrameInterval &now) {
-    double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
+    const double maxFrameDuration = GlobalClock::instance().maxFrameDuration();
     double duration = now.first - last.first;
     if (std::isnan(duration) || duration <= 0 || duration > maxFrameDuration)
         duration = std::isnan(last.second) ? 0.0 : last.second;
@@ -270,7 +266,7 @@ double VideoPlayer::getDuration(const FrameInterval &last, const FrameInterval &
 // clang-format off
 void VideoPlayer::handleASSSubtitle(double pts)
 {
-    m_subRenderData.write([&](SubRenderData &renData, int) -> bool {
+    (void)m_subRenderData.write([&](SubRenderData &renData, int) -> bool {
         renData.updateASSImage(pts, m_width, m_height);
         renData.frmItem.width  = m_width;
         renData.frmItem.height = m_height;
@@ -284,8 +280,8 @@ void VideoPlayer::handleBitmapSubtitle()
     double videoPts = GlobalClock::instance().videoPts();
     if (m_subFrmBuf->peekFirst(subFrmItem) && videoPts >= subFrmItem.pts) {
         // 有新字幕
-        m_subFrmBuf->pop(subFrmItem);
-        m_subRenderData.write([&](SubRenderData &renData, [[maybe_unused]] int idx) -> bool {
+        (void)m_subFrmBuf->pop(subFrmItem); // 能 peekFirst，说明一定能 pop 成功
+        (void)m_subRenderData.write([&](SubRenderData &renData, [[maybe_unused]] int idx) -> bool {
             renData.updateBitmapImage(&subFrmItem, m_width, m_height);
             m_subtitleEndDisplayTime = subFrmItem.pts + subFrmItem.duration;
             return true;
@@ -299,7 +295,7 @@ void VideoPlayer::handleBitmapSubtitle()
 
 void VideoPlayer::handleEmptySubtitle()
 {
-    m_subRenderData.write([&](SubRenderData &renData, int) -> bool {
+    (void)m_subRenderData.write([&](SubRenderData &renData, int) -> bool {
         renData.updateBitmapImage(nullptr, m_width, m_height);
         return true;
     }, false);

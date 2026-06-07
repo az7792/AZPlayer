@@ -43,7 +43,7 @@ struct VideoRenderData {
      * 用于直接上传OpengGL的参数
      * 依次为：internalformat，format，type
      */
-    inline static std::map<AVPixelFormat, std::array<unsigned int, 3>> GLParaMap{
+    inline static const std::map<AVPixelFormat, std::array<unsigned int, 3>> GLParaMap {
         {AV_PIX_FMT_RGB24, {GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE}},                        ///< packed RGB 8:8:8, 24bpp, RGBRGB...
         {AV_PIX_FMT_BGR24, {GL_RGB8, GL_BGR, GL_UNSIGNED_BYTE}},                        ///< packed RGB 8:8:8, 24bpp, BGRBGR...
         {AV_PIX_FMT_BGR8, {GL_R3_G3_B2, GL_RGB, GL_UNSIGNED_BYTE_2_3_3_REV}},           ///< packed RGB 3:3:2,  8bpp, (msb)2B 3G 3R(lsb)
@@ -86,10 +86,10 @@ struct VideoRenderData {
     int alignment = 1;    // 内存中每个像素行起始处的对齐要求(1,2,4,8)
 
     // 每个分量是否都单独在一个平面上
-    bool isEachComponentInSeparatePlane(const AVPixFmtDescriptor *desc);
+    [[nodiscard]] static bool isEachComponentInSeparatePlane(const AVPixFmtDescriptor *desc);
 
     // 指定分量是否单独在一个平面上
-    bool isComponentInSeparatePlane(int c, const AVPixFmtDescriptor *desc);
+    [[nodiscard]] static bool isComponentInSeparatePlane(int c, const AVPixFmtDescriptor *desc);
 
     // 将frm的每个分量拆分到单独平面
     void splitFrameComponentsToPlanes(const AVPixFmtDescriptor *desc);
@@ -105,7 +105,7 @@ struct VideoRenderData {
 
     VideoRenderData() { reset(); }
     ~VideoRenderData() {
-        if (!frmItem.frm) {
+        if (frmItem.frm) {
             av_frame_free(&frmItem.frm);
         }
     }

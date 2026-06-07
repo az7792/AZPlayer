@@ -5,7 +5,7 @@
 #define GLOBALCLOCK_H
 
 // 获取相对且单调的时间(秒)
-double getRelativeSeconds();
+[[nodiscard]] double getRelativeSeconds();
 
 enum class ClockType {
     NONE = -1,
@@ -26,13 +26,13 @@ public:
     void setClock(double pts, double time);
 
     // 获取时钟类型
-    ClockType type();
+    [[nodiscard]] ClockType type() const;
 
     // 时钟是否有效
-    bool isvalidated();
+    [[nodiscard]] bool isvalidated() const;
 
     // 获取时钟当前这个时刻的pts(秒)
-    double getPts();
+    [[nodiscard]] double getPts() const;
 
     void setPaused(bool newPaused);
     void setSpeed(double newSpeed);
@@ -59,15 +59,15 @@ public:
     void reset();
 
     static GlobalClock &instance();
-    double getMainPts();
-    ClockType mainClockType();
+    [[nodiscard]] double getMainPts() const;
+    [[nodiscard]] ClockType mainClockType() const;
 
     void togglePaused();
 
-    double audioPts();
-    double videoPts();
-    double externalPts();
-    double maxFrameDuration();
+    [[nodiscard]] double audioPts() const;
+    [[nodiscard]] double videoPts() const;
+    [[nodiscard]] double externalPts() const;
+    [[nodiscard]] double maxFrameDuration() const;
 
     void setAudioClk(double pts);
     void setAudioClk(double pts, double time);

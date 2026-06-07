@@ -6,9 +6,9 @@
 
 #include "compat/compat.h"
 #include <atomic>
-#include <functional>
-#include <qdebug.h>
+#include <QDebug>
 #include <thread>
+#include <type_traits>
 
 // 读线程可以复用数据
 // #define REUSABLE_ATOMIC_DOUBLE_BUFFER
@@ -20,27 +20,26 @@
 
 #ifdef REUSABLE_ATOMIC_DOUBLE_BUFFER
 
+// 回调签名:
+//   reset:  bool(T &buf0, T &buf1)
+//   write:  bool(T &buf, int idx)
+//   read:   bool(T &buf, int idx)
 template <typename T>
 class AtomicDoubleBuffer {
 public:
-    // 读写回调函数，可安全的在内部进行读写
-    using WriterFunc = std::function<bool(T &, [[maybe_unused]] int)>;
-    using ReaderFunc = std::function<bool(T &, [[maybe_unused]] int)>;
-    using ResetFunc = std::function<bool(T &, T &)>;
-
     AtomicDoubleBuffer() = default;
 
     /**
      * @brief 重置buf, 请确保读写线程都未使用时调用
      * TODO: 在多线程环境也能使用
      */
-    bool reset(ResetFunc func) {
+    template <typename F>
+    [[nodiscard]] bool reset(F &&func) {
+        static_assert(std::is_invocable_r_v<bool, F, T &, T &>,
+                      "reset() callback must be: bool(T &, T &)");
         m_state = 0;
         m_realLatestIdx = -1;
-        if (func) {
-            return func(m_buffers[0], m_buffers[1]);
-        }
-        return false;
+        return std::forward<F>(func)(m_buffers[0], m_buffers[1]);
     }
 
     // 收到发布数据
@@ -59,22 +58,22 @@ public:
      * @brief 写操作：用户在回调中直接修改 Buffer
      * @warning 请不要在回调中进行阻塞操作
      */
-    bool write(WriterFunc func, bool autoRelease = true) {
-        // 获取当前最新索引，确定要写的“目标”是哪一个
-        uint8_t s = m_state.load(std::memory_order_acquire);
+    template <typename F>
+    [[nodiscard]] bool write(F &&func, bool autoRelease = true) {
+        static_assert(std::is_invocable_r_v<bool, F, T &, int>,
+                      "write() callback must be: bool(T &, int)");
+        // 获取当前最新索引，确定要写的"目标"是哪一个
+        const uint8_t s = m_state.load(std::memory_order_acquire);
         const int targetIdx = 1 - (s & LATEST_MASK); // 1 -> 0 或 0 -> 1
-        uint8_t targetBusyBit = targetIdx == 0 ? BUSY0_BIT : BUSY1_BIT;
+        const uint8_t targetBusyBit = targetIdx == 0 ? BUSY0_BIT : BUSY1_BIT;
 
-        // 如果读线程正锁着要写的那个，则“等一会”
+        // 如果读线程正锁着要写的那个，则"等一会"
         while (m_state.load(std::memory_order_acquire) & targetBusyBit) {
             std::this_thread::yield();
         }
 
-        bool ok = true;
         // 用户安全的进行写操作
-        if (func) {
-            ok = func(m_buffers[targetIdx], targetIdx);
-        }
+        const bool ok = std::forward<F>(func)(m_buffers[targetIdx], targetIdx);
 
         m_realLatestIdx = targetIdx;
 
@@ -83,7 +82,7 @@ public:
 
         if (!((m_state.load(std::memory_order_relaxed) & 0x06) != 0x06)) {
             qDebug() << "write error, state=" << int(m_state.load());
-            exit(-1);
+            assert(false);
         }
         return ok;
     }
@@ -92,7 +91,10 @@ public:
      * @brief 读操作：用户在回调中直接读取最新 Buffer
      * @warning 请不要在回调中进行阻塞操作
      */
-    bool read(ReaderFunc func) {
+    template <typename F>
+    [[nodiscard]] bool read(F &&func) {
+        static_assert(std::is_invocable_r_v<bool, F, T &, int>,
+                      "read() callback must be: bool(T &, int)");
         uint8_t oldState, lockedState;
         int targetIdx;
         uint8_t targetBusyBit;
@@ -113,15 +115,11 @@ public:
 
         if (!((m_state.load(std::memory_order_relaxed) & 0x06) != 0x06)) {
             qDebug() << "read error, state=" << int(m_state.load());
-            exit(-2);
+            assert(false);
         }
 
-        bool ok = true;
         // 执行用户回调，读访问 / 允许进行修改
-
-        if (func) {
-            ok = func(m_buffers[targetIdx], targetIdx);
-        }
+        const bool ok = std::forward<F>(func)(m_buffers[targetIdx], targetIdx);
 
         // 将对应的 Busy 位清零
         m_state.fetch_and(~targetBusyBit, std::memory_order_release);
@@ -130,7 +128,7 @@ public:
     }
 
     // 获取当前状态用于调试
-    uint8_t get_state() const {
+    [[nodiscard]] uint8_t get_state() const {
         return m_state.load(std::memory_order_relaxed);
     }
 
@@ -182,28 +180,32 @@ private:
  * - 释放：解锁，并在无新数据的情况下置空READY_BIT
  *
  * * @tparam T 缓冲区数据类型。
+ *
+ * @note 回调签名:
+ *
+ * - reset:  bool(T &buf0, T &buf1)
+ *
+ * - write:  bool(T &buf, int idx)
+ *
+ * - read:   bool(T &buf, int idx)
+ *
  */
 template <typename T>
 class AtomicDoubleBuffer {
 public:
-    // 读写回调函数，可安全的在内部进行读写
-    using WriterFunc = std::function<bool(T &, [[maybe_unused]] int)>;
-    using ReaderFunc = std::function<bool(T &, [[maybe_unused]] int)>;
-    using ResetFunc = std::function<bool(T &, T &)>;
-
     AtomicDoubleBuffer() = default;
 
     /**
      * @brief 重置buf, 请确保读写线程都未使用时调用
      * TODO: 在多线程环境也能使用
      */
-    bool reset(ResetFunc func) {
+    template <typename F>
+    [[nodiscard]] bool reset(F &&func) {
+        static_assert(std::is_invocable_r_v<bool, F, T &, T &>,
+                      "reset() callback must be: bool(T &, T &)");
         m_state = 0;
         m_realLatestIdx = -1;
-        if (func) {
-            return func(m_buffers[0], m_buffers[1]);
-        }
-        return false;
+        return std::forward<F>(func)(m_buffers[0], m_buffers[1]);
     }
 
     // 手动发布数据
@@ -222,22 +224,22 @@ public:
      * @brief 写操作：用户在回调中直接修改 Buffer
      * @warning 请不要在回调中进行阻塞操作
      */
-    bool write(WriterFunc func, bool autoRelease = true) {
-        // 获取当前最新索引，确定要写的“目标”是哪一个
-        uint8_t s = m_state.load(std::memory_order_acquire);
+    template <typename F>
+    [[nodiscard]] bool write(F &&func, bool autoRelease = true) {
+        static_assert(std::is_invocable_r_v<bool, F, T &, int>,
+                      "write() callback must be: bool(T &, int)");
+        // 获取当前最新索引，确定要写的"目标"是哪一个
+        const uint8_t s = m_state.load(std::memory_order_acquire);
         const int targetIdx = 1 - (s & LATEST_MASK); // 1 -> 0 或 0 -> 1
-        uint8_t targetBusyBit = targetIdx == 0 ? BUSY0_BIT : BUSY1_BIT;
+        const uint8_t targetBusyBit = targetIdx == 0 ? BUSY0_BIT : BUSY1_BIT;
 
-        // 如果读线程正锁着要写的那个，则“等一会”
+        // 如果读线程正锁着要写的那个，则"等一会"
         while (m_state.load(std::memory_order_acquire) & targetBusyBit) {
             std::this_thread::yield();
         }
 
-        bool ok = true;
         // 用户安全的进行写操作
-        if (func) {
-            ok = func(m_buffers[targetIdx], targetIdx);
-        }
+        const bool ok = std::forward<F>(func)(m_buffers[targetIdx], targetIdx);
 
         m_realLatestIdx = targetIdx;
 
@@ -246,7 +248,7 @@ public:
 
         if (!((m_state.load(std::memory_order_relaxed) & 0x06) != 0x06)) {
             qDebug() << "write error, state=" << int(m_state.load());
-            exit(-1);
+            assert(false);
         }
         return ok;
     }
@@ -255,7 +257,10 @@ public:
      * @brief 读操作：用户在回调中直接读取最新 Buffer
      * @warning 请不要在回调中进行阻塞操作
      */
-    bool read(ReaderFunc func) {
+    template <typename F>
+    [[nodiscard]] bool read(F &&func) {
+        static_assert(std::is_invocable_r_v<bool, F, T &, int>,
+                      "read() callback must be: bool(T &, int)");
         uint8_t oldState, lockedState;
         int targetIdx;
         uint8_t targetBusyBit;
@@ -277,19 +282,14 @@ public:
         } while (!m_state.compare_exchange_weak(oldState, lockedState, std::memory_order_acquire, std::memory_order_relaxed));
 
         if (!((m_state.load(std::memory_order_relaxed) & 0x06) != 0x06)) {
-            exit(-2);
+            assert(false);
         }
 
-        bool ok = true;
         // 执行用户回调，读访问 / 允许进行修改
-
-        if (func) {
-            ok = func(m_buffers[targetIdx], targetIdx);
-        }
+        const bool ok = std::forward<F>(func)(m_buffers[targetIdx], targetIdx);
 
         // 将对应的 Busy 位清零
-        static int ct = 0;
-        ct = 0;
+        int ct = 0;
         uint8_t expected = m_state.load(std::memory_order_acquire);
         while (true) {
             ct++;
@@ -306,16 +306,14 @@ public:
             }
             // 如果失败（说明写线程翻转了 LATEST），继续尝试释放当前的 Busy 位
             // 由于Busy位被锁定，写线程无法再次反转LATEST
-            if (ct == 3) {
-                exit(-3);
-            }
+            assert(ct <= 2);
         }
 
         return ok;
     }
 
     // 获取当前状态用于调试
-    uint8_t get_state() const {
+    [[nodiscard]] uint8_t get_state() const {
         return m_state.load(std::memory_order_relaxed);
     }
 

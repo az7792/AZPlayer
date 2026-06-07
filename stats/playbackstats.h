@@ -24,7 +24,7 @@ public:
     void updateSubPrepTime(double ms);     // 准备一次字幕调用一次
 
     // 获取拼接好的文本信息（HTML主要是为了带颜色）
-    Q_INVOKABLE QString getPlaybackStatsStringHTML() const;
+    Q_INVOKABLE [[nodiscard]] QString getPlaybackStatsStringHTML() const;
 
 public:
     // ==== 队列长度 ====
@@ -77,7 +77,7 @@ private:
     explicit PlaybackStats(QObject *parent = nullptr);
 
     // 辅助函数：计算队列平均值
-    double calculateAverage(std::deque<double> &deq, double newValue);
+    [[nodiscard]] double calculateAverage(std::deque<double> &deq, double newValue);
 
 private:
     int m_frameCounter{};

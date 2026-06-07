@@ -14,9 +14,9 @@ FileHelper &FileHelper::instance() {
     return inst;
 }
 
-QVariantList FileHelper::expandFiles(const QStringList &inputPaths) {
+QVariantList FileHelper::expandFiles(const QStringList &inputPaths) const {
     QVariantList result;
-    QStringList filters = {"*.mp4", "*.mkv", "*.avi", "*.mp3", "*.aac", "*.flac", "*.mka", "*.wav", "*.ogg", "*.ac3"};
+    static const QStringList filters = {"*.mp4", "*.mkv", "*.avi", "*.mp3", "*.aac", "*.flac", "*.mka", "*.wav", "*.ogg", "*.ac3"};
 
     QSet<QString> seen; // 去重 URL
 
@@ -54,7 +54,7 @@ QVariantList FileHelper::expandFiles(const QStringList &inputPaths) {
     return result;
 }
 
-bool FileHelper::matchesFilter(const QString &fileName, const QStringList &filters) {
+bool FileHelper::matchesFilter(const QString &fileName, const QStringList &filters) const {
     for (const QString &f : filters) {
         if (fileName.endsWith(QStringView(f).sliced(1), Qt::CaseInsensitive))
             return true;
@@ -62,7 +62,7 @@ bool FileHelper::matchesFilter(const QString &fileName, const QStringList &filte
     return false;
 }
 
-void FileHelper::scanFolderRecursive(const QString &folderPath, QStringList &outFiles, const QStringList &filters) {
+void FileHelper::scanFolderRecursive(const QString &folderPath, QStringList &outFiles, const QStringList &filters) const {
     QDir dir(folderPath);
     if (!dir.exists())
         return;

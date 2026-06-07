@@ -6,6 +6,7 @@
 
 #include "compat/compat.h"
 #include <atomic>
+#include <memory>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -17,33 +18,33 @@ class SPSCBuffer {
     SPSCBuffer &operator=(const SPSCBuffer &) = delete;
 
 public:
+    // capacity 必须是 2 的幂
     explicit SPSCBuffer(uint64_t capacity);
-
-    ~SPSCBuffer();
+    ~SPSCBuffer() = default;
 
     // 写入指定长度的数据，返回实际写入的数据
-    uint64_t write(const uint8_t *input, uint64_t len);
+    [[nodiscard]] uint64_t write(const uint8_t *input, uint64_t len);
 
     void requestClearOldData();
 
     // 读取指定长度的数据，返回实际读取的数据
-    uint64_t read(uint8_t *output, uint64_t len);
+    [[nodiscard]] uint64_t read(uint8_t *output, uint64_t len);
 
     void unsafeClear();
 
     // 获取长度函数
-    uint64_t readAvailable() const;
-    uint64_t writeAvailable() const;
-    uint64_t capacity() const;
+    [[nodiscard]] uint64_t readAvailable() const;
+    [[nodiscard]] uint64_t writeAvailable() const;
+    [[nodiscard]] uint64_t capacity() const;
 
 private:
-    alignas(hardware_destructive_interference_size) std::atomic<uint64_t> m_head; // 读指针
-    alignas(hardware_destructive_interference_size) std::atomic<uint64_t> m_tail; // 写指针
-    alignas(hardware_destructive_interference_size) std::atomic<uint8_t> m_needClear;
-    alignas(hardware_destructive_interference_size) std::atomic<uint64_t> m_virtualTail;
+    alignas(hardware_destructive_interference_size) std::atomic<uint64_t> m_head{0}; // 读指针
+    alignas(hardware_destructive_interference_size) std::atomic<uint64_t> m_tail{0}; // 写指针
+    alignas(hardware_destructive_interference_size) std::atomic<uint8_t> m_needClear{0};
+    alignas(hardware_destructive_interference_size) std::atomic<uint64_t> m_virtualTail{0};
     const uint64_t m_capacity;
     const uint64_t m_mask;
-    uint8_t *m_buffer;
+    std::unique_ptr<uint8_t[]> m_buffer;
 };
 
 #ifdef _MSC_VER

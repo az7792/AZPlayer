@@ -25,8 +25,8 @@ public:
     explicit VideoPlayer(QObject *parent = nullptr);
     ~VideoPlayer();
 
-    bool init(sharedFrmQueue frmBuf, sharedFrmQueue subFrmBuf);
-    bool uninit();
+    [[nodiscard]] bool init(sharedFrmQueue frmBuf, sharedFrmQueue subFrmBuf);
+    void uninit();
 
     // 开启解复用线程
     void start();
@@ -70,13 +70,13 @@ private:
      * 写入一帧数据
      * @warning 方法会阻塞线程
      */
-    bool write(AVFrmItem &videoFrmitem);
+    void write(AVFrmItem &videoFrmitem);
 
-    bool getVideoFrm(AVFrmItem &item);
+    [[nodiscard]] bool getVideoFrm(AVFrmItem &item);
 
     void playerLoop();
 
-    static double getDuration(const FrameInterval &last, const FrameInterval &now);
+    [[nodiscard]] static double getDuration(const FrameInterval &last, const FrameInterval &now);
 
     void handleASSSubtitle(double pts); // ASS 字幕
     void handleBitmapSubtitle();        // 位图字幕

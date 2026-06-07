@@ -20,8 +20,8 @@ namespace {
 
 VideoRenderer::VideoRenderer() {
     initializeOpenGLFunctions();
-    const QString vSrcPath = ":/shaderSource/shader.vert";
-    const QString fSrcPath = ":/shaderSource/shader.frag";
+    static const QString vSrcPath = QStringLiteral(":/shaderSource/shader.vert");
+    static const QString fSrcPath = QStringLiteral(":/shaderSource/shader.frag");
     if (!m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, vSrcPath) ||
         !m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, fSrcPath) ||
         !m_program.link()) {
@@ -29,7 +29,7 @@ VideoRenderer::VideoRenderer() {
         return;
     }
     qDebug() << "着色器程序编译成功";
-    float vertices[] = {
+    static constexpr float vertices[] = {
         // 位置      // 纹理
         -1.f, 1.f, 0.f, 1.f,  // 左上
         -1.f, -1.f, 0.f, 0.f, // 左下
@@ -37,7 +37,7 @@ VideoRenderer::VideoRenderer() {
         1.f, 1.f, 1.f, 1.f    // 右上
     };
 
-    unsigned int indices[] = {
+    static constexpr unsigned int indices[] = {
         0, 1, 2, // 第一个三角形
         0, 2, 3  // 第二个三角形
     };
@@ -118,7 +118,7 @@ void VideoRenderer::initVideoTex(VideoRenderData *renderData) {
     m_program.release();
 
     // 拷贝一些参数方便使用
-    VideoRenderData::PixFormat tmpFmt = renderData->pixFormat;
+    const VideoRenderData::PixFormat tmpFmt = renderData->pixFormat;
     for (int i = 0; i < 4; ++i) {
         GLParaArr[i] = renderData->GLParaArr[i];
         linesizeArr[i] = renderData->linesizeArr[i];
@@ -193,7 +193,7 @@ void VideoRenderer::render() {
     glGetIntegerv(GL_UNPACK_ROW_LENGTH, &prevRowLen);
 
     if (m_subData) {
-        m_subData->read([&](SubRenderData &renData, int) -> bool {
+        (void)m_subData->read([&](SubRenderData &renData, int) -> bool {
             // 初始化字幕纹理
             if (renData.subtitleType != SUBTITLE_NONE && (renData.frmItem.width != m_subtitleSize.width() || renData.frmItem.height != m_subtitleSize.height())) {
                 m_needInitSubtitleTex = true;
@@ -208,7 +208,8 @@ void VideoRenderer::render() {
         *m_forceClearSubtitle = false;
     }
 
-    m_vidData->read([&](VideoRenderData &renData, int) -> bool {
+    // read 可能失败，此时复用纹理
+    (void)m_vidData->read([&](VideoRenderData &renData, int) -> bool {
         AVFrame *frm = renData.frmItem.frm;
         if (frm == nullptr)
             return false;
@@ -224,7 +225,9 @@ void VideoRenderer::render() {
             dataArr[i] = renData.dataArr[i];
         }
         // 上传视频纹理
-        updateTex(renData.pixFormat);
+        if (!updateTex(renData.pixFormat)) {
+            return false;
+        }
 
         // 更新播放信息
         if (frm->format != PlaybackStats::instance().videoFormat) {
@@ -332,8 +335,6 @@ bool VideoRenderer::updateSubTex(SubRenderData &renData) {
     glBindTexture(GL_TEXTURE_2D, m_subTex);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
-    static AVSubtitleType lastSubType = SUBTITLE_NONE;
-
     // 清理旧数据
     if (renData.size == 0) {
         clearSubtitleTex();
@@ -406,7 +407,7 @@ void VideoRenderer::initTex(GLuint &tex, const QSize &size, const std::array<uns
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-QMatrix4x4 VideoRenderer::getTransformMat() {
+QMatrix4x4 VideoRenderer::getTransformMat() const {
     QMatrix4x4 mat;
     mat.setToIdentity();
 
@@ -422,7 +423,7 @@ QMatrix4x4 VideoRenderer::getTransformMat() {
 
     // 将视频等比例填充满FBO并将FBO缩放到[-1,1]时视频右上角的坐标
     float scaleX = 1.0f, scaleY = 1.0f;
-    float videoAspect = 1.f * m_frameSize.width() / m_frameSize.height(), fboAspect = 1.f * m_FBOSize.width() / m_FBOSize.height();
+    const float videoAspect = 1.f * m_frameSize.width() / m_frameSize.height(), fboAspect = 1.f * m_FBOSize.width() / m_FBOSize.height();
     if (videoAspect > fboAspect) {
         // 视频比FBO宽，宽撑满，高缩放
         scaleY = fboAspect / videoAspect;
@@ -487,7 +488,7 @@ void VideoRenderer::clearSubtitleTex() {
 
 //===========VideoWindow===========//
 QQuickFramebufferObject::Renderer *VideoWindow::createRenderer() const {
-    VideoRenderer *render = new VideoRenderer();
+    VideoRenderer *const render = new VideoRenderer();
     return render;
 }
 

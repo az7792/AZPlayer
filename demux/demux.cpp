@@ -52,7 +52,7 @@ bool Demux::init(const std::string URL, bool isMainDemux) {
         return false;
     }
 
-    double maxFrameDuration = (m_formatCtx->iformat->flags & AVFMT_TS_DISCONT) ? 10.0 : 3600.0;
+    const double maxFrameDuration = (m_formatCtx->iformat->flags & AVFMT_TS_DISCONT) ? 10.0 : 3600.0;
     GlobalClock::instance().setMaxFrameDuration(maxFrameDuration);
 
     // 读取媒体文件的流信息
@@ -90,7 +90,7 @@ bool Demux::init(const std::string URL, bool isMainDemux) {
     return true;
 }
 
-bool Demux::uninit() {
+void Demux::uninit() {
     stop();
     if (m_formatCtx) {
         avformat_close_input(&m_formatCtx);
@@ -120,8 +120,6 @@ bool Demux::uninit() {
     m_audioFrmBuf.reset();
     m_videoFrmBuf.reset();
     m_subtitleFrmBuf.reset();
-
-    return true;
 }
 
 void Demux::start() {
@@ -193,7 +191,7 @@ void Demux::closeStream(MediaType type) {
     }
 }
 
-int Demux::getDuration() {
+int Demux::getDuration() const {
     if (m_formatCtx) {
         return m_formatCtx->duration / AV_TIME_BASE;
     }
@@ -223,7 +221,7 @@ AVStream *Demux::getStream(MediaType type) {
     return m_formatCtx->streams[idx];
 }
 
-bool Demux::haveStream(MediaType type) {
+bool Demux::haveStream(MediaType type) const {
     switch (type) {
     case MediaType::Video:
         return !m_videoIdx.empty();
@@ -244,7 +242,7 @@ AVFormatContext *Demux::formatCtx() {
     return m_formatCtx;
 }
 
-bool Demux::isEOF() {
+bool Demux::isEOF() const {
     return m_isEOF;
 }
 
@@ -287,12 +285,12 @@ void Demux::demuxLoop() {
             int streamIdx = m_isMainDemux ? -1 : (m_usedVIdx != -1) ? m_usedVIdx.load()
                                              : (m_usedAIdx != -1)   ? m_usedAIdx.load()
                                                                     : m_usedSIdx.load();
-            double time_base = streamIdx == -1 ? 1.0 / AV_TIME_BASE : av_q2d(m_formatCtx->streams[streamIdx]->time_base);
-            double target = m_seekTs / time_base;
-            int64_t seekMin = m_seekRel > 0.0 ? static_cast<int64_t>(target - m_seekRel * AV_TIME_BASE + 2) : INT64_MIN;
-            int64_t seekMax = m_seekRel < 0.0 ? static_cast<int64_t>(target - m_seekRel * AV_TIME_BASE - 2) : INT64_MAX;
-            int ret = avformat_seek_file(m_formatCtx, streamIdx, seekMin, target, seekMax,
-                                         m_usedVIdx == -1 ? AVSEEK_FLAG_ANY : 0);
+            const double time_base = streamIdx == -1 ? 1.0 / AV_TIME_BASE : av_q2d(m_formatCtx->streams[streamIdx]->time_base);
+            const double target = m_seekTs / time_base;
+            const int64_t seekMin = m_seekRel > 0.0 ? static_cast<int64_t>(target - m_seekRel * AV_TIME_BASE + 2) : INT64_MIN;
+            const int64_t seekMax = m_seekRel < 0.0 ? static_cast<int64_t>(target - m_seekRel * AV_TIME_BASE - 2) : INT64_MAX;
+            const int ret = avformat_seek_file(m_formatCtx, streamIdx, seekMin, target, seekMax,
+                                               m_usedVIdx == -1 ? AVSEEK_FLAG_ANY : 0);
             if (ret < 0) {
                 qDebug() << "seek出错";
             }
@@ -461,7 +459,7 @@ bool Demux::switchStream(MediaType type, int streamIdx, weakPktQueue wpq, weakFr
         usedIdx->store((*idxVec)[streamIdx], std::memory_order_release);
     }
 
-    bool ok = true;
+    int ret = 0;
     // seek 或启动线程
     if (m_stop.load(std::memory_order_relaxed)) {
         double pts = GlobalClock::instance().getMainPts();
@@ -469,12 +467,12 @@ bool Demux::switchStream(MediaType type, int streamIdx, weakPktQueue wpq, weakFr
             int64_t target = pts / av_q2d(getStream(type)->time_base);
             int streamIndex = (*idxVec)[streamIdx];
             int flags = (m_usedVIdx.load(std::memory_order_relaxed) == -1) ? AVSEEK_FLAG_ANY : 0;
-            ok = avformat_seek_file(m_formatCtx, streamIndex, INT64_MIN, target, INT64_MAX, flags);
+            ret = avformat_seek_file(m_formatCtx, streamIndex, INT64_MIN, target, INT64_MAX, flags);
             start();
         }
     } else {
         seekBySec(GlobalClock::instance().getMainPts(), 0);
     }
 
-    return ok;
+    return ret >= 0;
 }

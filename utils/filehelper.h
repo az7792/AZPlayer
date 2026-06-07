@@ -20,7 +20,7 @@ public:
      * text:文件名
      * fileUrl:URL
      */
-    Q_INVOKABLE QVariantList expandFiles(const QStringList &inputPaths);
+    Q_INVOKABLE [[nodiscard]] QVariantList expandFiles(const QStringList &inputPaths) const;
 
 signals:
 
@@ -30,10 +30,10 @@ private:
     FileHelper &operator=(const FileHelper &) = delete;
 
     // 匹配文件后缀,不区分大小写
-    bool matchesFilter(const QString &fileName, const QStringList &filters);
+    [[nodiscard]] bool matchesFilter(const QString &fileName, const QStringList &filters) const;
 
     // 递归展开文件夹内的所有文件
-    void scanFolderRecursive(const QString &folderPath, QStringList &outFiles, const QStringList &filters);
+    void scanFolderRecursive(const QString &folderPath, QStringList &outFiles, const QStringList &filters) const;
 };
 
 #endif // FILEHELPER_H

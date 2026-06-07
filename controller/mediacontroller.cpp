@@ -108,7 +108,7 @@ bool MediaController::setVideoWindow(QObject *videoWindow) {
 }
 
 bool MediaController::open(const QUrl &URL) {
-    QString localFile = URL.toLocalFile();
+    const QString localFile = URL.toLocalFile();
     if (!QFileInfo::exists(localFile)) {
         qDebug() << "无效路径:" << localFile;
         return false;
@@ -128,10 +128,10 @@ bool MediaController::open(const QUrl &URL) {
         return false;
     }
 
-    bool haveAudio = m_demuxs[defDemuxIdx]->haveStream(MediaType::Audio), haveVideo = m_demuxs[defDemuxIdx]->haveStream(MediaType::Video);
+    const bool haveAudio = m_demuxs[defDemuxIdx]->haveStream(MediaType::Audio), haveVideo = m_demuxs[defDemuxIdx]->haveStream(MediaType::Video);
     if (haveAudio) {
         const int audioIdx = 0;
-        m_demuxs[defDemuxIdx]->switchAudioStream(audioIdx, m_pktAudioBuf, m_frmAudioBuf);
+        ok &= m_demuxs[defDemuxIdx]->switchAudioStream(audioIdx, m_pktAudioBuf, m_frmAudioBuf);
         m_streams[to_index(MediaIdx::Audio)] = {defDemuxIdx, audioIdx};
         ok &= m_decodeAudio->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Audio), m_pktAudioBuf, m_frmAudioBuf, 1);
         ok &= m_audioPlayer->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Audio)->codecpar, m_frmAudioBuf);
@@ -140,8 +140,8 @@ bool MediaController::open(const QUrl &URL) {
     if (haveVideo) {
         const int videoIdx = 0;
         m_streams[to_index(MediaIdx::Video)] = {defDemuxIdx, videoIdx};
-        m_demuxs[defDemuxIdx]->switchVideoStream(videoIdx, m_pktVideoBuf, m_frmVideoBuf);
-        int cores = std::thread::hardware_concurrency(); // 逻辑核心数
+        ok &= m_demuxs[defDemuxIdx]->switchVideoStream(videoIdx, m_pktVideoBuf, m_frmVideoBuf);
+        const int cores = std::thread::hardware_concurrency(); // 逻辑核心数
         ok &= m_decodeVideo->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Video), m_pktVideoBuf, m_frmVideoBuf, cores >= 6 ? 6 : 0);
     }
 
@@ -149,7 +149,7 @@ bool MediaController::open(const QUrl &URL) {
         const int subtitleIdx = 0;
         m_streams[to_index(MediaIdx::Subtitle)] = {defDemuxIdx, subtitleIdx};
         bool isAssSub;
-        m_demuxs[defDemuxIdx]->switchSubtitleStream(subtitleIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub);
+        ok &= m_demuxs[defDemuxIdx]->switchSubtitleStream(subtitleIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub);
         if (!isAssSub)
             ok &= m_decodeSubtitl->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf, 1);
     }
@@ -201,21 +201,19 @@ bool MediaController::openAudioStream(const QUrl &URL) {
     return openStreamByFile(URL, MediaIdx::Audio);
 }
 
-bool MediaController::close() {
-    if (!m_opened) {
-        return true;
-    }
-    bool ok = true;
+void MediaController::close() {
+    if (!m_opened) return;
+
     for (int i = 0; i < 3; ++i) {
-        if (m_demuxs[i]) {
-            ok &= m_demuxs[i]->uninit();
-        }
+        if (m_demuxs[i]) m_demuxs[i]->uninit();
     }
-    ok &= m_decodeAudio->uninit();
-    ok &= m_decodeVideo->uninit();
-    ok &= m_decodeSubtitl->uninit();
-    ok &= m_audioPlayer->uninit();
-    ok &= m_videoPlayer->uninit();
+
+    m_decodeAudio->uninit();
+    m_decodeVideo->uninit();
+    m_decodeSubtitl->uninit();
+    m_audioPlayer->uninit();
+    m_videoPlayer->uninit();
+
     clearPktQ(m_pktAudioBuf);
     clearPktQ(m_pktVideoBuf);
     clearPktQ(m_pktSubtitleBuf);
@@ -236,7 +234,6 @@ bool MediaController::close() {
     emit streamInfoUpdate();
     emit chaptersInfoUpdate();
     emit clearVideoFBOSubtitleTex();
-    return ok;
 }
 
 void MediaController::togglePaused() {
@@ -296,7 +293,7 @@ void MediaController::seekBySec(double ts, double rel) {
 }
 
 void MediaController::fastForward() {
-    seekBySec(std::min((double)m_duration, getCurrentTime() + 5.0), 5.0);
+    seekBySec(std::min(static_cast<double>(m_duration), getCurrentTime() + 5.0), 5.0);
 }
 
 void MediaController::fastRewind() {
@@ -322,9 +319,9 @@ bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
     m_frmSubtitleBuf->addSerial(); // videoPlayer可能还在使用，不需要清空，仅修改序号即可
     // 打开新的
     bool isAssSub;
-    m_demuxs[demuxIdx]->switchSubtitleStream(streamIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub);
+    if (!m_demuxs[demuxIdx]->switchSubtitleStream(streamIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub)) { return false; }
     if (!isAssSub) {
-        m_decodeSubtitl->init(m_demuxs[demuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf, 1);
+        if (!m_decodeSubtitl->init(m_demuxs[demuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf, 1)) { return false; }
         m_decodeSubtitl->start();
     }
 
@@ -349,9 +346,9 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
     m_frmAudioBuf->addSerial();
 
     // 打开新的
-    m_demuxs[demuxIdx]->switchAudioStream(streamIdx, m_pktAudioBuf, m_frmAudioBuf);
-    m_decodeAudio->init(m_demuxs[demuxIdx]->getStream(MediaType::Audio), m_pktAudioBuf, m_frmAudioBuf, 1);
-    m_audioPlayer->init(m_demuxs[demuxIdx]->getStream(MediaType::Audio)->codecpar, m_frmAudioBuf);
+    if (!m_demuxs[demuxIdx]->switchAudioStream(streamIdx, m_pktAudioBuf, m_frmAudioBuf)) { return false; }
+    if (!m_decodeAudio->init(m_demuxs[demuxIdx]->getStream(MediaType::Audio), m_pktAudioBuf, m_frmAudioBuf, 1)) { return false; }
+    if (!m_audioPlayer->init(m_demuxs[demuxIdx]->getStream(MediaType::Audio)->codecpar, m_frmAudioBuf)) { return false; }
     DeviceStatus::instance().setHaveAudio(true);
     m_decodeAudio->start();
     m_audioPlayer->start();
@@ -386,10 +383,10 @@ void MediaController::setOpened(bool newOpened) {
 }
 
 QVariantList MediaController::getStreamInfo(MediaIdx type) const {
-    auto index = to_index(type);
+    const auto index = to_index(type);
     QVariantList list;
     for (size_t i = 0; i < m_demuxs.size(); ++i) {
-        Demux *demux = m_demuxs[i];
+        Demux *const demux = m_demuxs[i];
         if (demux == nullptr)
             continue;
 
@@ -410,8 +407,8 @@ bool MediaController::openStreamByFile(const QUrl &URL, MediaIdx idx) {
     if (!m_opened) {
         return false;
     }
-    uint8_t index = to_index(idx);
-    QString localFile = URL.toLocalFile();
+    const uint8_t index = to_index(idx);
+    const QString localFile = URL.toLocalFile();
     if (!QFileInfo::exists(localFile)) {
         qDebug() << "无效路径:" << localFile;
         return false;
@@ -427,9 +424,7 @@ bool MediaController::openStreamByFile(const QUrl &URL, MediaIdx idx) {
         m_streams[to_index(MediaIdx::Subtitle)] = {-1, -1};
     }
 
-    bool ok = true;
-    ok &= m_demuxs[index]->init(localFile.toUtf8().constData());
-    if (!ok) {
+    if (!m_demuxs[index]->init(localFile.toUtf8().constData())) {
         close();
         return false;
     }
@@ -447,10 +442,10 @@ void MediaController::checkPlayerFinished() {
     if (!m_opened || m_played || !m_demuxs[0]->isEOF())
         return;
 
-    bool haveAudio = m_streams[to_index(MediaIdx::Audio)].second != -1;
+    const bool haveAudio = m_streams[to_index(MediaIdx::Audio)].second != -1;
 
-    bool audioQueueIsEmpty = m_pktAudioBuf->size() == 0 && m_frmAudioBuf->size() == 0;
-    bool videoQueueIsEmpty = m_pktVideoBuf->size() == 0 && m_frmVideoBuf->size() == 0;
+    const bool audioQueueIsEmpty = m_pktAudioBuf->size() == 0 && m_frmAudioBuf->size() == 0;
+    const bool videoQueueIsEmpty = m_pktVideoBuf->size() == 0 && m_frmVideoBuf->size() == 0;
     bool playerFinished = false;
 
     if (haveAudio) {
@@ -487,7 +482,7 @@ QVariantList MediaController::getAudioInfo() const {
 }
 
 QVariantList MediaController::getChaptersInfo() const {
-    Demux *demux = m_demuxs[to_index(MediaIdx::Video)];
+    Demux *const demux = m_demuxs[to_index(MediaIdx::Video)];
     QVariantList list;
 
     if (demux == nullptr)
@@ -497,22 +492,22 @@ QVariantList MediaController::getChaptersInfo() const {
     for (auto &v : chapters) {
         int total = static_cast<int>(v.pts * 1000.0 + 0.5);
 
-        int ms = total % 1000;
+        const int ms = total % 1000;
         total /= 1000;
 
-        int sec = total % 60;
+        const int sec = total % 60;
         total /= 60;
 
-        int min = total % 60;
-        int hour = total / 60;
+        const int min = total % 60;
+        const int hour = total / 60;
 
-        QString timeStr = QString("[%1:%2:%3:%4]")
-                              .arg(hour, 2, 10, QLatin1Char('0'))
-                              .arg(min, 2, 10, QLatin1Char('0'))
-                              .arg(sec, 2, 10, QLatin1Char('0'))
-                              .arg(ms, 3, 10, QLatin1Char('0'));
+        const QString timeStr = QString("[%1:%2:%3:%4]")
+                                    .arg(hour, 2, 10, QLatin1Char('0'))
+                                    .arg(min, 2, 10, QLatin1Char('0'))
+                                    .arg(sec, 2, 10, QLatin1Char('0'))
+                                    .arg(ms, 3, 10, QLatin1Char('0'));
 
-        QString title = QString::fromStdString(v.title);
+        const QString title = QString::fromStdString(v.title);
 
         QVariantMap item;
         item["pts"] = QVariant(v.pts);

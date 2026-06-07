@@ -72,12 +72,12 @@ void PlaybackStats::frameRendered() {
     constexpr double alpha = 0.9; // 平滑因子，0~1，越小越平滑
     m_frameCounter++;
 
-    auto now = steady_clock::now();
-    auto elapsedMs = duration_cast<milliseconds>(now - m_lastFpsTime).count();
+    const auto now = steady_clock::now();
+    const auto elapsedMs = duration_cast<milliseconds>(now - m_lastFpsTime).count();
 
     if (elapsedMs >= 1000) {
         // 当前瞬时帧率
-        double instantFps = static_cast<double>(m_frameCounter) * 1000.0 / elapsedMs;
+        const double instantFps = static_cast<double>(m_frameCounter) * 1000.0 / elapsedMs;
 
         // 指数平滑
         outputFps = alpha * instantFps + (1.0 - alpha) * outputFps;
@@ -132,9 +132,9 @@ QString PlaybackStats::getPlaybackStatsStringHTML() const {
     str += item("像素格式", videoPixFormat, "white", "yellow");
 
     // 性能统计：解码与准备 ms
-    int vdec = avgVideoDecodeTime;
-    int vprep = avgVideoPrepTime;
-    int sprep = avgSubPrepTime;
+    const int vdec = static_cast<int>(avgVideoDecodeTime);
+    const int vprep = static_cast<int>(avgVideoPrepTime);
+    const int sprep = static_cast<int>(avgSubPrepTime);
 
     str += item("视频解码", QString::number(vdec) + "ms", "white", (vdec > 30 ? "red" : "#55FF55"));
     str += item("视频准备", QString::number(vprep) + "ms", "white", (vprep > 30 ? "red" : "#55FF55"));

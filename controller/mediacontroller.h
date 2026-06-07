@@ -23,39 +23,39 @@ public:
     explicit MediaController(QObject *parent = nullptr);
     ~MediaController();
 
-    bool paused() const;
+    [[nodiscard]] bool paused() const;
     void setPaused(bool newPaused); // 仅用于修改数值产生信号
 
-    double volume() const;
+    [[nodiscard]] double volume() const;
 
-    bool muted() const;
+    [[nodiscard]] bool muted() const;
 
-    int duration() const;
+    [[nodiscard]] int duration() const;
     void setDuration(int newDuration); // 仅用于修改数值产生信号
 
-    bool opened() const;
+    [[nodiscard]] bool opened() const;
     void setOpened(bool newOpened); // 仅用于修改数值产生信号
 
-    Q_INVOKABLE int getCurrentTime() const;           // 获取当前播放时间（秒）
-    Q_INVOKABLE QVariantList getSubtitleInfo() const; // 获取字幕流信息
-    Q_INVOKABLE QVariantList getAudioInfo() const;    // 获取音频流信息
-    Q_INVOKABLE QVariantList getChaptersInfo() const; // 获取章节信息
-    Q_INVOKABLE int getSubtitleIdx() const;           // 获取当前使用的流在所有同类流中的索引，-1为未使用
-    Q_INVOKABLE int getAudioIdx() const;              // 获取当前使用的流在所有同类流中的索引，-1为未使用
+    Q_INVOKABLE [[nodiscard]] int getCurrentTime() const;           // 获取当前播放时间（秒）
+    Q_INVOKABLE [[nodiscard]] QVariantList getSubtitleInfo() const; // 获取字幕流信息
+    Q_INVOKABLE [[nodiscard]] QVariantList getAudioInfo() const;    // 获取音频流信息
+    Q_INVOKABLE [[nodiscard]] QVariantList getChaptersInfo() const; // 获取章节信息
+    Q_INVOKABLE [[nodiscard]] int getSubtitleIdx() const;           // 获取当前使用的流在所有同类流中的索引，-1为未使用
+    Q_INVOKABLE [[nodiscard]] int getAudioIdx() const;              // 获取当前使用的流在所有同类流中的索引，-1为未使用
 
-    bool loopOnEnd() const;
+    [[nodiscard]] bool loopOnEnd() const;
     Q_INVOKABLE void setLoopOnEnd(bool newLoopOnEnd);
 
-    int progress() const;
+    [[nodiscard]] int progress() const;
     void setProgress(int newProgress); // 仅用于修改数值产生信号
 
 public slots:
-    bool setVideoWindow(QObject *videoWindow); // 设置用于显示画面的QML元素
+    [[nodiscard]] bool setVideoWindow(QObject *videoWindow); // 设置用于显示画面的QML元素
 
-    bool open(const QUrl &URL);               // 打开文件开始播放
-    bool openSubtitleStream(const QUrl &URL); // 打开字幕并解析流
-    bool openAudioStream(const QUrl &URL);    // 打开音频并解析流
-    bool close();                             // 关闭当前播放的文件
+    [[nodiscard]] bool open(const QUrl &URL);               // 打开文件开始播放
+    [[nodiscard]] bool openSubtitleStream(const QUrl &URL); // 打开字幕并解析流
+    [[nodiscard]] bool openAudioStream(const QUrl &URL);    // 打开音频并解析流
+    void close();                                           // 关闭当前播放的文件
 
     void togglePaused();              // 切换是否暂停
     void setMuted(bool newMuted);     // 设置是否静音
@@ -68,8 +68,8 @@ public slots:
     void fastForward();                    // 快进
     void fastRewind();                     // 快退
 
-    bool switchSubtitleStream(int demuxIdx, int streamIdx); // 切换字幕流
-    bool switchAudioStream(int demuxIdx, int streamIdx);    // 切换音频流
+    [[nodiscard]] bool switchSubtitleStream(int demuxIdx, int streamIdx); // 切换字幕流
+    [[nodiscard]] bool switchAudioStream(int demuxIdx, int streamIdx);    // 切换音频流
 
 signals:
     void pausedChanged();      // 开始/暂停
@@ -130,9 +130,9 @@ private:
     Q_PROPERTY(int progress READ progress WRITE setProgress NOTIFY progressChanged FINAL)
 
 private:
-    QVariantList getStreamInfo(MediaIdx type) const;
-    bool openStreamByFile(const QUrl &URL, MediaIdx idx);
-    bool seekAudioAndSubtitleDemux(double pts);
+    [[nodiscard]] QVariantList getStreamInfo(MediaIdx type) const;
+    [[nodiscard]] bool openStreamByFile(const QUrl &URL, MediaIdx idx);
+    [[nodiscard]] bool seekAudioAndSubtitleDemux(double pts);
     void checkPlayerFinished();
 
 signals:

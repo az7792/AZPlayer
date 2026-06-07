@@ -73,9 +73,9 @@ bool DecodeBase::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue fr
     return true;
 }
 
-bool DecodeBase::uninit() {
+void DecodeBase::uninit() {
     if (!m_initialized) {
-        return true;
+        return;
     }
     stop();
     if (m_codecCtx) {
@@ -85,7 +85,6 @@ bool DecodeBase::uninit() {
     m_streamIdx = -1;
     m_pktBuf.reset();
     m_frmBuf.reset();
-    return true;
 }
 
 void DecodeBase::start() {

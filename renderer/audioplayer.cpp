@@ -206,7 +206,7 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
 
     Q_ASSERT(m_pcmBuffer == nullptr);
     m_pcmFrameSize = m_swrPar.ch_layout.nb_channels * av_get_bytes_per_sample(m_swrPar.sampleFormat);
-    uint64_t pcmBufferSize = (uint64_t)m_swrPar.sampleRate * m_pcmFrameSize * 100 / 1000; // 100ms容量
+    const uint64_t pcmBufferSize = (uint64_t)m_swrPar.sampleRate * m_pcmFrameSize * 100 / 1000; // 100ms容量
     m_pcmBuffer = new SPSCBuffer(roundUpPow2(pcmBufferSize));
     qDebug() << "pcmBuffer capacity:" << m_pcmBuffer->capacity();
 
@@ -253,7 +253,7 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
     return true;
 }
 
-bool AudioPlayer::uninit() {
+void AudioPlayer::uninit() {
     stop();
 
     Q_ASSERT(m_audioDevice != nullptr);
@@ -284,8 +284,6 @@ bool AudioPlayer::uninit() {
 
     m_swrBufferSize = 0;
     m_frmBuf.reset();
-
-    return true;
 }
 
 void AudioPlayer::start() {
@@ -410,12 +408,12 @@ void AudioPlayer::playerLoop() {
 
 void AudioPlayer::writePCM() {
     m_bufferedEndPts = m_frmItem.pts;
-    double bytesPerSec = m_swrPar.sampleRate * m_pcmFrameSize;
+    const double bytesPerSec = m_swrPar.sampleRate * m_pcmFrameSize;
     GlobalClock::instance().syncExternalClk(ClockType::AUDIO);
 
     while (m_pcmDataIndex < m_pcmDataSize) {
-        uint64_t len = m_pcmDataSize - m_pcmDataIndex;
-        uint64_t written = m_pcmBuffer->write(m_pcmDataPtr + m_pcmDataIndex, len);
+        const uint64_t len = m_pcmDataSize - m_pcmDataIndex;
+        const uint64_t written = m_pcmBuffer->write(m_pcmDataPtr + m_pcmDataIndex, len);
         m_bufferedEndPts += written / bytesPerSec;
         m_pcmDataIndex += written;
         if (written != len) {
@@ -444,16 +442,16 @@ bool AudioPlayer::updatePcmFromFrameQueue() {
         int nb_samples;
 
         // 估算需要的输出样本数（带上延迟）
-        int out_nb_samples = av_rescale_rnd(
+        const int out_nb_samples = av_rescale_rnd(
             swr_get_delay(m_swrContext, m_oldPar.sampleRate) + frm->nb_samples,
             m_swrPar.sampleRate,
             m_oldPar.sampleRate,
             AV_ROUND_UP);
 
         // 确保输出缓冲区足够大（单位：字节）
-        int out_channels = m_swrPar.ch_layout.nb_channels;                         // 通道数
-        int out_bytes_per_sample = av_get_bytes_per_sample(m_swrPar.sampleFormat); // 单个通道的单个采样大小
-        int out_buf_size = out_nb_samples * out_channels * out_bytes_per_sample;
+        const int out_channels = m_swrPar.ch_layout.nb_channels;                         // 通道数
+        const int out_bytes_per_sample = av_get_bytes_per_sample(m_swrPar.sampleFormat); // 单个通道的单个采样大小
+        const int out_buf_size = out_nb_samples * out_channels * out_bytes_per_sample;
 
         if (out_buf_size > m_swrBufferSize) { // swrbuf大小不够，重新分配
             *m_swrBuffer = (uint8_t *)av_realloc(*m_swrBuffer, out_buf_size);
@@ -485,25 +483,23 @@ bool AudioPlayer::updatePcmFromFrameQueue() {
 }
 
 void AudioPlayer::miniaudio_data_callback(ma_device *pDevice, void *pOutput, const void * /*pInput*/, ma_uint32 frameCount) {
-    AudioPlayer *audioPlayer = static_cast<AudioPlayer *>(pDevice->pUserData);
-    SPSCBuffer *buffer = audioPlayer->m_pcmBuffer;
-    double nextPtr = audioPlayer->m_bufferedEndPts;
+    AudioPlayer *const audioPlayer = static_cast<AudioPlayer *>(pDevice->pUserData);
+    SPSCBuffer *const buffer = audioPlayer->m_pcmBuffer;
+    const double nextPtr = audioPlayer->m_bufferedEndPts;
 
     const uint32_t bytesPerSample = ma_get_bytes_per_sample(pDevice->playback.format);
     const uint32_t frameSize = pDevice->playback.channels * bytesPerSample;
 
-    double bytesPerSec = frameSize * pDevice->sampleRate;
-    double offsetPts = buffer->readAvailable() / bytesPerSec; // 未播的时间
+    const double bytesPerSec = frameSize * pDevice->sampleRate;
+    const double offsetPts = buffer->readAvailable() / bytesPerSec; // 未播的时间
     GlobalClock::instance().setAudioClk(nextPtr - offsetPts);
 
-    uint8_t *pDst = static_cast<uint8_t *>(pOutput);
-    int writeCnt = 0; // 已经写入的大小(字节)
-    int bytesNeeded;  // 需要写入的字节数
-
-    bytesNeeded = frameCount * frameSize;
+    uint8_t *const pDst = static_cast<uint8_t *>(pOutput);
+    int writeCnt = 0;                          // 已经写入的大小(字节)
+    int bytesNeeded = frameCount * frameSize;  // 需要写入的字节数
 
     while (0 < bytesNeeded) {
-        uint64_t len = buffer->read(pDst + writeCnt, bytesNeeded);
+        const uint64_t len = buffer->read(pDst + writeCnt, bytesNeeded);
         bytesNeeded -= len;
         writeCnt += len;
 

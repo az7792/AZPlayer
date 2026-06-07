@@ -20,20 +20,20 @@ public:
     explicit DecodeBase(QObject *parent = nullptr);
     ~DecodeBase();
     // threadNum <= 0 时为 auto
-    bool init(AVStream *stream,
-              sharedPktQueue pktBuf,
-              sharedFrmQueue frmBuf,
-              int threadNum);
+    [[nodiscard]] bool init(AVStream *stream,
+                            sharedPktQueue pktBuf,
+                            sharedFrmQueue frmBuf,
+                            int threadNum);
 
     // 反初始化，恢复到未初始化之前的状态
-    bool uninit();
+    void uninit();
 
     // 开启解复用线程
     void start();
     // 退出解复用线程
     void stop();
 
-    bool initialized() const;
+    [[nodiscard]] bool initialized() const;
 
 protected:
     sharedPktQueue m_pktBuf;
@@ -52,7 +52,7 @@ protected:
 
 protected:
     virtual void decodingLoop() = 0;
-    bool getPkt(AVPktItem &pktItem, bool &needFlushBuffers);
+    [[nodiscard]] bool getPkt(AVPktItem &pktItem, bool &needFlushBuffers);
 };
 
 #endif // DECODEBASE_H

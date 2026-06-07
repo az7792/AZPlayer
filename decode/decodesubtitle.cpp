@@ -10,7 +10,7 @@ namespace {
         for (unsigned i = 0; i < frmItem.sub.num_rects; ++i) {
             AVSubtitleRect *subRect = frmItem.sub.rects[i];
             if (subRect->type == SUBTITLE_ASS) {
-                ASSRender::instance().addEvent(subRect->ass, static_cast<int>(strlen(subRect->ass)), frmItem.pts, frmItem.duration);
+                (void)ASSRender::instance().addEvent(subRect->ass, static_cast<int>(strlen(subRect->ass)), frmItem.pts, frmItem.duration);
             } else if (subRect->type == SUBTITLE_TEXT) {
                 // TODO
             }
@@ -28,10 +28,11 @@ bool DecodeSubtitle::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueu
     m_initialized = true;
 
     std::string subtitleHeader((char *)m_codecCtx->subtitle_header, m_codecCtx->subtitle_header_size);
+    bool ok = true;
     if (!subtitleHeader.empty())
-        ASSRender::instance().init(subtitleHeader);
+        ok = ASSRender::instance().init(subtitleHeader);
 
-    return true;
+    return ok;
 }
 
 void DecodeSubtitle::decodingLoop() {
@@ -57,7 +58,7 @@ void DecodeSubtitle::decodingLoop() {
 
         while (true) {
             int got_frame = 0;
-            int ret = avcodec_decode_subtitle2(m_codecCtx, &frmItem.sub, &got_frame, pktItem.pkt);
+            const int ret = avcodec_decode_subtitle2(m_codecCtx, &frmItem.sub, &got_frame, pktItem.pkt);
             if (ret < 0) {
                 qDebug() << "字幕解码出错";
                 goto end;

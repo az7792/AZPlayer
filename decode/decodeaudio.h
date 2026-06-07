@@ -9,10 +9,10 @@ class DecodeAudio : public DecodeBase {
     Q_OBJECT
 public:
     using DecodeBase::DecodeBase;
-    bool init(AVStream *stream,
-              sharedPktQueue pktBuf,
-              sharedFrmQueue frmBuf,
-              int threadNum);
+    [[nodiscard]] bool init(AVStream *stream,
+                            sharedPktQueue pktBuf,
+                            sharedFrmQueue frmBuf,
+                            int threadNum);
 
 private:
     void decodingLoop() override;

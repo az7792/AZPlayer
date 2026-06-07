@@ -10,7 +10,7 @@ bool DecodeAudio::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueue f
         return false;
     }
 
-    auto par = stream->codecpar;
+    const AVCodecParameters *par = stream->codecpar;
 
     m_oldPar.sampleFormat = static_cast<AVSampleFormat>(par->format);
     m_oldPar.sampleRate = par->sample_rate;

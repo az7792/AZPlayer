@@ -15,26 +15,26 @@
 
 // 枚举转idx
 template <typename E>
-constexpr auto to_index(E e) -> std::underlying_type_t<E> {
+[[nodiscard]] constexpr auto to_index(E e) -> std::underlying_type_t<E> {
     return static_cast<std::underlying_type_t<E>>(e);
 }
 
 class DeviceStatus {
 public:
-    bool initialized() {
+    [[nodiscard]] bool initialized() const {
         return (!m_haveAudio || m_audioInitialized) && (!m_haveVideo || m_videoInitialized);
     }
 
-    bool audioInitialized() const { return m_audioInitialized; }
+    [[nodiscard]] bool audioInitialized() const { return m_audioInitialized; }
     void setAudioInitialized(bool newAudioInitialized) { m_audioInitialized = newAudioInitialized; }
 
-    bool videoInitialized() const { return m_videoInitialized; }
+    [[nodiscard]] bool videoInitialized() const { return m_videoInitialized; }
     void setVideoInitialized(bool newVideoInitialized) { m_videoInitialized = newVideoInitialized; }
 
-    bool haveVideo() const { return m_haveVideo; }
+    [[nodiscard]] bool haveVideo() const { return m_haveVideo; }
     void setHaveVideo(bool newHaveVideo) { m_haveVideo = newHaveVideo; }
 
-    bool haveAudio() const { return m_haveAudio; }
+    [[nodiscard]] bool haveAudio() const { return m_haveAudio; }
     void setHaveAudio(bool newHaveAudio) { m_haveAudio = newHaveAudio; }
 
     static DeviceStatus &instance() {
@@ -49,7 +49,7 @@ private:
     DeviceStatus(const DeviceStatus &) = delete;
     DeviceStatus &operator=(const DeviceStatus &) = delete;
 
-    DeviceStatus() : m_audioInitialized(false), m_videoInitialized(false) {}
+    DeviceStatus() = default;
 };
 
 /**
@@ -62,7 +62,7 @@ public:
         : m_capacity(capacity + 1), // 多分配一个，用于处理满条件
           m_buffer(m_capacity) {}
 
-    bool push(const T &value) {
+    [[nodiscard]] bool push(const T &value) {
         // 生产者本地快照
         size_t current_tail = m_tail.load(std::memory_order_relaxed);
         size_t next_tail = nextIndex(current_tail);
@@ -80,7 +80,7 @@ public:
         return true;
     }
 
-    bool pop(T &value) {
+    [[nodiscard]] bool pop(T &value) {
         // 消费者本地快照
         size_t current_head = m_head.load(std::memory_order_relaxed);
 
@@ -101,7 +101,7 @@ public:
      * 获取第一个有效的元素
      * @note 请确保pop与peekSecond只在同一个线程下使用
      */
-    bool peekFirst(T &value) {
+    [[nodiscard]] bool peekFirst(T &value) {
         // 消费者本地快照
         size_t current_head = m_head.load(std::memory_order_relaxed);
 
@@ -115,7 +115,7 @@ public:
         return true;
     }
 
-    size_t size() const {
+    [[nodiscard]] size_t size() const {
         size_t head = m_head.load(std::memory_order_acquire);
         size_t tail = m_tail.load(std::memory_order_acquire);
         if (tail >= head)
@@ -124,11 +124,11 @@ public:
             return m_capacity - head + tail;
     }
 
-    size_t capacity() const {
+    [[nodiscard]] size_t capacity() const {
         return m_capacity - 1;
     }
 
-    int serial() const { return m_serial.load(std::memory_order_relaxed); }
+    [[nodiscard]] int serial() const { return m_serial.load(std::memory_order_relaxed); }
     void addSerial() { m_serial.fetch_add(1); }
 
 private:
@@ -150,7 +150,7 @@ public:
         : m_maxBytes(maxMB * 1024 * 1024), m_currentBytes(0) {
     }
 
-    bool push(const AVPktItem &item) {
+    [[nodiscard]] bool push(const AVPktItem &item) {
         std::lock_guard<std::mutex> lock(m_mutex);
         size_t pktSize = item.pkt ? item.pkt->size : 0;
 
@@ -164,7 +164,7 @@ public:
         return true;
     }
 
-    bool pop(AVPktItem &item) {
+    [[nodiscard]] bool pop(AVPktItem &item) {
         std::lock_guard<std::mutex> lock(m_mutex);
         if (m_queue.empty())
             return false;
@@ -177,7 +177,7 @@ public:
     }
 
     // 查看第一个元素（不移除）
-    bool peekFirst(AVPktItem &item) {
+    [[nodiscard]] bool peekFirst(AVPktItem &item) {
         std::lock_guard<std::mutex> lock(m_mutex);
         if (m_queue.empty())
             return false;
@@ -186,17 +186,17 @@ public:
         return true;
     }
 
-    size_t size() const {
+    [[nodiscard]] size_t size() const {
         std::lock_guard<std::mutex> lock(m_mutex);
         return m_queue.size();
     }
 
-    size_t currentBytes() const {
+    [[nodiscard]] size_t currentBytes() const {
         std::lock_guard<std::mutex> lock(m_mutex);
         return m_currentBytes;
     }
 
-    size_t maxBytes() const { return m_maxBytes; }
+    [[nodiscard]] size_t maxBytes() const { return m_maxBytes; }
 
     void clear() {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -208,7 +208,7 @@ public:
         m_currentBytes = 0;
     }
 
-    int serial() const { return m_serial.load(std::memory_order_relaxed); }
+    [[nodiscard]] int serial() const { return m_serial.load(std::memory_order_relaxed); }
     void addSerial() { m_serial.fetch_add(1); }
 
 private:

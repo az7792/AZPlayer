@@ -18,17 +18,17 @@ public:
     void addRect(const QRect &newRect);
 
     // 返回第一个相交矩形的索引，无交集返回 -1
-    int findFirstIntersect(const QRect &rect) const;
+    [[nodiscard]] int findFirstIntersect(const QRect &rect) const;
 
     // 获取所有不重叠的矩形
-    const std::vector<QRect> &getRects() const;
+    [[nodiscard]] const std::vector<QRect> &getRects() const;
 
     // 获取指定索引的矩形
-    const QRect &operator[](size_t index) const;
+    [[nodiscard]] const QRect &operator[](size_t index) const;
 
-    size_t size() const;
+    [[nodiscard]] size_t size() const;
 
-    bool isEmpty() const;
+    [[nodiscard]] bool isEmpty() const;
 
 private:
     std::vector<QRect> m_rects;

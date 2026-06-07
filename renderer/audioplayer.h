@@ -28,9 +28,9 @@ public:
     ~AudioPlayer();
 
     // 初始化
-    bool init(const AVCodecParameters *codecParams, sharedFrmQueue frmBuf);
+    [[nodiscard]] bool init(const AVCodecParameters *codecParams, sharedFrmQueue frmBuf);
     // 回到未初始化状态
-    bool uninit();
+    void uninit();
 
     // 启动
     void start();
@@ -39,7 +39,7 @@ public:
 
     void togglePaused();
 
-    double volume() const;
+    [[nodiscard]] double volume() const;
     void setVolume(double newVolume);
 
 signals:
@@ -59,9 +59,9 @@ private:
 
     // 一个完整AVFrame 的 PCM 数据
     AVFrmItem m_frmItem{};
-    int m_pcmDataSize;
+    int m_pcmDataSize = 0;
     uint8_t *m_pcmDataPtr = nullptr;
-    int m_pcmDataIndex;
+    int m_pcmDataIndex = 0;
     int m_pcmFrameSize; // 一个PCM帧的字节大小
     double m_bufferedEndPts; // 已经写入 m_pcmBuffer 的最新数据所表示的pts
 
@@ -78,13 +78,13 @@ private:
     double m_volume = 1.0;
 
 private:
-    bool getFrm(AVFrmItem &item);
+    [[nodiscard]] bool getFrm(AVFrmItem &item);
 
     void playerLoop();
     void writePCM();
 
     // 从队列获取一帧并更新 PCM 数据
-    bool updatePcmFromFrameQueue();
+    [[nodiscard]] bool updatePcmFromFrameQueue();
 
     static void miniaudio_data_callback(ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount);
 };

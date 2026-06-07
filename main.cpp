@@ -30,7 +30,7 @@ public:
 #include "utils/powermanager.h"
 
 int main(int argc, char *argv[]) {
-    TimerResolution timerResolution{};
+    const TimerResolution timerResolution{};
 
     // 支持使用文件和文件夹作为启动参数
     QStringList startupFiles;

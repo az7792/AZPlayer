@@ -31,9 +31,9 @@ public:
     ~Demux();
 
     // 初始化
-    bool init(const std::string URL, bool isMainDemux = false);
+    [[nodiscard]] bool init(const std::string URL, bool isMainDemux = false);
     // 反初始化，恢复到未初始化之前的状态
-    bool uninit();
+    void uninit();
 
     // 开启解复用线程
     void start();
@@ -44,35 +44,36 @@ public:
     void seekBySec(double ts, double rel);
 
     // 切换视频流
-    bool switchVideoStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
+    [[nodiscard]] bool switchVideoStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
     /**
      * 切换字幕流
      * 如果该字幕流是文本字幕则使用ASSRender初始化，后续请通过ASSRender::renderFrame获取字幕帧
+     * 可以通过 ASSRender::instance().initialized() 判断是否为有ASS字幕
      */
-    bool switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq, bool &isAssSub);
+    [[nodiscard]] bool switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq, bool &isAssSub);
     // 切换音频流
-    bool switchAudioStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
+    [[nodiscard]] bool switchAudioStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq);
 
     // 关闭流
     void closeStream(MediaType type);
 
     // 获取时长
-    int getDuration();
+    [[nodiscard]] int getDuration() const;
 
     // 获取当前播放的流，没有返回nullptr
-    AVStream *getStream(MediaType type);
+    [[nodiscard]] AVStream *getStream(MediaType type);
 
     // 该媒体文件是否拥有某种类型的流
-    bool haveStream(MediaType type);
+    [[nodiscard]] bool haveStream(MediaType type) const;
 
-    std::array<size_t, kMediaIdxCount> getStreamsCount() const;
+    [[nodiscard]] std::array<size_t, kMediaIdxCount> getStreamsCount() const;
 
-    const std::array<std::vector<QString>, kMediaIdxCount> &streamInfo() { return m_stringInfo; }
-    const std::vector<ChapterInfo> &chaptersInfo() { return m_chaptersInfo; }
+    [[nodiscard]] const std::array<std::vector<QString>, kMediaIdxCount> &streamInfo() const { return m_stringInfo; }
+    [[nodiscard]] const std::vector<ChapterInfo> &chaptersInfo() const { return m_chaptersInfo; }
 
-    AVFormatContext *formatCtx();
+    [[nodiscard]] AVFormatContext *formatCtx();
 
-    bool isEOF();
+    [[nodiscard]] bool isEOF() const;
 public slots:
 signals:
     // 当前解复用器seek完成
@@ -118,7 +119,7 @@ private:
     void fillStreamInfo();   // 填充流消息
     void fillChaptersInfo(); // 填充章节消息
 
-    bool switchStream(MediaType type, int streamIdx, weakPktQueue wpq, weakFrmQueue wfq); // 切换流
+    [[nodiscard]] bool switchStream(MediaType type, int streamIdx, weakPktQueue wpq, weakFrmQueue wfq); // 切换流
 };
 
 #endif // DEMUX_H
