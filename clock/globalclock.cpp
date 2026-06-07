@@ -5,7 +5,7 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
-#include <qDebug>
+#include <QDebug>
 
 namespace {
     constexpr double INVALID_DOUBLE = std::numeric_limits<double>::quiet_NaN();

@@ -10,7 +10,8 @@ namespace {
         for (unsigned i = 0; i < frmItem.sub.num_rects; ++i) {
             AVSubtitleRect *subRect = frmItem.sub.rects[i];
             if (subRect->type == SUBTITLE_ASS) {
-                (void)ASSRender::instance().addEvent(subRect->ass, static_cast<int>(strlen(subRect->ass)), frmItem.pts, frmItem.duration);
+                // (void)ASSRender::instance().addEvent(subRect->ass, static_cast<int>(strlen(subRect->ass)), frmItem.pts, frmItem.duration);
+                Q_ASSERT(false);
             } else if (subRect->type == SUBTITLE_TEXT) {
                 // TODO
             }
@@ -27,12 +28,12 @@ bool DecodeSubtitle::init(AVStream *stream, sharedPktQueue pktBuf, sharedFrmQueu
 
     m_initialized = true;
 
-    std::string subtitleHeader((char *)m_codecCtx->subtitle_header, m_codecCtx->subtitle_header_size);
-    bool ok = true;
-    if (!subtitleHeader.empty())
-        ok = ASSRender::instance().init(subtitleHeader);
+    // std::string subtitleHeader((char *)m_codecCtx->subtitle_header, m_codecCtx->subtitle_header_size);
+    // bool ok = true;
+    // if (!subtitleHeader.empty())
+    //     ok = ASSRender::instance().init(subtitleHeader);
 
-    return ok;
+    return true;
 }
 
 void DecodeSubtitle::decodingLoop() {
