@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     QStringList startupFiles;
     for (int i = 1; i < argc; ++i)
         startupFiles << QString::fromLocal8Bit(argv[i]);
-    QVariantList mediaFiles = FileHelper::instance().expandFiles(startupFiles);
+    QVariantList mediaFiles = FileHelper::instance().expandFiles(startupFiles, FileHelper::MEDIA_FILTERS);
 
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL); // 绘图使用的FBO只有在OpenGL模式下才生效
 

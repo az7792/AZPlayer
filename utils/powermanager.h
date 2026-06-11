@@ -8,8 +8,7 @@
 
 class PowerManager : public QObject {
     Q_OBJECT
-    // 禁止拷贝
-    Q_DISABLE_COPY(PowerManager)
+    Q_DISABLE_COPY_MOVE(PowerManager)
 
     explicit PowerManager(QObject *parent = nullptr);
     ~PowerManager();

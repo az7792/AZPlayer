@@ -12,6 +12,7 @@
 
 class PlaybackStats : public QObject {
     Q_OBJECT
+    Q_DISABLE_COPY_MOVE(PlaybackStats)
 public:
     static PlaybackStats &instance();
 
@@ -72,8 +73,6 @@ public:
     int videoFormat; // AVFrame->format 这儿仅用于标记，避免重复更新videoPixFormat
 
 private:
-    PlaybackStats(const PlaybackStats &) = delete;
-    PlaybackStats &operator=(const PlaybackStats &) = delete;
     explicit PlaybackStats(QObject *parent = nullptr);
 
     // 辅助函数：计算队列平均值

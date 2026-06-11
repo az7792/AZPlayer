@@ -24,17 +24,16 @@ struct image_t {
 };
 
 class ASSRender : public QObject {
-
     Q_OBJECT
+    Q_DISABLE_COPY_MOVE(ASSRender)
+
     explicit ASSRender(QObject *parent = nullptr);
     ~ASSRender();
-
-    ASSRender(const ASSRender &) = delete;
-    ASSRender &operator=(const ASSRender &) = delete;
 
 public:
     static ASSRender &instance();
 
+    [[deprecated("使用该方法加载字幕, MediaController 无法获取流信息")]]
     [[nodiscard]] bool init(const std::string &subFile); // 通过字幕文件加载
     /**
      * @param subStreamIdx 流ID，-1表示自动选中最佳字幕流

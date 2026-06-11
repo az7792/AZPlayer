@@ -48,6 +48,8 @@ private:
 
     DeviceStatus(const DeviceStatus &) = delete;
     DeviceStatus &operator=(const DeviceStatus &) = delete;
+    DeviceStatus(DeviceStatus &&) = delete;
+    DeviceStatus &operator=(DeviceStatus &&) = delete;
 
     DeviceStatus() = default;
 };

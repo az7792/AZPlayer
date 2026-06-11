@@ -52,10 +52,12 @@ private:
 };
 
 class GlobalClock {
-public:
     GlobalClock(const GlobalClock &) = delete;
     GlobalClock &operator=(const GlobalClock &) = delete;
+    GlobalClock(GlobalClock &&) = delete;
+    GlobalClock &operator=(GlobalClock &&) = delete;
 
+public:
     void reset();
 
     static GlobalClock &instance();

@@ -6,6 +6,21 @@
 #include <QFileInfo>
 #include <QUrl>
 
+const QStringList FileHelper::VIDEO_FILTERS = {"*.mp4", "*.mkv", "*.avi", "*.mov", "*.wmv", "*.flv", "*.webm", "*.m4v", "*.mpg", "*.mpeg"};
+const QStringList FileHelper::AUDIO_FILTERS = {"*.mp3", "*.aac", "*.flac", "*.mka", "*.wav", "*.ogg", "*.ac3", "*.m4a", "*.opus", "*.wma"};
+const QStringList FileHelper::SUBTITLE_FILTERS = {"*.srt", "*.ass", "*.ssa", "*.vtt", "*.sub", "*.idx", "*.pgs"};
+const QStringList FileHelper::MEDIA_FILTERS = []() {
+    QStringList list = VIDEO_FILTERS;
+    list.append(AUDIO_FILTERS);
+    return list;
+}();
+const QStringList FileHelper::ALL_MEDIA_FILTERS = []() {
+    QStringList list = VIDEO_FILTERS;
+    list.append(AUDIO_FILTERS);
+    list.append(SUBTITLE_FILTERS);
+    return list;
+}();
+
 FileHelper::FileHelper(QObject *parent)
     : QObject{parent} {}
 
@@ -14,9 +29,8 @@ FileHelper &FileHelper::instance() {
     return inst;
 }
 
-QVariantList FileHelper::expandFiles(const QStringList &inputPaths) const {
+QVariantList FileHelper::expandFiles(const QStringList &inputPaths, const QStringList &filters) const {
     QVariantList result;
-    static const QStringList filters = {"*.mp4", "*.mkv", "*.avi", "*.mp3", "*.aac", "*.flac", "*.mka", "*.wav", "*.ogg", "*.ac3"};
 
     QSet<QString> seen; // 去重 URL
 
@@ -37,7 +51,7 @@ QVariantList FileHelper::expandFiles(const QStringList &inputPaths) const {
         } else if (fi.isDir()) {
             QStringList folderFiles;
             scanFolderRecursive(fi.absoluteFilePath(), folderFiles, filters);
-            for (const QString &f : folderFiles) {
+            for (const QString &f : std::as_const(folderFiles)) {
                 QString url = QUrl::fromLocalFile(f).toString();
                 if (!seen.contains(url)) {
                     QFileInfo fi2(f);
@@ -55,6 +69,8 @@ QVariantList FileHelper::expandFiles(const QStringList &inputPaths) const {
 }
 
 bool FileHelper::matchesFilter(const QString &fileName, const QStringList &filters) const {
+    if (filters.isEmpty()) return true; // 空过滤器匹配所有
+
     for (const QString &f : filters) {
         if (fileName.endsWith(QStringView(f).sliced(1), Qt::CaseInsensitive))
             return true;
@@ -64,17 +80,22 @@ bool FileHelper::matchesFilter(const QString &fileName, const QStringList &filte
 
 void FileHelper::scanFolderRecursive(const QString &folderPath, QStringList &outFiles, const QStringList &filters) const {
     QDir dir(folderPath);
-    if (!dir.exists())
-        return;
+    if (!dir.exists()) return;
+
+    // 如果filters为空，匹配所有文件
+    QStringList effectiveFilters = filters;
+    if (effectiveFilters.isEmpty()) {
+        effectiveFilters << "*";
+    }
 
     // 筛选文件
-    QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files | QDir::NoDotAndDotDot);
+    const QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files | QDir::NoDotAndDotDot);
     for (const QFileInfo &fi : fileList) {
         outFiles << fi.absoluteFilePath();
     }
 
     // 递归子目录
-    QFileInfoList subDirs = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+    const QFileInfoList subDirs = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
     for (const QFileInfo &fi : subDirs) {
         scanFolderRecursive(fi.absoluteFilePath(), outFiles, filters);
     }
