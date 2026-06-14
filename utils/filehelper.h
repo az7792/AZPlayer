@@ -23,11 +23,17 @@ public:
     static const QStringList ALL_MEDIA_FILTERS; // 所有媒体格式
 
     /**
-     * 展开文件和文件夹，返回QVariantMap列表，单个map包含两个(key,value),类型均为QString:
-     * text:文件名
-     * fileUrl:URL
+     * 展开文件和文件夹
+     * @param inputPaths 文件/文件夹列表, 路径为本地格式, 例如：C:/Media_Library/Videos
+     * @param filters 后缀过滤器, 例如：{"*.mp4", "*.mkv", "*.avi", "*.mov"}
+     * @param recursive 是否递归子文件夹
+     * @return QVariantMap列表, 单个map包含两个(key, value), 类型均为 QString:
+     *
+     * - text: 文件名, 例如: a.mkv
+     *
+     * - fileUrl: URL格式的文件路径, 例如：file:///C:/Media_Library/Videos/a.mkv
      */
-    Q_INVOKABLE [[nodiscard]] QVariantList expandFiles(const QStringList &inputPaths, const QStringList &filters) const;
+    Q_INVOKABLE [[nodiscard]] QVariantList expandFiles(const QStringList &inputPaths, const QStringList &filters, bool recursive) const;
 
 signals:
 
@@ -38,7 +44,7 @@ private:
     [[nodiscard]] bool matchesFilter(const QString &fileName, const QStringList &filters) const;
 
     // 递归展开文件夹内的所有文件
-    void scanFolderRecursive(const QString &folderPath, QStringList &outFiles, const QStringList &filters) const;
+    void scanFolder(const QString &folderPath, QStringList &outFiles, const QStringList &filters, bool recursive) const;
 };
 
 #endif // FILEHELPER_H

@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     QStringList startupFiles;
     for (int i = 1; i < argc; ++i)
         startupFiles << QString::fromLocal8Bit(argv[i]);
-    QVariantList mediaFiles = FileHelper::instance().expandFiles(startupFiles, FileHelper::MEDIA_FILTERS);
+    QVariantList mediaFiles = FileHelper::instance().expandFiles(startupFiles, FileHelper::MEDIA_FILTERS, true);
 
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL); // 绘图使用的FBO只有在OpenGL模式下才生效
 
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
 
     QQmlApplicationEngine engine;
     qmlRegisterType<VideoWindow>("VideoWindow", 1, 0, "VideoWindow");
-    engine.rootContext()->setContextProperty("MediaCtrl", &mc);    
+    engine.rootContext()->setContextProperty("MediaCtrl", &mc);
     engine.rootContext()->setContextProperty("PlaybackStats", &PlaybackStats::instance());
     engine.rootContext()->setContextProperty("appDirPath", QCoreApplication::applicationDirPath());
 

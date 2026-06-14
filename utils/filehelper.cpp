@@ -29,7 +29,7 @@ FileHelper &FileHelper::instance() {
     return inst;
 }
 
-QVariantList FileHelper::expandFiles(const QStringList &inputPaths, const QStringList &filters) const {
+QVariantList FileHelper::expandFiles(const QStringList &inputPaths, const QStringList &filters, bool recursive) const {
     QVariantList result;
 
     QSet<QString> seen; // 去重 URL
@@ -50,7 +50,7 @@ QVariantList FileHelper::expandFiles(const QStringList &inputPaths, const QStrin
             }
         } else if (fi.isDir()) {
             QStringList folderFiles;
-            scanFolderRecursive(fi.absoluteFilePath(), folderFiles, filters);
+            scanFolder(fi.absoluteFilePath(), folderFiles, filters, recursive);
             for (const QString &f : std::as_const(folderFiles)) {
                 QString url = QUrl::fromLocalFile(f).toString();
                 if (!seen.contains(url)) {
@@ -78,7 +78,7 @@ bool FileHelper::matchesFilter(const QString &fileName, const QStringList &filte
     return false;
 }
 
-void FileHelper::scanFolderRecursive(const QString &folderPath, QStringList &outFiles, const QStringList &filters) const {
+void FileHelper::scanFolder(const QString &folderPath, QStringList &outFiles, const QStringList &filters, bool recursive) const {
     QDir dir(folderPath);
     if (!dir.exists()) return;
 
@@ -94,9 +94,11 @@ void FileHelper::scanFolderRecursive(const QString &folderPath, QStringList &out
         outFiles << fi.absoluteFilePath();
     }
 
+    if (!recursive) return;
+
     // 递归子目录
     const QFileInfoList subDirs = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
     for (const QFileInfo &fi : subDirs) {
-        scanFolderRecursive(fi.absoluteFilePath(), outFiles, filters);
+        scanFolder(fi.absoluteFilePath(), outFiles, filters, recursive);
     }
 }
