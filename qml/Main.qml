@@ -264,7 +264,7 @@ AZWindow {
 
         onReleased: function(mouse) {
             toggleBarContains(mouse.x, mouse.y)
-        }        
+        }
     }
 
     AZVideoAngleDialArea {
@@ -378,7 +378,7 @@ AZWindow {
         function toggleSidebar(){
             canShow = !canShow
             if(mainWin.windowState === mainWin.winNormal){
-                let targetAddWidth = splitter._rightRectWidth - mainWin.resizeBorderWidth + splitter.width + 1 // +1是因为视频与splitter有1px的空隙                
+                let targetAddWidth = splitter._rightRectWidth - mainWin.resizeBorderWidth + splitter.width + 1 // +1是因为视频与splitter有1px的空隙
                 let tmpWidth = mainWin.width + (canShow ? targetAddWidth : -targetAddWidth)
                 tmpWidth = Math.max(mainWin.minimumWidth, Math.min(Screen.desktopAvailableWidth,tmpWidth))
                 let offset = tmpWidth + mainWin.x - Screen.desktopAvailableWidth

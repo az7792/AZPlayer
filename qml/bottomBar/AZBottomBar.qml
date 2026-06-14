@@ -47,9 +47,9 @@ Rectangle{
         anchors.right: parent.right
         anchors.top: progressBar.bottom
         anchors.topMargin: 1
-        fileListView: bottomBar.fileListView        
+        fileListView: bottomBar.fileListView
         onRequestToggleSideBar: bottomBar.requestToggleSideBar()
         playerSettingOpened: playerSetting.opened
         onRequestOpenSetting: playerSetting.open()
-    }    
+    }
 }

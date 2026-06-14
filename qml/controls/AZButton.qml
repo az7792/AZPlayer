@@ -92,7 +92,7 @@ Rectangle {
         onEntered: {
             if (!pressed) root.color = hoverColor
             if (tooltipText !== "") {
-                let globalPos = root.mapToItem(root.window, 0, 0)                
+                let globalPos = root.mapToItem(root.window, 0, 0)
                 AZTooltip.show(tooltipText,mouseX + globalPos.x, mouseY + globalPos.y)
             }
         }

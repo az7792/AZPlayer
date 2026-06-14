@@ -199,7 +199,7 @@ Item{
         anchors.right: fileListBtn.left
         anchors.rightMargin: 1
         iconHeight: 20
-        iconWidth: 20        
+        iconWidth: 20
         onLeftClicked: requestOpenSetting()
         iconSource: playerCtrlBar.playerSettingOpened ? "qrc:/icon/player_settings_opened.png" : "qrc:/icon/player_settings_closed.png"
         tooltipText: "打开播放设置"
@@ -226,7 +226,7 @@ Item{
         height: parent.height
         width: height
         anchors.right: parent.right
-        
+
         property bool sideBarOpened: false
         property bool tooltipEnabled: true
 

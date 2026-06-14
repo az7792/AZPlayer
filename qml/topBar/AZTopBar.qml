@@ -39,7 +39,7 @@ Rectangle{
             onActiveChanged: if(active) mainWindow.startMoveWindow()
         }
         MouseArea {
-            anchors.fill: parent            
+            anchors.fill: parent
             onDoubleClicked: mainWindow.toggleMaximize()
         }
         Text {
