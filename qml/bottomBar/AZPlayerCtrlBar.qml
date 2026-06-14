@@ -70,29 +70,30 @@ Item{
 
         AZButton{
             id:playbackModeBtn
-            //0播完重播 1列表顺序 2列表随机
-            property int mode: 0
+            // 0播完重播 1列表顺序 2列表随机
+            property int mode: 1
+            // 图标路径 (对应 mode 0, 1, 2)
+            property var iconList: ["qrc:/icon/repeat_one.png", "qrc:/icon/repeat.png", "qrc:/icon/shuffle.png"]
+            // 提示文本 (对应 mode 0, 1, 2)
+            property var tooltipList: ["播完重播", "顺序播放", "随机播放"]
+
+            function updateLoopState() {
+                if (mode === 0) {
+                    MediaCtrl.setLoopOnEnd(true)   // 播完重播
+                } else {
+                    MediaCtrl.setLoopOnEnd(false)  // 播完暂停 (顺序/随机)
+                }
+            }
 
             height: parent.height
             width: height
             iconHeight: 20
             iconWidth: 20
-            iconSource: {
-                if(mode === 0)
-                    return "qrc:/icon/repeat_one.png"
-                else if(mode === 1)
-                    return "qrc:/icon/repeat.png"
-                else
-                    return "qrc:/icon/shuffle.png"
-            }
-            tooltipText:mode === 0? "播完重播" : (mode === 1 ? "顺序播放" : "随机播放")
+            iconSource: iconList[mode]
+            tooltipText: tooltipList[mode]
             onLeftClicked: {
                 mode = (mode + 1) % 3
-                if(mode === 0){
-                    MediaCtrl.setLoopOnEnd(true)
-                } else {//1 or 2
-                    MediaCtrl.setLoopOnEnd(false)
-                }
+                updateLoopState();
             }
             Connections {
                 target: MediaCtrl
@@ -103,6 +104,9 @@ Item{
                         playerCtrlBar.fileListView.openRandom()
                     }
                 }
+            }
+            Component.onCompleted: {
+                updateLoopState();
             }
         }
 
