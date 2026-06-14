@@ -105,7 +105,7 @@ private:
     // 音视频解码器
     DecodeAudio *m_decodeAudio = nullptr;
     DecodeVideo *m_decodeVideo = nullptr;
-    DecodeSubtitle *m_decodeSubtitl = nullptr;
+    DecodeSubtitle *m_decodeSubtitle = nullptr;
     // 音视频播放控制器
     AudioPlayer *m_audioPlayer = nullptr;
     VideoPlayer *m_videoPlayer = nullptr;

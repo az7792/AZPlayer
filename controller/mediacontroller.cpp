@@ -39,7 +39,7 @@ MediaController::MediaController(QObject *parent)
 
     m_decodeAudio = new DecodeAudio(parent);
     m_decodeVideo = new DecodeVideo(parent);
-    m_decodeSubtitl = new DecodeSubtitle(parent);
+    m_decodeSubtitle = new DecodeSubtitle(parent);
 
     m_audioPlayer = new AudioPlayer(parent);
     m_videoPlayer = new VideoPlayer(parent);
@@ -150,8 +150,7 @@ bool MediaController::open(const QUrl &URL) {
         m_streams[to_index(MediaIdx::Subtitle)] = {defDemuxIdx, subtitleIdx};
         bool isAssSub;
         ok &= m_demuxs[defDemuxIdx]->switchSubtitleStream(subtitleIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub);
-        if (!isAssSub)
-            ok &= m_decodeSubtitl->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf, 1);
+        if (!isAssSub) ok &= m_decodeSubtitle->init(m_demuxs[defDemuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf, 1);
     }
 
     DeviceStatus::instance().setHaveAudio(haveAudio);
@@ -180,7 +179,7 @@ bool MediaController::open(const QUrl &URL) {
     m_demuxs[defDemuxIdx]->start();
     m_decodeAudio->start();
     m_decodeVideo->start();
-    m_decodeSubtitl->start();
+    m_decodeSubtitle->start();
     m_audioPlayer->start();
     m_videoPlayer->start();
 
@@ -210,7 +209,7 @@ void MediaController::close() {
 
     m_decodeAudio->uninit();
     m_decodeVideo->uninit();
-    m_decodeSubtitl->uninit();
+    m_decodeSubtitle->uninit();
     m_audioPlayer->uninit();
     m_videoPlayer->uninit();
 
@@ -310,7 +309,7 @@ bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
     // 关闭旧的
     if (m_streams[to_index(MediaIdx::Subtitle)].first != -1)
         m_demuxs[m_streams[to_index(MediaIdx::Subtitle)].first]->closeStream(MediaIdx::Subtitle);
-    m_decodeSubtitl->uninit();
+    m_decodeSubtitle->uninit();
     ASSRender::instance().uninit();
     m_videoPlayer->clearSubtitle(); // 切换后需要一定时间才会解码到新字幕，因此提前强制清掉旧字幕
 
@@ -321,8 +320,10 @@ bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
     bool isAssSub;
     if (!m_demuxs[demuxIdx]->switchSubtitleStream(streamIdx, m_pktSubtitleBuf, m_frmSubtitleBuf, isAssSub)) { return false; }
     if (!isAssSub) {
-        if (!m_decodeSubtitl->init(m_demuxs[demuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf, 1)) { return false; }
-        m_decodeSubtitl->start();
+        if (!m_decodeSubtitle->init(m_demuxs[demuxIdx]->getStream(MediaType::Subtitle), m_pktSubtitleBuf, m_frmSubtitleBuf, 1)) {
+            return false;
+        }
+        m_decodeSubtitle->start();
     }
 
     m_streams[to_index(MediaIdx::Subtitle)] = {demuxIdx, streamIdx}; // 更新
