@@ -87,3 +87,4 @@ env.json
 compile_commands.json
 opencode.json
 AGENTS.md
+.cache

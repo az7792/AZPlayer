@@ -164,6 +164,7 @@ void VideoPlayer::write(AVFrmItem &videoFrmitem) {
     if (ASSRender::instance().initialized()) {
         handleASSSubtitle(videoFrmitem.pts);
         // ASS字幕下应该没有图形字幕了
+        // FIXME: 断言有可能触发
         Q_ASSERT(m_subFrmBuf->peekFirst(subFrmItem) == false);
     } else {
         // 位图字幕

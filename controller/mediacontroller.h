@@ -133,6 +133,7 @@ private:
     [[nodiscard]] QVariantList getStreamInfo(MediaIdx type) const;
     [[nodiscard]] bool openStreamByFile(const QUrl &URL, MediaIdx idx);
     [[nodiscard]] bool seekAudioAndSubtitleDemux(double pts);
+    [[nodiscard]] bool loadExternalSubtitle(const QUrl &subtitleURL);
     void checkPlayerFinished();
 
 signals:
