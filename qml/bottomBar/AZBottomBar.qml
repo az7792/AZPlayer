@@ -20,8 +20,8 @@ Rectangle{
     AZEventBlocker{
         anchors.fill: parent
         onWheel: function(wheel) {
-            if (wheel.angleDelta.y > 0) MediaCtrl.addVolum()
-            else if (wheel.angleDelta.y < 0) MediaCtrl.subVolum()
+            if (wheel.angleDelta.y > 0) MediaCtrl.addVolume()
+            else if (wheel.angleDelta.y < 0) MediaCtrl.subVolume()
         }
     }
 

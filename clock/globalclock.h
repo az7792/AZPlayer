@@ -29,7 +29,7 @@ public:
     [[nodiscard]] ClockType type() const;
 
     // 时钟是否有效
-    [[nodiscard]] bool isvalidated() const;
+    [[nodiscard]] bool isValidated() const;
 
     // 获取时钟当前这个时刻的pts(秒)
     [[nodiscard]] double getPts() const;

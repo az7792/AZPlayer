@@ -51,8 +51,8 @@ AZWindow {
                 if (wheel.angleDelta.y > 0) AZPlayerState.videoScale += 1
                 else if (wheel.angleDelta.y < 0) AZPlayerState.videoScale -= 1
             }else{
-                if (wheel.angleDelta.y > 0) MediaCtrl.addVolum()
-                else if (wheel.angleDelta.y < 0) MediaCtrl.subVolum()
+                if (wheel.angleDelta.y > 0) MediaCtrl.addVolume()
+                else if (wheel.angleDelta.y < 0) MediaCtrl.subVolume()
             }
             wheel.accepted = true
         }
@@ -85,13 +85,13 @@ AZWindow {
         // 音量加 (上方向键)
         Shortcut {
             sequence: "Up"
-            onActivated: MediaCtrl.addVolum()
+            onActivated: MediaCtrl.addVolume()
         }
 
         // 音量减 (下方向键)
         Shortcut {
             sequence: "Down"
-            onActivated: MediaCtrl.subVolum()
+            onActivated: MediaCtrl.subVolume()
         }
 
         // 播放信息（Tab键）

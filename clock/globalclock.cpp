@@ -33,7 +33,7 @@ ClockType Clock::type() const {
     return m_type;
 }
 
-bool Clock::isvalidated() const {
+bool Clock::isValidated() const {
     return !std::isnan(m_updatePts);
 }
 

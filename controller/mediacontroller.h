@@ -63,8 +63,8 @@ public slots:
     void setMuted(bool newMuted);     // 设置是否静音
     void toggleMuted();               // 切换是否静音
     void setVolume(double newVolume); // 设置音量
-    void addVolum();                  // 增加0.04音量
-    void subVolum();                  // 减少0.04音量
+    void addVolume();                 // 增加0.04音量
+    void subVolume();                 // 减少0.04音量
     void setAutoLoadExtSub(bool newAutoLoadExtSub); // 设置是否自动加载外部字幕
 
     void seekBySec(double ts, double rel); // seek到指定位置(秒)

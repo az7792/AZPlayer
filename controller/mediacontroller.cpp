@@ -293,11 +293,11 @@ void MediaController::setVolume(double newVolume) {
     emit volumeChanged();
 }
 
-void MediaController::addVolum() {
+void MediaController::addVolume() {
     setVolume(std::min(1.0, m_volume + 0.04));
 }
 
-void MediaController::subVolum() {
+void MediaController::subVolume() {
     setVolume(std::max(0.0, m_volume - 0.04));
 }
 
