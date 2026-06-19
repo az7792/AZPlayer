@@ -90,7 +90,7 @@ endif()
 qt_policy(SET QTP0001 NEW)
 
 qt_add_executable(appAZPlayer
-    main.cpp
+    src/main.cpp
     ${app_icon_resource_windows}
 )
 
@@ -136,30 +136,30 @@ qt_add_qml_module(appAZPlayer
               qml/videoArea/AZPlaybackStatsArea.qml
               qml/videoArea/AZVideoAngleDialArea.qml
               qml/settings/AZSettings.qml
-    SOURCES demux/demux.h demux/demux.cpp
-            decode/decodebase.h decode/decodebase.cpp
-            decode/decodeaudio.h decode/decodeaudio.cpp
-            renderer/audioplayer.h renderer/audioplayer.cpp
-            renderer/videorenderer.h renderer/videorenderer.cpp
-            clock/globalclock.h clock/globalclock.cpp
-            renderer/videoplayer.h renderer/videoplayer.cpp
-            decode/decodevideo.h decode/decodevideo.cpp
-            renderer/renderdata.h renderer/renderdata.cpp
-            controller/mediacontroller.cpp controller/mediacontroller.h
-            decode/decodesubtitle.h decode/decodesubtitle.cpp
-            renderer/assrender.h renderer/assrender.cpp
-            compat/compat.h
-            types/types.h
-            types/ptrs.h
-            utils/utils.h
-            utils/dirtyrectmanager.h utils/dirtyrectmanager.cpp
-            utils/AtomicDoubleBuffer.h
-            utils/filehelper.h utils/filehelper.cpp
-            utils/episodeassetmanager.h utils/episodeassetmanager.cpp
-            stats/playbackstats.h stats/playbackstats.cpp
-            utils/spscbuffer.h utils/spscbuffer.cpp
+    SOURCES include/demux/demux.h src/demux/demux.cpp
+            include/decode/decodebase.h src/decode/decodebase.cpp
+            include/decode/decodeaudio.h src/decode/decodeaudio.cpp
+            include/renderer/audioplayer.h src/renderer/audioplayer.cpp
+            include/renderer/videorenderer.h src/renderer/videorenderer.cpp
+            include/clock/globalclock.h src/clock/globalclock.cpp
+            include/renderer/videoplayer.h src/renderer/videoplayer.cpp
+            include/decode/decodevideo.h src/decode/decodevideo.cpp
+            include/renderer/renderdata.h src/renderer/renderdata.cpp
+            include/controller/mediacontroller.h src/controller/mediacontroller.cpp
+            include/decode/decodesubtitle.h src/decode/decodesubtitle.cpp
+            include/renderer/assrender.h src/renderer/assrender.cpp
+            include/compat/compat.h
+            include/types/types.h
+            include/types/ptrs.h
+            include/utils/utils.h
+            include/utils/dirtyrectmanager.h src/utils/dirtyrectmanager.cpp
+            include/utils/AtomicDoubleBuffer.h
+            include/utils/filehelper.h src/utils/filehelper.cpp
+            include/utils/episodeassetmanager.h src/utils/episodeassetmanager.cpp
+            include/stats/playbackstats.h src/stats/playbackstats.cpp
+            include/utils/spscbuffer.h src/utils/spscbuffer.cpp
             3rd/miniaudio/miniaudio.h 3rd/miniaudio/miniaudio.cpp
-            utils/powermanager.h utils/powermanager.cpp
+            include/utils/powermanager.h src/utils/powermanager.cpp
     RESOURCES resource.qrc
 )
 
@@ -180,6 +180,11 @@ set_target_properties(appAZPlayer PROPERTIES
 )
 
 # 添加头文件搜索路径
+target_include_directories(appAZPlayer
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 target_include_directories(appAZPlayer
     SYSTEM PRIVATE
         ${FFMPEG_INCLUDE_DIR}

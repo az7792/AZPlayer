@@ -1,0 +1,20 @@
+// SPDX-FileCopyrightText: 2025-2026 Xuefei Ai
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#ifndef DECODEVIDEO_H
+#define DECODEVIDEO_H
+#include "decode/decodebase.h"
+class DecodeVideo : public DecodeBase {
+    Q_OBJECT
+public:
+    using DecodeBase::DecodeBase;
+    [[nodiscard]] bool init(AVStream *stream,
+                            sharedPktQueue pktBuf,
+                            sharedFrmQueue frmBuf,
+                            int threadNum);
+
+private:
+    void decodingLoop() override;
+};
+
+#endif // DECODEVIDEO_H

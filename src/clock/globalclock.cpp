@@ -1,0 +1,161 @@
+// SPDX-FileCopyrightText: 2025-2026 Xuefei Ai
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "clock/globalclock.h"
+#include <chrono>
+#include <cmath>
+#include <limits>
+#include <QDebug>
+
+namespace {
+    constexpr double INVALID_DOUBLE = std::numeric_limits<double>::quiet_NaN();
+}
+
+double getRelativeSeconds() {
+    const auto nowTime = std::chrono::steady_clock::now();
+    return std::chrono::duration<double>(nowTime.time_since_epoch()).count();
+}
+
+Clock::Clock(ClockType type) : m_type(type) {
+    setClock(INVALID_DOUBLE);
+}
+
+void Clock::setClock(double pts) {
+    setClock(pts, getRelativeSeconds());
+}
+
+void Clock::setClock(double pts, double time) {
+    m_updatePts = pts;
+    m_updateTime = time;
+}
+
+ClockType Clock::type() const {
+    return m_type;
+}
+
+bool Clock::isValidated() const {
+    return !std::isnan(m_updatePts);
+}
+
+double Clock::getPts() const {
+    if (m_paused) {
+        return m_updatePts;
+    } else {
+        return m_updatePts + (getRelativeSeconds() - m_updateTime) * m_speed;
+    }
+}
+
+void Clock::setPaused(bool newPaused) {
+    m_paused = newPaused;
+}
+
+void Clock::setSpeed(double newSpeed) {
+    setClock(getPts()); // 保证从时钟更新起点 到 当前时间点都是以这个速度运行的
+    m_speed = newSpeed;
+}
+
+void Clock::syncToClock(Clock &clk) {
+    const double nowPts = getPts();
+    const double newPts = clk.getPts();
+    if (!std::isnan(newPts) && (std::isnan(nowPts) || std::abs(newPts - nowPts) > 10.0)) {
+        setClock(newPts);
+    }
+}
+
+void Clock::togglePaused() {
+    setClock(getPts());
+    m_paused = !m_paused;
+}
+
+GlobalClock::GlobalClock()
+    : m_audioClk(ClockType::AUDIO), m_videoClk(ClockType::VIDEO),
+      m_externalClk(ClockType::EXTERNAL), m_maxFrameDuration(10.0) {
+}
+
+void GlobalClock::reset() {
+    m_videoClk.setClock(INVALID_DOUBLE);
+    m_audioClk.setClock(INVALID_DOUBLE);
+    m_externalClk.setClock(INVALID_DOUBLE);
+    m_videoClk.m_speed = m_audioClk.m_speed = m_externalClk.m_speed = 1.0;
+    m_videoClk.m_paused = m_audioClk.m_paused = m_externalClk.m_paused = false;
+}
+
+GlobalClock &GlobalClock::instance() {
+    static GlobalClock gl;
+    return gl;
+}
+
+double GlobalClock::getMainPts() const {
+    switch (m_mainClockType) {
+    case ClockType::AUDIO:
+        return m_audioClk.getPts();
+    case ClockType::VIDEO:
+        return m_videoClk.getPts();
+    case ClockType::EXTERNAL:
+        return m_externalClk.getPts();
+    default:
+        return INVALID_DOUBLE;
+    }
+}
+
+ClockType GlobalClock::mainClockType() const {
+    return m_mainClockType;
+}
+
+void GlobalClock::togglePaused() {
+    m_videoClk.togglePaused();
+    m_audioClk.togglePaused();
+    m_externalClk.togglePaused();
+}
+
+double GlobalClock::audioPts() const {
+    return m_audioClk.getPts();
+}
+
+double GlobalClock::videoPts() const {
+    return m_videoClk.getPts();
+}
+
+double GlobalClock::externalPts() const {
+    return m_externalClk.getPts();
+}
+
+double GlobalClock::maxFrameDuration() const {
+    return m_maxFrameDuration;
+}
+
+void GlobalClock::setAudioClk(double pts) {
+    setAudioClk(pts, getRelativeSeconds());
+}
+void GlobalClock::setAudioClk(double pts, double time) {
+    m_audioClk.setClock(pts, time);
+}
+
+void GlobalClock::setVideoClk(double pts) {
+    setVideoClk(pts, getRelativeSeconds());
+}
+void GlobalClock::setVideoClk(double pts, double time) {
+    m_videoClk.setClock(pts, time);
+}
+
+void GlobalClock::setExternalClk(double pts) {
+    setExternalClk(pts, getRelativeSeconds());
+}
+void GlobalClock::setExternalClk(double pts, double time) {
+    m_externalClk.setClock(pts, time);
+}
+
+void GlobalClock::setMaxFrameDuration(double newMaxFrameDuration) {
+    m_maxFrameDuration = newMaxFrameDuration;
+}
+
+void GlobalClock::setMainClockType(ClockType newMainClockType) {
+    m_mainClockType = newMainClockType;
+}
+
+void GlobalClock::syncExternalClk(ClockType type) {
+    if (type == ClockType::AUDIO)
+        m_externalClk.syncToClock(m_audioClk);
+    else if (type == ClockType::VIDEO)
+        m_externalClk.syncToClock(m_videoClk);
+}
