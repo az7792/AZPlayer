@@ -49,6 +49,8 @@ public:
     [[nodiscard]] int progress() const;
     void setProgress(int newProgress); // 仅用于修改数值产生信号
 
+    [[nodiscard]] bool autoLoadExtSub() const;
+
 public slots:
     [[nodiscard]] bool setVideoWindow(QObject *videoWindow); // 设置用于显示画面的QML元素
 
@@ -63,6 +65,7 @@ public slots:
     void setVolume(double newVolume); // 设置音量
     void addVolum();                  // 增加0.04音量
     void subVolum();                  // 减少0.04音量
+    void setAutoLoadExtSub(bool newAutoLoadExtSub); // 设置是否自动加载外部字幕
 
     void seekBySec(double ts, double rel); // seek到指定位置(秒)
     void fastForward();                    // 快进
@@ -77,6 +80,8 @@ signals:
     void mutedChanged();       // 静音/不静音
     void streamInfoUpdate();   // 流信息已更新
     void chaptersInfoUpdate(); // 章节信息已更新
+
+    void autoLoadExtSubChanged(); // 自动加载外部字幕状态更新
 
     void durationChanged(); // 播放时长改变
     void seeked();          // seek完成
@@ -122,12 +127,14 @@ private:
     int m_progress = 0;      // 播放进度（秒）
     bool m_loopOnEnd = true; // true播完重播 | false播完暂停
     bool m_played = false;   // 是否播完
+    bool m_autoLoadExtSub = true; // 是否自动加载外部字幕
     Q_PROPERTY(bool paused READ paused WRITE setPaused NOTIFY pausedChanged FINAL)
     Q_PROPERTY(double volume READ volume WRITE setVolume NOTIFY volumeChanged FINAL)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged FINAL)
     Q_PROPERTY(int duration READ duration WRITE setDuration NOTIFY durationChanged FINAL)
     Q_PROPERTY(bool opened READ opened WRITE setOpened NOTIFY openedChanged FINAL)
     Q_PROPERTY(int progress READ progress WRITE setProgress NOTIFY progressChanged FINAL)
+    Q_PROPERTY(bool autoLoadExtSub READ autoLoadExtSub WRITE setAutoLoadExtSub NOTIFY autoLoadExtSubChanged FINAL)
 
 private:
     [[nodiscard]] QVariantList getStreamInfo(MediaIdx type) const;

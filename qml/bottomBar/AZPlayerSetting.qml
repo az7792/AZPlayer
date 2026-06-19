@@ -189,6 +189,15 @@ Popup{
             textColor: "#ebebeb"
             onCheckedChanged: { AZPlayerState.videoShowSubtitle = checked }
         }
+        AZCheckBox {
+            id: autoLoadExtSubCheckBox
+            height: 20
+            width: 130
+            text:"自动加载外部字幕"
+            checked: MediaCtrl.autoLoadExtSub
+            textColor: "#ebebeb"
+            onCheckedChanged: { MediaCtrl.setAutoLoadExtSub(checked) }
+        }
     }
 
     component MyAudioCtrl:Item{}

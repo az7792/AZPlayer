@@ -132,9 +132,7 @@ bool MediaController::open(const QUrl &URL) {
     const bool haveAudio = m_demuxs[defDemuxIdx]->haveStream(MediaType::Audio);
     const bool haveVideo = m_demuxs[defDemuxIdx]->haveStream(MediaType::Video);
     const bool haveSubtitle = m_demuxs[defDemuxIdx]->haveStream(MediaType::Subtitle);
-    // 是否优先加载外部字幕
-    // TODO: 做到设置里
-    static constexpr bool needLoadExternalSubtitle = true;
+
     // 加载音频
     if (haveAudio) {
         const int audioIdx = 0;
@@ -156,7 +154,7 @@ bool MediaController::open(const QUrl &URL) {
     // 加载字幕
     if (haveVideo) {
         bool loadOK = false;
-        if (needLoadExternalSubtitle || !haveSubtitle) {
+        if (m_autoLoadExtSub || !haveSubtitle) {
             const QUrl subtitleFile = EpisodeAssetManager::instance().resolveSubtitleURL(URL);
             loadOK = loadExternalSubtitle(subtitleFile);
         }
@@ -377,6 +375,16 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
     m_streams[to_index(MediaIdx::Audio)] = {demuxIdx, streamIdx}; // 更新
 
     return true;
+}
+
+bool MediaController::autoLoadExtSub() const {
+    return m_autoLoadExtSub;
+}
+
+void MediaController::setAutoLoadExtSub(bool newAutoLoadExtSub) {
+    if (m_autoLoadExtSub == newAutoLoadExtSub) return;
+    m_autoLoadExtSub = newAutoLoadExtSub;
+    emit autoLoadExtSubChanged();
 }
 
 int MediaController::progress() const {

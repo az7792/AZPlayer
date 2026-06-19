@@ -25,6 +25,8 @@ AZWindow {
         // 需要先设置音量再设置是否静音，因为设置音量时会强制解除静音
         MediaCtrl.setVolume(AZSettings.volume)
         MediaCtrl.setMuted(AZSettings.muted)
+        MediaCtrl.setAutoLoadExtSub(AZSettings.autoLoadExtSub)
+        console.log("mainWin 初始化完成")
     }
 
     // 同步设置
@@ -32,11 +34,13 @@ AZWindow {
         target: MediaCtrl
         function onMutedChanged() { AZSettings.muted = MediaCtrl.muted }
         function onVolumeChanged() { AZSettings.volume = MediaCtrl.volume }
+        function onAutoLoadExtSubChanged() { AZSettings.autoLoadExtSub = MediaCtrl.autoLoadExtSub }
     }
 
     // 启动参数
     function onStartupFiles(files) {
         AZPlayerState.mediafileDialog.onStartupFiles(files)
+        console.log("onStartupFiles 完成")
     }
 
     // 鼠标滚轮控制旋转角度或音量
