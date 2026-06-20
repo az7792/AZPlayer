@@ -178,16 +178,6 @@ public:
         return true;
     }
 
-    // 查看第一个元素（不移除）
-    [[nodiscard]] bool peekFirst(AVPktItem &item) {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        if (m_queue.empty())
-            return false;
-
-        item = m_queue.front();
-        return true;
-    }
-
     [[nodiscard]] size_t size() const {
         std::lock_guard<std::mutex> lock(m_mutex);
         return m_queue.size();

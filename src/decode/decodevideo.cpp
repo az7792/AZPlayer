@@ -53,7 +53,7 @@ void DecodeVideo::decodingLoop() {
             // nothing
         } else if (ret < 0) {
             av_strerror(ret, errBuf, sizeof(errBuf));
-            qDebug() << "Audio发送audiopkt错误:" << errBuf << pktItem.pkt->stream_index;
+            qDebug() << "Video发送videopkt错误:" << errBuf << pktItem.pkt->stream_index;
             goto end;
         }
 

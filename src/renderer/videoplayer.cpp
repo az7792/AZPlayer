@@ -118,7 +118,7 @@ void VideoPlayer::playerLoop() {
             continue;
         }
 
-        // 写如入设备
+        // 写入设备
         if (frmItem.frm) {
             write(frmItem);
         }
@@ -278,10 +278,16 @@ void VideoPlayer::handleASSSubtitle(double pts)
 void VideoPlayer::handleBitmapSubtitle()
 {
     AVFrmItem subFrmItem;
-    double videoPts = GlobalClock::instance().videoPts();
+    const double videoPts = GlobalClock::instance().videoPts();
     if (m_subFrmBuf->peekFirst(subFrmItem) && videoPts >= subFrmItem.pts) {
         // 有新字幕
         (void)m_subFrmBuf->pop(subFrmItem); // 能 peekFirst，说明一定能 pop 成功
+
+        if (subFrmItem.serial != m_subFrmBuf->serial()) {
+            m_forceRefresh = true;
+            return;
+        }
+
         (void)m_subRenderData.write([&](SubRenderData &renData, [[maybe_unused]] int idx) -> bool {
             renData.updateBitmapImage(&subFrmItem, m_width, m_height);
             m_subtitleEndDisplayTime = subFrmItem.pts + subFrmItem.duration;
@@ -289,7 +295,6 @@ void VideoPlayer::handleBitmapSubtitle()
         }, false);
     } else if (videoPts >= m_subtitleEndDisplayTime) {
         // 上一帧字幕显示时间到期
-        m_subtitleEndDisplayTime = 1e9;
         handleEmptySubtitle();
     }
 }
@@ -298,6 +303,7 @@ void VideoPlayer::handleEmptySubtitle()
 {
     (void)m_subRenderData.write([&](SubRenderData &renData, int) -> bool {
         renData.updateBitmapImage(nullptr, m_width, m_height);
+        m_subtitleEndDisplayTime = 1e9;
         return true;
     }, false);
 }

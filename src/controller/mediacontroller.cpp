@@ -97,6 +97,9 @@ MediaController::~MediaController()
 
 bool MediaController::setVideoWindow(QObject *videoWindow) {
     // HACK: 目前仅支持调用一次，多次调用不会清理旧连接
+    static int ct = 0;
+    ct++;
+    Q_ASSERT(ct == 1);
     VideoWindow *wd = static_cast<VideoWindow *>(videoWindow);
     QObject::connect(m_videoPlayer, &VideoPlayer::renderDataReady,
                      wd, &VideoWindow::updateRenderData,
