@@ -98,7 +98,12 @@ Rectangle {
             height: 20
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
-            text: " " + (index+1) + ". " + model.text
+            text: {
+                // count >= 1 才会显示项, 不用担心负数
+                let padLength = String(listView.count).length
+                return " " + String(index + 1).padStart(padLength, '0') + ". " + model.text
+            }
+
             color: index == root.activeIndex ? "#2b82d5" : (index == listView.currentIndex ? "#f0f0f0" : "#747474")
 
             MouseArea {
