@@ -73,7 +73,7 @@ void DecodeAudio::decodingLoop() {
 
             // 写入缓冲区
             if (ret == 0) {
-                frmItem.pts = (frmItem.frm->pts == AV_NOPTS_VALUE) ? std::numeric_limits<double>::quiet_NaN() : frmItem.frm->pts * av_q2d(m_time_base);
+                frmItem.pts = (frmItem.frm->pts == AV_NOPTS_VALUE) ? INVALID_DOUBLE : frmItem.frm->pts * av_q2d(m_time_base);
                 while (!m_frmBuf->push(frmItem)) {
                     if (m_stop.load(std::memory_order_relaxed)) {
                         goto end;

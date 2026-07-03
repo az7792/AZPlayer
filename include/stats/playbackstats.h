@@ -9,6 +9,7 @@
 #include <QString>
 #include <chrono>
 #include <deque>
+#include "types/types.h"
 
 class PlaybackStats : public QObject {
     Q_OBJECT
@@ -64,9 +65,9 @@ public:
     int droppedFrameCount{};
 
     // ==== 时间戳 ====
-    double videoPTS{};
-    double audioPTS{};
-    double avPtsDiff{};
+    double videoPTS{INVALID_DOUBLE};
+    double audioPTS{INVALID_DOUBLE};
+    double avPtsDiff{INVALID_DOUBLE};
 
     // 视频信息
     QString videoPixFormat;

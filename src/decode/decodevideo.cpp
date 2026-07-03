@@ -75,7 +75,8 @@ void DecodeVideo::decodingLoop() {
             // 写入缓冲区
             if (ret == 0) {
                 double timeBase = av_q2d(m_time_base);
-                frmItem.pts = (frmItem.frm->best_effort_timestamp == AV_NOPTS_VALUE) ? frmItem.frm->pts * timeBase : frmItem.frm->best_effort_timestamp * timeBase;
+                int64_t raw_pts = (frmItem.frm->best_effort_timestamp == AV_NOPTS_VALUE) ? frmItem.frm->pts : frmItem.frm->best_effort_timestamp;
+                frmItem.pts = (raw_pts != AV_NOPTS_VALUE) ? raw_pts * timeBase : INVALID_DOUBLE;
                 frmItem.duration = frmItem.frm->duration * timeBase;
                 while (!m_frmBuf->push(frmItem)) {
                     if (m_stop.load(std::memory_order_relaxed)) {

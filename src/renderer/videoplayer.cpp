@@ -34,7 +34,7 @@ bool VideoPlayer::init(sharedFrmQueue frmBuf, sharedFrmQueue subFrmBuf) {
     m_lastVideoFrameInterval = qMakePair(INVALID_DOUBLE, INVALID_DOUBLE);
     m_needClearSubtitle = false;
     m_subtitleEndDisplayTime = 1e9;
-    m_renderTime = std::numeric_limits<double>::quiet_NaN();
+    m_renderTime = INVALID_DOUBLE;
     m_serial = 0;
     m_width = 0;
     m_height = 0;

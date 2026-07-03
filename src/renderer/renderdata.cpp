@@ -222,8 +222,8 @@ void VideoRenderData::updateFormat(AVFrmItem &newItem) {
 void VideoRenderData::reset() {
     if (frmItem.frm)
         av_frame_free(&frmItem.frm);
-    frmItem.pts = renderedTime = std::numeric_limits<double>::quiet_NaN();
-    frmItem.duration = renderedTime = std::numeric_limits<double>::quiet_NaN();
+    frmItem.pts = renderedTime = INVALID_DOUBLE;
+    frmItem.duration = renderedTime = INVALID_DOUBLE;
 }
 
 void VideoRenderData::updateGLParaArr(PixFormat fmt) {
@@ -250,8 +250,8 @@ void SubRenderData::reset() {
     }
     avsubtitle_free(&frmItem.sub);
     subtitleType = SUBTITLE_NONE;
-    frmItem.pts = std::numeric_limits<double>::quiet_NaN();
-    frmItem.duration = std::numeric_limits<double>::quiet_NaN();
+    frmItem.pts = INVALID_DOUBLE;
+    frmItem.duration = INVALID_DOUBLE;
     clear();
     // forceRefresh = false;
     uploaded = false;

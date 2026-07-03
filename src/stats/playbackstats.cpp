@@ -61,9 +61,9 @@ void PlaybackStats::reset() {
     droppedFrameCount = 0;
 
     // ==== 时间戳 ====
-    videoPTS = 0.0;
-    audioPTS = 0.0;
-    avPtsDiff = 0.0;
+    videoPTS = INVALID_DOUBLE;
+    audioPTS = INVALID_DOUBLE;
+    avPtsDiff = INVALID_DOUBLE;
 }
 
 void PlaybackStats::frameRendered() {

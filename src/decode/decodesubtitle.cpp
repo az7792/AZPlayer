@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "decode/decodesubtitle.h"
-#include "renderer/assrender.h"
+// #include "renderer/assrender.h"
 #include <QDebug>
 
 namespace {
@@ -70,7 +70,7 @@ void DecodeSubtitle::decodingLoop() {
                 frmItem.width = m_codecCtx->width;
                 frmItem.height = m_codecCtx->height;
                 frmItem.serial = pktItem.serial;
-                frmItem.pts = sub.pts == AV_NOPTS_VALUE ? 0.0
+                frmItem.pts = sub.pts == AV_NOPTS_VALUE ? INVALID_DOUBLE
                                                         : sub.pts / (double)AV_TIME_BASE + sub.start_display_time / 1000.0;
                 frmItem.duration = (sub.end_display_time - sub.start_display_time) / 1000.0;
 
