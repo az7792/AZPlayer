@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
     qmlRegisterType<VideoWindow>("VideoWindow", 1, 0, "VideoWindow");
     engine.rootContext()->setContextProperty("MediaCtrl", &mc);
     engine.rootContext()->setContextProperty("PlaybackStats", &PlaybackStats::instance());
+    engine.rootContext()->setContextProperty("FileHelper", &FileHelper::instance());
     engine.rootContext()->setContextProperty("appDirPath", QCoreApplication::applicationDirPath());
 
     QObject::connect(

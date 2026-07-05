@@ -33,7 +33,13 @@ public:
      *
      * - fileUrl: URL格式的文件路径, 例如：file:///C:/Media_Library/Videos/a.mkv
      */
-    Q_INVOKABLE [[nodiscard]] QVariantList expandFiles(const QStringList &inputPaths, const QStringList &filters, bool recursive) const;
+    [[nodiscard]] QVariantList expandFiles(const QStringList &inputPaths, const QStringList &filters, bool recursive) const;
+
+    // 给 QML 用的简单包装
+    Q_INVOKABLE [[nodiscard]] QVariantList expandVideoFiles(const QList<QUrl> &urls, bool recursive) const;
+    Q_INVOKABLE [[nodiscard]] QVariantList expandAudioFiles(const QList<QUrl> &urls, bool recursive) const;
+    Q_INVOKABLE [[nodiscard]] QVariantList expandSubtitleFiles(const QList<QUrl> &urls, bool recursive) const;
+    Q_INVOKABLE [[nodiscard]] QVariantList expandMediaFiles(const QList<QUrl> &urls, bool recursive) const;
 
 signals:
 
@@ -45,6 +51,9 @@ private:
 
     // 递归展开文件夹内的所有文件
     void scanFolder(const QString &folderPath, QStringList &outFiles, const QStringList &filters, bool recursive) const;
+
+    // urls -> local strings
+    [[nodiscard]] static QStringList toLocalPaths(const QList<QUrl> &urls);
 };
 
 #endif // FILEHELPER_H
