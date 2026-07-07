@@ -375,6 +375,11 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
     m_decodeAudio->start();
     m_audioPlayer->start();
 
+    if (m_paused) {
+        // start 会无条件开始播放，这儿重新设置一下状态
+        m_audioPlayer->togglePaused();
+    }
+
     m_streams[to_index(MediaIdx::Audio)] = {demuxIdx, streamIdx}; // 更新
 
     return true;
