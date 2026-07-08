@@ -362,7 +362,7 @@ void Demux::pushSubtitlePkt(AVPacket *pkt) {
     pushPkt(m_subtitlePktBuf, pkt);
 }
 
-void Demux::pushPkt(weakPktQueue wq, AVPacket *pkt) {
+void Demux::pushPkt(const weakPktQueue &wq, AVPacket *pkt) {
     while (auto q = wq.lock()) {
         bool ok = q->push({pkt, q->serial()});
         if (ok)
@@ -463,11 +463,12 @@ bool Demux::switchStream(MediaType type, int streamIdx, weakPktQueue wpq, weakFr
     // seek 或启动线程
     if (m_stop.load(std::memory_order_relaxed)) {
         double pts = GlobalClock::instance().getMainPts();
-        if (!std::isnan(pts)) {
-            int64_t target = pts / av_q2d(getStream(type)->time_base);
-            int streamIndex = (*idxVec)[streamIdx];
-            int flags = (m_usedVIdx.load(std::memory_order_relaxed) == -1) ? AVSEEK_FLAG_ANY : 0;
-            ret = avformat_seek_file(m_formatCtx, streamIndex, INT64_MIN, target, INT64_MAX, flags);
+        pts = std::isnan(pts) ? 0.0 : pts;
+        const int64_t target = pts / av_q2d(getStream(type)->time_base);
+        const int streamIndex = (*idxVec)[streamIdx];
+        const int flags = (m_usedVIdx.load(std::memory_order_relaxed) == -1) ? AVSEEK_FLAG_ANY : 0;
+        ret = avformat_seek_file(m_formatCtx, streamIndex, INT64_MIN, target, INT64_MAX, flags);
+        if (ret >= 0) {
             start();
         }
     } else {

@@ -114,7 +114,7 @@ private:
     void pushVideoPkt(AVPacket *pkt);
     void pushAudioPkt(AVPacket *pkt);
     void pushSubtitlePkt(AVPacket *pkt);
-    void pushPkt(weakPktQueue wq, AVPacket *pkt);
+    void pushPkt(const weakPktQueue &wq, AVPacket *pkt);
 
     void fillStreamInfo();   // 填充流消息
     void fillChaptersInfo(); // 填充章节消息
