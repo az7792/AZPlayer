@@ -150,10 +150,12 @@ void Demux::seekBySec(double ts, double rel) {
 }
 
 bool Demux::switchVideoStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq) {
+    if (streamIdx >= static_cast<int>(m_videoIdx.size())) return false;
     return switchStream(MediaType::Video, streamIdx, wpq, wfq);
 }
 
 bool Demux::switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq, bool &isAssSub) {
+    if (streamIdx >= static_cast<int>(m_subtitleIdx.size())) return false;
     if (m_usedSIdx != -1) {
         closeStream(MediaType::Subtitle);
     }
@@ -171,6 +173,7 @@ bool Demux::switchSubtitleStream(int streamIdx, weakPktQueue wpq, weakFrmQueue w
 }
 
 bool Demux::switchAudioStream(int streamIdx, weakPktQueue wpq, weakFrmQueue wfq) {
+    if (streamIdx >= static_cast<int>(m_audioIdx.size())) return false;
     return switchStream(MediaType::Audio, streamIdx, wpq, wfq);
 }
 

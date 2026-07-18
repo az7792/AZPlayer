@@ -54,10 +54,12 @@ public:
 public slots:
     [[nodiscard]] bool setVideoWindow(QObject *videoWindow); // 设置用于显示画面的QML元素
 
-    [[nodiscard]] bool open(const QUrl &URL);               // 打开文件开始播放
-    [[nodiscard]] bool openSubtitleStream(const QUrl &URL); // 打开字幕并解析流
-    [[nodiscard]] bool openAudioStream(const QUrl &URL);    // 打开音频并解析流
-    void close();                                           // 关闭当前播放的文件
+    [[nodiscard]] bool open(const QUrl &URL);                 // 打开文件开始播放
+    [[nodiscard]] bool openSubtitleStream(const QUrl &URL);   // 打开字幕并解析流
+    [[nodiscard]] bool openAudioStream(const QUrl &URL);      // 打开音频并解析流
+    [[nodiscard]] bool loadExternalSubtitle(const QUrl &URL); // 打开字幕并加载第一个流
+    [[nodiscard]] bool loadExternalAudio(const QUrl &URL);    // 打开音频并加载第一个流
+    void close();                                             // 关闭当前播放的文件
 
     void togglePaused();              // 切换是否暂停
     void setMuted(bool newMuted);     // 设置是否静音
@@ -140,7 +142,6 @@ private:
     [[nodiscard]] QVariantList getStreamInfo(MediaIdx type) const;
     [[nodiscard]] bool openStreamByFile(const QUrl &URL, MediaIdx idx);
     [[nodiscard]] bool seekAudioAndSubtitleDemux(double pts);
-    [[nodiscard]] bool loadExternalSubtitle(const QUrl &subtitleURL);
     void checkPlayerFinished();
 
 signals:

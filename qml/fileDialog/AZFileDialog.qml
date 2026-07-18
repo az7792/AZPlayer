@@ -53,6 +53,7 @@ Rectangle {
         id: medialist
 
         function existsInModel(fileUrl){ //fileUrl 为string类型
+            // TODO: 可能会有性能问题
             let lower = fileUrl.toLowerCase()
             for (let i = 0; i < count; ++i) {
                 if (medialist.get(i).fileUrl.toLowerCase() === lower)

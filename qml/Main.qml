@@ -401,4 +401,13 @@ AZWindow {
         anchors.bottomMargin: mainWin.resizeBorderWidth
         anchors.left: splitter.right
     }
+
+    // mediaDropPanel
+    AZMediaDropPanel {
+        id: mediaDropPanel
+        anchors.top: parent.top
+        anchors.right: mainWin.videoFull ? parent.right : (showSideBar ? splitter.left : parent.right)
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+    }
 }

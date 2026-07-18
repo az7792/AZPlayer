@@ -60,5 +60,6 @@
         <file>qml/videoArea/AZPlaybackStatsArea.qml</file>
         <file>qml/videoArea/AZVideoAngleDialArea.qml</file>
         <file>qml/settings/AZSettings.qml</file>
+        <file>qml/mediaDropPanel/AZMediaDropPanel.qml</file>
     </qresource>
 </RCC>

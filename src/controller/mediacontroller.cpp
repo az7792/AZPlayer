@@ -221,6 +221,22 @@ bool MediaController::openAudioStream(const QUrl &URL) {
     return openStreamByFile(URL, MediaIdx::Audio);
 }
 
+bool MediaController::loadExternalSubtitle(const QUrl &URL) {
+    bool loadOK = openSubtitleStream(URL);
+    if (loadOK) {
+        loadOK = switchSubtitleStream(to_index(MediaIdx::Subtitle), 0);
+    }
+    return loadOK;
+}
+
+bool MediaController::loadExternalAudio(const QUrl &URL) {
+    bool loadOK = openAudioStream(URL);
+    if (loadOK) {
+        loadOK = switchAudioStream(to_index(MediaIdx::Audio), 0);
+    }
+    return loadOK;
+}
+
 void MediaController::close() {
     if (!m_opened) return;
 
@@ -348,6 +364,7 @@ bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
     }
 
     m_streams[to_index(MediaIdx::Subtitle)] = {demuxIdx, streamIdx}; // 更新
+    emit streamInfoUpdate();
 
     return true;
 }
@@ -381,6 +398,7 @@ bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
     }
 
     m_streams[to_index(MediaIdx::Audio)] = {demuxIdx, streamIdx}; // 更新
+    emit streamInfoUpdate();
 
     return true;
 }
@@ -443,8 +461,9 @@ QVariantList MediaController::getStreamInfo(MediaIdx type) const {
 bool MediaController::openStreamByFile(const QUrl &URL, MediaIdx idx) {
     const uint8_t index = to_index(idx);
     const QString localFile = URL.toLocalFile();
-    if (!QFileInfo::exists(localFile)) {
-        qDebug() << "无效路径:" << localFile;
+    QFileInfo fileInfo(localFile);
+    if (!fileInfo.exists() || !fileInfo.isFile()) {
+        qDebug() << "无效路径，或不是文件" << localFile;
         return false;
     }
 
@@ -458,26 +477,21 @@ bool MediaController::openStreamByFile(const QUrl &URL, MediaIdx idx) {
         m_streams[to_index(MediaIdx::Subtitle)] = {-1, -1};
     }
 
-    if (!m_demuxs[index]->init(localFile.toUtf8().constData())) {
-        close();
+    bool initOk = m_demuxs[index]->init(localFile.toUtf8().constData());
+    if (initOk && m_demuxs[index]->getStreamsCount()[to_index(idx)] < 1) {
+        qDebug() << "文件中没有对应的流" << localFile;
+        m_demuxs[index]->uninit();
+        emit streamInfoUpdate();
         return false;
     }
     emit streamInfoUpdate();
-    return true;
+    return initOk;
 }
 
 bool MediaController::seekAudioAndSubtitleDemux(double pts) {
     m_demuxs[1]->seekBySec(pts, 0.0);
     m_demuxs[2]->seekBySec(pts, 0.0);
     return true;
-}
-
-bool MediaController::loadExternalSubtitle(const QUrl &subtitleURL) {
-    bool loadOK = openSubtitleStream(subtitleURL);
-    if (loadOK) {
-        loadOK = switchSubtitleStream(to_index(MediaIdx::Subtitle), 0);
-    }
-    return loadOK;
 }
 
 void MediaController::checkPlayerFinished() {

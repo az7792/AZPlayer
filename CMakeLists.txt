@@ -136,6 +136,7 @@ qt_add_qml_module(appAZPlayer
               qml/videoArea/AZPlaybackStatsArea.qml
               qml/videoArea/AZVideoAngleDialArea.qml
               qml/settings/AZSettings.qml
+              qml/mediaDropPanel/AZMediaDropPanel.qml
     SOURCES include/demux/demux.h src/demux/demux.cpp
             include/decode/decodebase.h src/decode/decodebase.cpp
             include/decode/decodeaudio.h src/decode/decodeaudio.cpp
