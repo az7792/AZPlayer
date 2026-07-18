@@ -249,6 +249,10 @@ bool Demux::isEOF() const {
     return m_isEOF;
 }
 
+bool Demux::isRunning() const {
+    return !m_stop.load(std::memory_order_acquire);
+}
+
 void Demux::seekAllPktQueue() {
     if (auto q = m_audioPktBuf.lock()) {
         q->addSerial();

@@ -215,7 +215,7 @@ bool MediaController::openSubtitleStream(const QUrl &URL) {
 
 bool MediaController::openAudioStream(const QUrl &URL) {
     // TODO: 允许在没有主 demux 的情况下使用副解复用器播放音频
-    if (m_streams[MediaType::Video].first < 0 || m_streams[MediaType::Video].second < 0) return false;
+    if (!m_demuxs[kMainDemux]->isRunning()) return false;
     return openStreamByFile(URL, MediaType::Audio);
 }
 

@@ -74,6 +74,8 @@ public:
     [[nodiscard]] AVFormatContext *formatCtx();
 
     [[nodiscard]] bool isEOF() const;
+
+    [[nodiscard]] bool isRunning() const;
 public slots:
 signals:
     // 当前解复用器seek完成
