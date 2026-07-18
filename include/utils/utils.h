@@ -13,12 +13,6 @@
 #include <mutex>
 #include <vector>
 
-// 枚举转idx
-template <typename E>
-[[nodiscard]] constexpr auto to_index(E e) -> std::underlying_type_t<E> {
-    return static_cast<std::underlying_type_t<E>>(e);
-}
-
 class DeviceStatus {
 public:
     [[nodiscard]] bool initialized() const {

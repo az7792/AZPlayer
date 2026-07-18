@@ -160,6 +160,7 @@ qt_add_qml_module(appAZPlayer
             include/stats/playbackstats.h src/stats/playbackstats.cpp
             include/utils/spscbuffer.h src/utils/spscbuffer.cpp
             3rd/miniaudio/miniaudio.h 3rd/miniaudio/miniaudio.cpp
+            include/utils/enumindexarray.h
             include/utils/powermanager.h src/utils/powermanager.cpp
     RESOURCES resource.qrc
 )

@@ -5,6 +5,7 @@
 #define DEMUX_H
 #include "compat/compat.h"
 #include "types/ptrs.h"
+#include "utils/enumindexarray.h"
 #include <QObject>
 #include <atomic>
 #include <mutex>
@@ -24,7 +25,6 @@ struct ChapterInfo {
 
 class Demux : public QObject {
     Q_OBJECT
-    static constexpr std::size_t kMediaIdxCount = to_index(MediaIdx::Count);
 
 public:
     explicit Demux(QObject *parent = nullptr);
@@ -66,9 +66,9 @@ public:
     // 该媒体文件是否拥有某种类型的流
     [[nodiscard]] bool haveStream(MediaType type) const;
 
-    [[nodiscard]] std::array<size_t, kMediaIdxCount> getStreamsCount() const;
+    [[nodiscard]] EnumIndexArray<size_t, MediaType> getStreamsCount() const;
 
-    [[nodiscard]] const std::array<std::vector<QString>, kMediaIdxCount> &streamInfo() const { return m_stringInfo; }
+    [[nodiscard]] const EnumIndexArray<std::vector<QString>, MediaType> &streamInfo() const { return m_stringInfo; }
     [[nodiscard]] const std::vector<ChapterInfo> &chaptersInfo() const { return m_chaptersInfo; }
 
     [[nodiscard]] AVFormatContext *formatCtx();
@@ -91,7 +91,7 @@ private:
     std::string m_URL;                                               // 媒体URL
     std::vector<int> m_videoIdx, m_audioIdx, m_subtitleIdx;          // 各个流的ID
     std::atomic<int> m_usedVIdx{-1}, m_usedAIdx{-1}, m_usedSIdx{-1}; // 当前使用的流ID
-    std::array<std::vector<QString>, kMediaIdxCount> m_stringInfo;   // 流描述
+    EnumIndexArray<std::vector<QString>, MediaType> m_stringInfo;    // 流描述
     std::vector<ChapterInfo> m_chaptersInfo;                         // 章节描述
 
     char errBuf[512];

@@ -18,8 +18,6 @@ enum class MediaType : uint8_t {
     Audio,
     Count
 };
-using MediaIdx = MediaType;
-
 struct AVPktItem {
     AVPacket *pkt = nullptr;
     int serial = 0;

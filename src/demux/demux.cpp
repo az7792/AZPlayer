@@ -237,7 +237,7 @@ bool Demux::haveStream(MediaType type) const {
     }
 }
 
-std::array<size_t, Demux::kMediaIdxCount> Demux::getStreamsCount() const {
+EnumIndexArray<size_t, MediaType> Demux::getStreamsCount() const {
     return {m_videoIdx.size(), m_subtitleIdx.size(), m_audioIdx.size()};
 }
 
@@ -381,15 +381,16 @@ void Demux::pushPkt(const weakPktQueue &wq, AVPacket *pkt) {
 
 void Demux::fillStreamInfo() {
     // Video
+    // MAYBE:
     // Subtitle
-    auto &subArr = m_stringInfo[to_index(MediaIdx::Subtitle)];
+    auto &subArr = m_stringInfo[MediaType::Subtitle];
     for (auto v : m_subtitleIdx) {
         AVStream *st = m_formatCtx->streams[v];
         subArr.emplace_back(getStringInfo(st));
     }
 
     // Audio
-    auto &audioArr = m_stringInfo[to_index(MediaIdx::Audio)];
+    auto &audioArr = m_stringInfo[MediaType::Audio];
     for (auto v : m_audioIdx) {
         AVStream *st = m_formatCtx->streams[v];
         audioArr.emplace_back(getStringInfo(st));

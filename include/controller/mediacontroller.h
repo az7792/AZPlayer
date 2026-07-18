@@ -11,11 +11,11 @@
 #include "renderer/audioplayer.h"
 #include "renderer/videoplayer.h"
 #include "types/ptrs.h"
+#include "utils/enumindexarray.h"
 #include <QObject>
 #include <QTimer>
 #include <QUrl>
 #include <QVariant>
-#include <array>
 
 class MediaController : public QObject {
     Q_OBJECT
@@ -95,6 +95,10 @@ signals:
     void progressChanged(); // 播放进度更新
 
 private:
+    static constexpr int kMainDemux = 0;
+    static constexpr int kSubDemux = 1;
+    static constexpr int kAudioDemux = 2;
+
     QUrl m_URL{}; // 主复用器打开的文件
 
     // 音视频队列
@@ -106,9 +110,9 @@ private:
     sharedFrmQueue m_frmSubtitleBuf = std::make_shared<SPSCQueue<AVFrmItem>>(16); // max(16frames)
 
     // 解复用器
-    std::array<Demux *, to_index(MediaIdx::Count)> m_demuxs{nullptr, nullptr, nullptr}; // 0文件 1字幕 2音轨
+    std::array<Demux *, 3> m_demuxs{nullptr, nullptr, nullptr}; // 0文件 1字幕 2音轨
     // 当前的视频流/字幕流/音频流所使用的{demuxIdx,streamIdx}，streamIdx是指demux中同类型的流中的顺序，不是demux全局的
-    std::array<std::pair<int, int>, to_index(MediaIdx::Count)> m_streams;
+    EnumIndexArray<std::pair<int, int>, MediaType> m_streams;
     // 音视频解码器
     DecodeAudio *m_decodeAudio = nullptr;
     DecodeVideo *m_decodeVideo = nullptr;
@@ -139,8 +143,8 @@ private:
     Q_PROPERTY(bool autoLoadExtSub READ autoLoadExtSub WRITE setAutoLoadExtSub NOTIFY autoLoadExtSubChanged FINAL)
 
 private:
-    [[nodiscard]] QVariantList getStreamInfo(MediaIdx type) const;
-    [[nodiscard]] bool openStreamByFile(const QUrl &URL, MediaIdx idx);
+    [[nodiscard]] QVariantList getStreamInfo(MediaType type) const;
+    [[nodiscard]] bool openStreamByFile(const QUrl &URL, MediaType type);
     [[nodiscard]] bool seekAudioAndSubtitleDemux(double pts);
     void checkPlayerFinished();
 
