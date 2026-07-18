@@ -209,7 +209,7 @@ bool MediaController::open(const QUrl &URL) {
 }
 
 bool MediaController::openSubtitleStream(const QUrl &URL) {
-    if (m_streams[MediaType::Video].first < 0 || m_streams[MediaType::Video].second < 0) return false;
+    if (m_streams[MediaType::Video].demuxIdx < 0 || m_streams[MediaType::Video].streamIdx < 0) return false;
     return openStreamByFile(URL, MediaType::Subtitle);
 }
 
@@ -335,15 +335,15 @@ void MediaController::fastRewind() {
 }
 
 bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
-    if (m_streams[MediaType::Video].first < 0 || m_streams[MediaType::Video].second < 0)
+    if (m_streams[MediaType::Video].demuxIdx < 0 || m_streams[MediaType::Video].streamIdx < 0)
         return false;
 
-    if (m_streams[MediaType::Subtitle] == std::pair{demuxIdx, streamIdx}) {
+    if (m_streams[MediaType::Subtitle] == StreamSlot{demuxIdx, streamIdx}) {
         return true;
     }
     // 关闭旧的
-    if (m_streams[MediaType::Subtitle].first != -1)
-        m_demuxs[m_streams[MediaType::Subtitle].first]->closeStream(MediaType::Subtitle);
+    if (m_streams[MediaType::Subtitle].demuxIdx != -1)
+        m_demuxs[m_streams[MediaType::Subtitle].demuxIdx]->closeStream(MediaType::Subtitle);
     m_decodeSubtitle->uninit();
     ASSRender::instance().uninit();
     m_videoPlayer->clearSubtitle(); // 切换后需要一定时间才会解码到新字幕，因此提前强制清掉旧字幕
@@ -368,12 +368,12 @@ bool MediaController::switchSubtitleStream(int demuxIdx, int streamIdx) {
 }
 
 bool MediaController::switchAudioStream(int demuxIdx, int streamIdx) {
-    if (m_streams[MediaType::Audio] == std::pair{demuxIdx, streamIdx}) {
+    if (m_streams[MediaType::Audio] == StreamSlot{demuxIdx, streamIdx}) {
         return true;
     }
     // 关闭旧的
-    if (m_streams[MediaType::Audio].first != -1)
-        m_demuxs[m_streams[MediaType::Audio].first]->closeStream(MediaType::Audio);
+    if (m_streams[MediaType::Audio].demuxIdx != -1)
+        m_demuxs[m_streams[MediaType::Audio].demuxIdx]->closeStream(MediaType::Audio);
     m_decodeAudio->uninit();
     m_audioPlayer->uninit(); // 音频设备需要重新设置
 
@@ -473,11 +473,11 @@ bool MediaController::openStreamByFile(const QUrl &URL, MediaType type) {
     }
 
     m_demuxs[index]->uninit();
-    if (m_streams[MediaType::Audio].first == index) {
+    if (m_streams[MediaType::Audio].demuxIdx == index) {
         m_pktAudioBuf->clear();
         m_streams[MediaType::Audio] = {-1, -1};
     }
-    if (m_streams[MediaType::Subtitle].first == index) {
+    if (m_streams[MediaType::Subtitle].demuxIdx == index) {
         m_pktSubtitleBuf->clear();
         m_streams[MediaType::Subtitle] = {-1, -1};
     }
@@ -503,7 +503,7 @@ void MediaController::checkPlayerFinished() {
     if (!m_opened || m_played || !m_demuxs[0]->isEOF())
         return;
 
-    const bool haveAudio = m_streams[MediaType::Audio].second != -1;
+    const bool haveAudio = m_streams[MediaType::Audio].streamIdx != -1;
 
     const bool audioQueueIsEmpty = m_pktAudioBuf->size() == 0 && m_frmAudioBuf->size() == 0;
     const bool videoQueueIsEmpty = m_pktVideoBuf->size() == 0 && m_frmVideoBuf->size() == 0;
@@ -580,23 +580,23 @@ QVariantList MediaController::getChaptersInfo() const {
 }
 
 int MediaController::getSubtitleIdx() const {
-    if (m_streams[MediaType::Subtitle].first == -1)
+    if (m_streams[MediaType::Subtitle].demuxIdx == -1)
         return -1;
     size_t idx = 0;
-    for (int i = 0; i < m_streams[MediaType::Subtitle].first; ++i) {
+    for (int i = 0; i < m_streams[MediaType::Subtitle].demuxIdx; ++i) {
         idx += m_demuxs[i]->getStreamsCount()[MediaType::Subtitle];
     }
-    return static_cast<int>(idx) + m_streams[MediaType::Subtitle].second;
+    return static_cast<int>(idx) + m_streams[MediaType::Subtitle].streamIdx;
 }
 
 int MediaController::getAudioIdx() const {
-    if (m_streams[MediaType::Audio].first == -1)
+    if (m_streams[MediaType::Audio].demuxIdx == -1)
         return -1;
     size_t idx = 0;
-    for (int i = 0; i < m_streams[MediaType::Audio].first; ++i) {
+    for (int i = 0; i < m_streams[MediaType::Audio].demuxIdx; ++i) {
         idx += m_demuxs[i]->getStreamsCount()[MediaType::Audio];
     }
-    return static_cast<int>(idx) + m_streams[MediaType::Audio].second;
+    return static_cast<int>(idx) + m_streams[MediaType::Audio].streamIdx;
 }
 
 int MediaController::duration() const {

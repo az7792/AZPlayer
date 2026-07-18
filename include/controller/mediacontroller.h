@@ -111,8 +111,15 @@ private:
 
     // 解复用器
     std::array<Demux *, 3> m_demuxs{nullptr, nullptr, nullptr}; // 0文件 1字幕 2音轨
-    // 当前的视频流/字幕流/音频流所使用的{demuxIdx,streamIdx}，streamIdx是指demux中同类型的流中的顺序，不是demux全局的
-    EnumIndexArray<std::pair<int, int>, MediaType> m_streams;
+    // 当前的视频流/字幕流/音频流所使用的{demuxIdx,streamIdx}
+    struct StreamSlot {
+        int demuxIdx = -1;
+        int streamIdx = -1; // streamIdx是指demux中同类型的流中的顺序，不是demux全局的
+        bool operator==(const StreamSlot &o) const {
+            return demuxIdx == o.demuxIdx && streamIdx == o.streamIdx;
+        }
+    };
+    EnumIndexArray<StreamSlot, MediaType> m_streams;
     // 音视频解码器
     DecodeAudio *m_decodeAudio = nullptr;
     DecodeVideo *m_decodeVideo = nullptr;
