@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "utils/episodeassetmanager.h"
+#include "types/types.h"
 #include <QFileInfo>
 #include <QHash>
 #include <QUrl>
@@ -10,10 +11,6 @@
 #include <vector>
 
 namespace {
-struct QStringHasher {
-    std::size_t operator()(const QString& s) const noexcept { return qHash(s); }
-};
-
 struct FileItem {
     QString fileName;
     QString filePath;

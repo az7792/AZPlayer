@@ -5,6 +5,8 @@
 #define TYPES_H
 #include "compat/compat.h"
 #include <limits>
+#include <QHash>
+#include <QString>
 
 AZ_EXTERN_C_BEGIN
 #include <libavcodec/avcodec.h>
@@ -51,6 +53,11 @@ struct AudioPar {
         sampleFormat = AV_SAMPLE_FMT_NONE;
         av_channel_layout_uninit(&ch_layout);
     }
+};
+
+// 供 std::unordered_map 使用 QString 作 key
+struct QStringHasher {
+    std::size_t operator()(const QString &s) const noexcept { return qHash(s); }
 };
 
 #endif /* TYPES_H */
