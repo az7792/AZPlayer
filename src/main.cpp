@@ -28,6 +28,7 @@ public:
 #include "stats/playbackstats.h"
 #include "utils/filehelper.h"
 #include "utils/powermanager.h"
+#include "utils/settingmanager.h"
 
 int main(int argc, char *argv[]) {
     const TimerResolution timerResolution{};
@@ -54,9 +55,11 @@ int main(int argc, char *argv[]) {
 
     QQmlApplicationEngine engine;
     qmlRegisterType<VideoWindow>("VideoWindow", 1, 0, "VideoWindow");
+    SettingManager setting("setting", &engine);
     engine.rootContext()->setContextProperty("MediaCtrl", &mc);
     engine.rootContext()->setContextProperty("PlaybackStats", &PlaybackStats::instance());
     engine.rootContext()->setContextProperty("FileHelper", &FileHelper::instance());
+    engine.rootContext()->setContextProperty("Setting", &setting);
     engine.rootContext()->setContextProperty("appDirPath", QCoreApplication::applicationDirPath());
 
     QObject::connect(

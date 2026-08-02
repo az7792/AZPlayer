@@ -156,6 +156,7 @@ qt_add_qml_module(appAZPlayer
             include/utils/dirtyrectmanager.h src/utils/dirtyrectmanager.cpp
             include/utils/AtomicDoubleBuffer.h
             include/utils/filehelper.h src/utils/filehelper.cpp
+            include/utils/settingmanager.h src/utils/settingmanager.cpp
             include/utils/episodeassetmanager.h src/utils/episodeassetmanager.cpp
             include/stats/playbackstats.h src/stats/playbackstats.cpp
             include/utils/spscbuffer.h src/utils/spscbuffer.cpp
