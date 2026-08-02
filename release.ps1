@@ -80,8 +80,8 @@ if (Test-Path $LicenseSource) {
     Copy-Item -Path $LicenseSource -Destination $LicenseDest -Recurse -Force
     Write-Host "LICENSES 拷贝成功。" -ForegroundColor Gray
 } else {
-    Write-Warning "未在当前目录下找到 LICENSES 文件夹。" -ForegroundColor Red
-    exiStop-WithPauset 1
+    Write-Host "未在当前目录下找到 LICENSES 文件夹。" -ForegroundColor Red
+    Stop-WithPause 1
 }
 
 # 4. 拷贝主程序
@@ -100,7 +100,7 @@ $FfmpegPatterns = @("avcode*.dll", "avformat*.dll", "avutil*.dll", "swresample*.
 foreach ($pattern in $FfmpegPatterns) {
     # 构造完整的源文件匹配路径
     $SourcePath = Join-Path $FullFfmpegPath $pattern
-    
+
     if (Test-Path $SourcePath) {
         # 如果找到了，执行拷贝
         Copy-Item -Path $SourcePath -Destination $ReleaseDir -Force
