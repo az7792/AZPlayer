@@ -17,10 +17,22 @@ Rectangle{
 
     AZButton{
         id:menuBtn
+
+        // 全屏时显示当前时间
+        property string timeText: Qt.formatTime(new Date(), "hh:mm:ss")
+
+        Timer {
+            interval: 1000
+            repeat: true
+            running: mainWindow.windowState === mainWindow.winFullScreen && topBar.visible
+            onRunningChanged: if (running) menuBtn.timeText = Qt.formatTime(new Date(), "hh:mm:ss")
+            onTriggered: menuBtn.timeText = Qt.formatTime(new Date(), "hh:mm:ss")
+        }
+
         height: parent.height
         width: 2.5 * height
         anchors.left: parent.left
-        text: "AZPlayer"
+        text: mainWindow.windowState === mainWindow.winFullScreen ? timeText : "AZPlayer"
         tooltipText: "关于"
         onClicked: appAbout.show();
     }
