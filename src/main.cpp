@@ -53,9 +53,11 @@ int main(int argc, char *argv[]) {
         qDebug() << "AZPlayer Power State Sync:" << (shouldKeepAwake ? "Awake" : "Allow Sleep");
     });
 
+    // 栈上局部变量按反向构造顺序析构，为了确保 engine 有效期间 setting 也有效，必须在 engine 之前构造
+    SettingManager setting("setting");
+
     QQmlApplicationEngine engine;
     qmlRegisterType<VideoWindow>("VideoWindow", 1, 0, "VideoWindow");
-    SettingManager setting("setting", &engine);
     engine.rootContext()->setContextProperty("MediaCtrl", &mc);
     engine.rootContext()->setContextProperty("PlaybackStats", &PlaybackStats::instance());
     engine.rootContext()->setContextProperty("FileHelper", &FileHelper::instance());
