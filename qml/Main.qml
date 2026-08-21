@@ -325,12 +325,29 @@ AZWindow {
         readonly property int leftMinWidth: mainWin.width * 0.4          // 左侧最小宽度
         readonly property int rightMinWidth: mainWin.minimumWidth * 0.4  // 右侧最小宽度
 
-        property int _rightRectWidth: 160
+        // 全屏/非全屏各自独立保存右侧宽度
+        property int _rightRectWidthNormal: 160
+        property int _rightRectWidthFull: 160
+        readonly property int activeRightRectWidth: mainWin.videoFull ? _rightRectWidthFull : _rightRectWidthNormal
+
+        // 应用右侧宽度到当前模式并更新分割条位置
+        function applyRightRectWidth(w) {
+            // 确保右侧宽度不小于最小值
+            w = Math.max(rightMinWidth, w)
+            // 确保右侧宽度不大于最大值
+            w = Math.min(w, mainWin.width - leftMinWidth - width)
+
+            if (mainWin.videoFull) _rightRectWidthFull = w
+            else _rightRectWidthNormal = w
+
+            x = mainWin.width - w - width
+        }
 
         Component.onCompleted: {
             // 只在初始化时计算一次，不建立动态绑定
-            _rightRectWidth = rightMinWidth
-            x = mainWin.width - _rightRectWidth - width
+            _rightRectWidthNormal = rightMinWidth
+            _rightRectWidthFull = rightMinWidth
+            x = mainWin.width - activeRightRectWidth - width
         }
 
         MouseArea {
@@ -344,30 +361,19 @@ AZWindow {
             drag.smoothed: false
             preventStealing: true
 
-            // 拖动时保存右侧宽度
+            // 拖动时保存当前模式下的右侧宽度
             onPositionChanged: {
                 if (drag.active) {
-                    splitter._rightRectWidth = mainWin.width - (splitter.x + splitter.width);
-                    // 确保右侧宽度不小于最小值
-                    splitter._rightRectWidth = Math.max(splitter.rightMinWidth, splitter._rightRectWidth);
+                    splitter.applyRightRectWidth(mainWin.width - (splitter.x + splitter.width))
                 }
             }
         }
 
         Connections{
             target: mainWin
-            function onWidthChanged(){
-                // 确保右侧宽度不小于最小值
-                splitter._rightRectWidth = Math.max(splitter.rightMinWidth, splitter._rightRectWidth);
-
-                // 检查是否需要调整右侧宽度以适应新的窗口大小
-                var maxPossibleRightWidth = mainWin.width - splitter.leftMinWidth - splitter.width; // 右边最大宽度
-                if (splitter._rightRectWidth > maxPossibleRightWidth) {
-                    splitter._rightRectWidth = maxPossibleRightWidth;
-                }
-
-                // 更新分割条位置
-                splitter.x = mainWin.width - splitter._rightRectWidth - splitter.width;
+            function onWidthChanged() {
+                // 应用当前模式保存的右侧宽度
+                splitter.applyRightRectWidth(splitter.activeRightRectWidth)
             }
         }
     }
@@ -382,7 +388,7 @@ AZWindow {
         function toggleSidebar(){
             canShow = !canShow
             if(mainWin.windowState === mainWin.winNormal){
-                let targetAddWidth = splitter._rightRectWidth - mainWin.resizeBorderWidth + splitter.width + 1 // +1是因为视频与splitter有1px的空隙
+                let targetAddWidth = splitter.activeRightRectWidth - mainWin.resizeBorderWidth + splitter.width + 1 // +1是因为视频与splitter有1px的空隙
                 let tmpWidth = mainWin.width + (canShow ? targetAddWidth : -targetAddWidth)
                 tmpWidth = Math.max(mainWin.minimumWidth, Math.min(Screen.desktopAvailableWidth,tmpWidth))
                 let offset = tmpWidth + mainWin.x - Screen.desktopAvailableWidth
