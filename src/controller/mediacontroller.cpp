@@ -311,11 +311,19 @@ void MediaController::setVolume(double newVolume) {
 }
 
 void MediaController::addVolume() {
-    setVolume(std::min(1.0, m_volume + 0.04));
+    // 同向连续加减时步长在1%/2%之间交替，换向后沿用上一次的步长
+    const int step = m_volumeAdd ? (3 - m_volumeStep) : m_volumeStep;
+    setVolume(std::min(1.0, m_volume + step * 0.01));
+    m_volumeStep = step;
+    m_volumeAdd = true;
 }
 
 void MediaController::subVolume() {
-    setVolume(std::max(0.0, m_volume - 0.04));
+    // 同向连续加减时步长在1%/2%之间交替，换向后沿用上一次的步长
+    const int step = m_volumeAdd ? m_volumeStep : (3 - m_volumeStep);
+    setVolume(std::max(0.0, m_volume - step * 0.01));
+    m_volumeStep = step;
+    m_volumeAdd = false;
 }
 
 void MediaController::seekBySec(double ts, double rel) {

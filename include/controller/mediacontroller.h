@@ -65,8 +65,8 @@ public slots:
     void setMuted(bool newMuted);     // 设置是否静音
     void toggleMuted();               // 切换是否静音
     void setVolume(double newVolume); // 设置音量
-    void addVolume();                 // 增加0.04音量
-    void subVolume();                 // 减少0.04音量
+    void addVolume();                 // 增加音量，步长在1%/2%之间交替
+    void subVolume();                 // 减少音量，步长在1%/2%之间交替
     void setAutoLoadExtSub(bool newAutoLoadExtSub); // 设置是否自动加载外部字幕
 
     void seekBySec(double ts, double rel); // seek到指定位置(秒)
@@ -136,6 +136,8 @@ private:
     bool m_paused = true;    // 是否暂停
     bool m_muted = false;    // 是否静音
     double m_volume = 1.0;   // 表现音量，非静音状态下才等于实际音量
+    int m_volumeStep = 1;    // 音量加减步长(%/次)，连续同向时在1%和2%之间交替
+    bool m_volumeAdd = true; // 上一次音量操作是否为增加
     int m_duration = 0;      // 总时长（秒）
     int m_progress = 0;      // 播放进度（秒）
     bool m_loopOnEnd = true; // true播完重播 | false播完暂停
