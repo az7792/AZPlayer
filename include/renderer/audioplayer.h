@@ -7,6 +7,7 @@
 #include "compat/compat.h"
 #include "types/ptrs.h"
 #include "utils/spscbuffer.h"
+#include <QByteArray>
 #include <QObject>
 #include <thread>
 
@@ -41,6 +42,9 @@ public:
 
     [[nodiscard]] double volume() const;
     void setVolume(double newVolume);
+
+    // 切换音频输出设备；deviceId 为空表示跟随系统默认设备
+    void switchOutputDevice(const QByteArray &deviceId);
 
 signals:
     void seeked();
@@ -77,6 +81,16 @@ private:
     bool m_forceRefresh{false};
     double m_volume = 1.0;
 
+    QByteArray m_selectedDeviceId; // 当前选择的输出设备(id字节)，空=跟随系统默认设备
+
+    // ==== 重建设备所需参数（init 时保存，切换设备时使用）====
+    static constexpr int kMaxSavedChannels = 254; // 与 miniaudio MA_MAX_CHANNELS 一致
+    uint32_t m_savedSampleRate = 0;
+    int32_t m_savedFormat = 0; // ma_format
+    uint32_t m_savedChannels = 0;
+    bool m_savedUseChannelMap = false;
+    int32_t m_savedChannelMap[kMaxSavedChannels] = {};
+
 private:
     [[nodiscard]] bool getFrm(AVFrmItem &item);
 
@@ -85,6 +99,9 @@ private:
 
     // 从队列获取一帧并更新 PCM 数据
     [[nodiscard]] bool updatePcmFromFrameQueue();
+
+    // 用 init 时保存的参数重建 miniaudio 设备（切换输出设备时调用）
+    [[nodiscard]] bool rebuildDevice();
 
     static void miniaudio_data_callback(ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount);
 };

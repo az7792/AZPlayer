@@ -141,6 +141,7 @@ qt_add_qml_module(appAZPlayer
             include/decode/decodebase.h src/decode/decodebase.cpp
             include/decode/decodeaudio.h src/decode/decodeaudio.cpp
             include/renderer/audioplayer.h src/renderer/audioplayer.cpp
+            include/renderer/audiodevicemanager.h src/renderer/audiodevicemanager.cpp
             include/renderer/videorenderer.h src/renderer/videorenderer.cpp
             include/clock/globalclock.h src/clock/globalclock.cpp
             include/renderer/videoplayer.h src/renderer/videoplayer.cpp

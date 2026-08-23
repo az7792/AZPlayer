@@ -4,6 +4,7 @@
 #include "controller/mediacontroller.h"
 #include <QFileInfo>
 #include "clock/globalclock.h"
+#include "renderer/audiodevicemanager.h"
 #include "renderer/videorenderer.h"
 #include "stats/playbackstats.h"
 #include "utils/episodeassetmanager.h"
@@ -44,6 +45,11 @@ MediaController::MediaController(QObject *parent)
 
     m_audioPlayer = new AudioPlayer(parent);
     m_videoPlayer = new VideoPlayer(parent);
+
+    // 输出设备选择变化：播放中立即切换，未播放时记录待下次init生效
+    QObject::connect(&AudioDeviceManager::instance(), &AudioDeviceManager::selectionChanged, this, [&]() {
+        m_audioPlayer->switchOutputDevice(AudioDeviceManager::instance().selectedIdBytes());
+    });
 
     // ==== seek ====
     QObject::connect(m_audioPlayer, &AudioPlayer::seeked, this, &MediaController::seeked);

@@ -210,6 +210,25 @@ bool AudioPlayer::init(const AVCodecParameters *codecParams, sharedFrmQueue frmB
     m_pcmBuffer = new SPSCBuffer(roundUpPow2(pcmBufferSize));
     qDebug() << "pcmBuffer capacity:" << m_pcmBuffer->capacity();
 
+    // 记录重建设备所需的参数（切换输出设备时使用）
+    m_savedSampleRate = deviceConfig.sampleRate;
+    m_savedFormat = static_cast<int32_t>(deviceConfig.playback.format);
+    m_savedChannels = deviceConfig.playback.channels;
+    m_savedUseChannelMap = (deviceConfig.playback.pChannelMap != nullptr);
+    if (m_savedUseChannelMap) {
+        for (int i = 0; i < kMaxSavedChannels; ++i) {
+            m_savedChannelMap[i] = static_cast<int32_t>(channelMap[i]);
+        }
+    }
+
+    // 应用用户选择的输出设备；默认为空(跟随系统默认设备)
+    ma_device_id selectedId;
+    if (!m_selectedDeviceId.isEmpty()) {
+        Q_ASSERT(m_selectedDeviceId.size() == sizeof(ma_device_id));
+        memcpy(&selectedId, m_selectedDeviceId.constData(), sizeof(ma_device_id));
+        deviceConfig.playback.pDeviceID = &selectedId;
+    }
+
     deviceConfig.dataCallback = miniaudio_data_callback;
     deviceConfig.pUserData = this;
 
@@ -350,6 +369,73 @@ double AudioPlayer::volume() const {
 void AudioPlayer::setVolume(double newVolume) {
     ma_device_set_master_volume(m_audioDevice, newVolume);
     m_volume = newVolume;
+}
+
+void AudioPlayer::switchOutputDevice(const QByteArray &deviceId) {
+    if (m_selectedDeviceId == deviceId) {
+        return; // 无变化
+    }
+
+    // 未在播放（未初始化）时仅记录，下次 init 时生效
+    if (!m_initialized) {
+        m_selectedDeviceId = deviceId;
+        return;
+    }
+
+    Q_ASSERT(m_audioDevice != nullptr);
+    const ma_device_state prevState = ma_device_get_state(m_audioDevice);
+    const bool wasRunning = (prevState == ma_device_state_started || prevState == ma_device_state_starting);
+
+    // 只重建 miniaudio 设备；swr / pcmBuffer / PCM 线程均不受影响
+    ma_device_uninit(m_audioDevice);
+    m_selectedDeviceId = deviceId;
+
+    if (!rebuildDevice()) {
+        qDebug() << "AudioPlayer: 切换音频输出设备失败，回退到跟随系统默认设备";
+        m_selectedDeviceId.clear();
+        if (!rebuildDevice()) {
+            qDebug() << "AudioPlayer: 重新初始化系统默认设备也失败";
+        }
+    }
+
+    setVolume(m_volume);
+    if (wasRunning) {
+        if (ma_device_start(m_audioDevice) != MA_SUCCESS) {
+            qDebug() << "AudioPlayer: 切换设备后无法启动音频设备";
+        }
+    }
+}
+
+bool AudioPlayer::rebuildDevice() {
+    Q_ASSERT(m_audioDevice != nullptr);
+
+    ma_device_config config = ma_device_config_init(ma_device_type_playback);
+    config.sampleRate = m_savedSampleRate;
+    config.playback.format = static_cast<ma_format>(m_savedFormat);
+    config.playback.channels = m_savedChannels;
+
+    ma_channel channelMap[MA_MAX_CHANNELS];
+    if (m_savedUseChannelMap) {
+        for (uint32_t i = 0; i < MA_MAX_CHANNELS; ++i) {
+            channelMap[i] = static_cast<ma_channel>(m_savedChannelMap[i]);
+        }
+        config.playback.pChannelMap = channelMap;
+    }
+
+    ma_device_id selectedId;
+    if (!m_selectedDeviceId.isEmpty()) {
+        Q_ASSERT(m_selectedDeviceId.size() == sizeof(ma_device_id));
+        memcpy(&selectedId, m_selectedDeviceId.constData(), sizeof(ma_device_id));
+        config.playback.pDeviceID = &selectedId;
+    }
+
+    config.dataCallback = miniaudio_data_callback;
+    config.pUserData = this;
+
+    if (ma_device_init(NULL, &config, m_audioDevice) != MA_SUCCESS) {
+        return false;
+    }
+    return true;
 }
 
 bool AudioPlayer::getFrm(AVFrmItem &item) {

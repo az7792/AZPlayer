@@ -200,5 +200,79 @@ Popup{
         }
     }
 
-    component MyAudioCtrl:Item{}
+    component MyAudioCtrl: Column {
+        id: audioCtrlColumn
+        spacing: 5
+
+        property var deviceModel: []
+
+        // 从 AudioDevices 拉取设备列表，头部加"跟随系统"项
+        function refreshDevices() {
+            const list = AudioDevices.playbackDevices()
+            const out = [{ name: "跟随系统", isDefault: false, deviceIndex: -1 }]
+            for (let i = 0; i < list.length; ++i) {
+                const item = list[i]
+                out.push({
+                    name: item.isDefault ? item.name + " (默认)" : item.name,
+                    isDefault: item.isDefault,
+                    deviceIndex: i
+                })
+            }
+            audioCtrlColumn.deviceModel = out
+        }
+
+        // 将 AudioDevices.selectedIndex 映射到下拉框索引
+        function syncSelection() {
+            const idx = AudioDevices.selectedIndex()
+            for (let i = 0; i < audioCtrlColumn.deviceModel.length; ++i) {
+                if (audioCtrlColumn.deviceModel[i].deviceIndex === idx) {
+                    deviceCombo.currentIndex = i
+                    return
+                }
+            }
+            deviceCombo.currentIndex = 0 // 跟随系统
+        }
+
+        Row {
+            spacing: 8
+            Text {
+                text: "输出设备:"
+                color: "#ebebeb"
+                height: 30
+                verticalAlignment: Text.AlignVCenter
+            }
+            AZComboBox {
+                id: deviceCombo
+                width: 240
+                height: 30
+                textRole: "name"
+                model: audioCtrlColumn.deviceModel
+                onActivated: (index) => {
+                    AudioDevices.selectDeviceByIndex(deviceCombo.model[index].deviceIndex)
+                }
+                onPopupOpenedChanged: {
+                    if (deviceCombo.popupOpened) {
+                        audioCtrlColumn.refreshDevices()
+                        audioCtrlColumn.syncSelection()
+                    }
+                }
+            }
+        }
+
+        Component.onCompleted: {
+            audioCtrlColumn.refreshDevices()
+            audioCtrlColumn.syncSelection()
+        }
+
+        Connections {
+            target: AudioDevices
+            function onDevicesChanged() {
+                audioCtrlColumn.refreshDevices()
+                audioCtrlColumn.syncSelection()
+            }
+            function onSelectionChanged() {
+                audioCtrlColumn.syncSelection()
+            }
+        }
+    }
 }

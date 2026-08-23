@@ -24,6 +24,7 @@ public:
 #endif
 
 #include "controller/mediacontroller.h"
+#include "renderer/audiodevicemanager.h"
 #include "renderer/videorenderer.h"
 #include "stats/playbackstats.h"
 #include "utils/filehelper.h"
@@ -62,6 +63,7 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("PlaybackStats", &PlaybackStats::instance());
     engine.rootContext()->setContextProperty("FileHelper", &FileHelper::instance());
     engine.rootContext()->setContextProperty("Setting", &setting);
+    engine.rootContext()->setContextProperty("AudioDevices", &AudioDeviceManager::instance());
     engine.rootContext()->setContextProperty("appDirPath", QCoreApplication::applicationDirPath());
 
     QObject::connect(
