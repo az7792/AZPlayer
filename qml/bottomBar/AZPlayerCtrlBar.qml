@@ -173,6 +173,7 @@ Item{
         AZComboBox{
             id: chapterComboBox
             displayText: "章节"
+            model: []
             width: 45
             height: 20
             enabled: model.length > 0
