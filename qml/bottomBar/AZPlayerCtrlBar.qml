@@ -175,6 +175,7 @@ Item{
             displayText: "章节"
             width: 45
             height: 20
+            enabled: model.length > 0
             anchors.left: mediaDurationText2.right
             anchors.leftMargin: 10
             anchors.verticalCenter: parent.verticalCenter

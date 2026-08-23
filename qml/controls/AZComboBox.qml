@@ -35,7 +35,7 @@ ComboBox {
     background: Rectangle{
         implicitWidth: 30
         implicitHeight: 40
-        color: root.pressed ? "#252525" : "#3b3b3b"
+        color: root.enabled ? (root.pressed ? "#252525" : "#3b3b3b") : "#2b2b2b"
         border.width: root.visualFocus ? 2 : 1
     }
 
@@ -47,7 +47,7 @@ ComboBox {
         anchors.verticalCenter: root.verticalCenter
         width: 16
         height: 16
-        color: "#ebebeb"
+        color: root.enabled ? "#ebebeb" : "#747474"
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }
@@ -58,7 +58,7 @@ ComboBox {
 
         text: root.displayText
         font: root.font
-        color: root.pressed ? "white" : "#ebebeb"
+        color: root.enabled ? "#ebebeb" : "#747474"
         verticalAlignment: Text.AlignVCenter
     }
 
