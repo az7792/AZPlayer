@@ -343,11 +343,11 @@ void AudioPlayer::togglePaused() {
     }
 }
 
-double AudioPlayer::volume() const {
+float AudioPlayer::volume() const {
     return m_volume;
 }
 
-void AudioPlayer::setVolume(double newVolume) {
+void AudioPlayer::setVolume(float newVolume) {
     ma_device_set_master_volume(m_audioDevice, newVolume);
     m_volume = newVolume;
 }

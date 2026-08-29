@@ -3,6 +3,7 @@
 
 #include "controller/mediacontroller.h"
 #include <QFileInfo>
+#include <algorithm>
 #include "clock/globalclock.h"
 #include "renderer/videorenderer.h"
 #include "stats/playbackstats.h"
@@ -176,7 +177,7 @@ bool MediaController::open(const QUrl &URL) {
     setProgress(0);
     GlobalClock::instance().reset();
     GlobalClock::instance().setMainClockType(ClockType::AUDIO); // 默认
-    m_audioPlayer->setVolume(m_muted ? 0.0 : m_volume);         // start之前设置好
+    m_audioPlayer->setVolume(m_muted ? 0.0f : m_volume * 0.01f); // start之前设置好
 
     if (!haveAudio && !haveVideo) {
         qDebug() << "文件不包含视频和音频";
@@ -293,27 +294,32 @@ void MediaController::setMuted(bool newMuted) {
         return;
     m_muted = newMuted;
     // 不要使用 MediaController::setVolume, 因为设置音量时会强制解除静音
-    m_audioPlayer->setVolume(m_muted ? 0.0 : m_volume);
+    m_audioPlayer->setVolume(m_muted ? 0.0f : m_volume * 0.01f);
     emit mutedChanged();
 }
 
-double MediaController::volume() const {
+int MediaController::volume() const {
     return m_volume;
 }
 
-void MediaController::setVolume(double newVolume) {
-    if (qFuzzyCompare(m_volume, newVolume))
-        return;
-    m_audioPlayer->setVolume(newVolume);
-    m_volume = newVolume;
-    setMuted(false);
-    emit volumeChanged();
+void MediaController::setVolume(int newVolume) {
+    newVolume = std::clamp(newVolume, 0, 100);
+
+    if (m_volume != newVolume) {
+        m_volume = newVolume;
+        emit volumeChanged();
+    }
+
+    if (m_muted)
+        setMuted(false);
+    else
+        m_audioPlayer->setVolume(m_volume * 0.01f);
 }
 
 void MediaController::addVolume() {
     // 同向连续加减时步长在1%/2%之间交替，换向后沿用上一次的步长
     const int step = m_volumeAdd ? (3 - m_volumeStep) : m_volumeStep;
-    setVolume(std::min(1.0, m_volume + step * 0.01));
+    setVolume(m_volume + step);
     m_volumeStep = step;
     m_volumeAdd = true;
 }
@@ -321,7 +327,7 @@ void MediaController::addVolume() {
 void MediaController::subVolume() {
     // 同向连续加减时步长在1%/2%之间交替，换向后沿用上一次的步长
     const int step = m_volumeAdd ? m_volumeStep : (3 - m_volumeStep);
-    setVolume(std::max(0.0, m_volume - step * 0.01));
+    setVolume(m_volume - step);
     m_volumeStep = step;
     m_volumeAdd = false;
 }

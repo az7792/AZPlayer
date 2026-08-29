@@ -26,7 +26,7 @@ public:
     [[nodiscard]] bool paused() const;
     void setPaused(bool newPaused); // 仅用于修改数值产生信号
 
-    [[nodiscard]] double volume() const;
+    [[nodiscard]] int volume() const;
 
     [[nodiscard]] bool muted() const;
 
@@ -64,7 +64,7 @@ public slots:
     void togglePaused();              // 切换是否暂停
     void setMuted(bool newMuted);     // 设置是否静音
     void toggleMuted();               // 切换是否静音
-    void setVolume(double newVolume); // 设置音量
+    void setVolume(int newVolume);    // 设置音量(0-100)，此时会解除静音
     void addVolume();                 // 增加音量，步长在1%/2%之间交替
     void subVolume();                 // 减少音量，步长在1%/2%之间交替
     void setAutoLoadExtSub(bool newAutoLoadExtSub); // 设置是否自动加载外部字幕
@@ -135,8 +135,8 @@ private:
     bool m_opened = false;   // 是否打开文件
     bool m_paused = true;    // 是否暂停
     bool m_muted = false;    // 是否静音
-    double m_volume = 1.0;   // 表现音量，非静音状态下才等于实际音量
-    int m_volumeStep = 1;    // 音量加减步长(%/次)，连续同向时在1%和2%之间交替
+    int m_volume = 100;      // 用户设置的音量(0-100)，静音时不改变
+    int m_volumeStep = 1;    // 音量加减步长，连续同向时在1%和2%之间交替
     bool m_volumeAdd = true; // 上一次音量操作是否为增加
     int m_duration = 0;      // 总时长（秒）
     int m_progress = 0;      // 播放进度（秒）
@@ -144,7 +144,7 @@ private:
     bool m_played = false;   // 是否播完
     bool m_autoLoadExtSub = true; // 是否自动加载外部字幕
     Q_PROPERTY(bool paused READ paused WRITE setPaused NOTIFY pausedChanged FINAL)
-    Q_PROPERTY(double volume READ volume WRITE setVolume NOTIFY volumeChanged FINAL)
+    Q_PROPERTY(int volume READ volume WRITE setVolume NOTIFY volumeChanged FINAL)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged FINAL)
     Q_PROPERTY(int duration READ duration WRITE setDuration NOTIFY durationChanged FINAL)
     Q_PROPERTY(bool opened READ opened WRITE setOpened NOTIFY openedChanged FINAL)

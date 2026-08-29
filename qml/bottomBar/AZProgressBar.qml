@@ -71,7 +71,7 @@ Rectangle{
         id:volumeBtn
         height: parent.height
         width: height
-        anchors.right: volumSlider.left
+        anchors.right: volumeSlider.left
         iconWidth: 16
         iconHeight: 16
         iconSource: MediaCtrl.muted ? "qrc:/icon/volume_off.png" : "qrc:/icon/volume_on.png"
@@ -82,14 +82,14 @@ Rectangle{
     }
 
     AZSlider{
-        id:volumSlider
+        id:volumeSlider
         height: parent.height
         width: 100
         anchors.right: parent.right
-        from: 0.0
+        from: 0
         value: MediaCtrl.volume
-        to: 1.0
-        stepSize: 0.01
+        to: 100
+        stepSize: 1
         snapMode: Slider.SnapOnRelease
         onMoved:{
             MediaCtrl.setVolume(value);

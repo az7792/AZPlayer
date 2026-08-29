@@ -39,8 +39,8 @@ public:
 
     void togglePaused();
 
-    [[nodiscard]] double volume() const;
-    void setVolume(double newVolume);
+    [[nodiscard]] float volume() const;
+    void setVolume(float newVolume);
 
 signals:
     void seeked();
@@ -75,7 +75,7 @@ private:
     std::atomic<bool> m_stop{true};
     std::atomic<bool> m_paused{false};
     bool m_forceRefresh{false};
-    double m_volume = 1.0;
+    float m_volume = 1.0f;
 
 private:
     [[nodiscard]] bool getFrm(AVFrmItem &item);

@@ -15,7 +15,7 @@ QtObject {
     readonly property string keyMuted: "muted"
     readonly property string keyAutoLoadExtSub: "autoLoadExtSub"
 
-    property real volume: store.doubleValue(keyVolume, 1.0)                // 音量
+    property int volume: store.intValue(keyVolume, 100)                    // 音量(0-100)
     property bool muted: store.boolValue(keyMuted, false)                  // 静音
     property bool autoLoadExtSub: store.boolValue(keyAutoLoadExtSub, true) // 自动加载外部字幕
 
@@ -33,7 +33,7 @@ QtObject {
     property Connections storeConnections: Connections {
         target: store
         function onValueChanged(key, value) {
-            if (key === root.keyVolume) root.volume = resolveValue(value, 1.0)
+            if (key === root.keyVolume) root.volume = resolveValue(value, 100)
             else if (key === root.keyMuted) root.muted = resolveValue(value, false)
             else if (key === root.keyAutoLoadExtSub) root.autoLoadExtSub = resolveValue(value, true)
         }
