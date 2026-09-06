@@ -61,5 +61,6 @@
         <file>qml/videoArea/AZVideoAngleDialArea.qml</file>
         <file>qml/settings/AZSettings.qml</file>
         <file>qml/mediaDropPanel/AZMediaDropPanel.qml</file>
+        <file>qml/controls/AZOSD.qml</file>
     </qresource>
 </RCC>

@@ -97,6 +97,7 @@ qt_add_executable(appAZPlayer
 
 set_source_files_properties(
     qml/controls/AZTooltip.qml
+    qml/controls/AZOSD.qml
     qml/playerState/AZPlayerState.qml
     qml/settings/AZSettings.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
@@ -114,6 +115,7 @@ qt_add_qml_module(appAZPlayer
               qml/controls/AZTextButton.qml
               qml/controls/AZTextInput.qml
               qml/controls/AZTooltip.qml
+              qml/controls/AZOSD.qml
               qml/controls/AZCheckBox.qml
               qml/controls/AZComboBox.qml
               qml/controls/AZWindow.qml

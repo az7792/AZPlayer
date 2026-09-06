@@ -17,15 +17,24 @@ AZWindow {
     title: qsTr("AZPlayer")
     backgroundColor: "black"
 
+    // ====音量/静音OSD提示====
+    property bool initDone: false          // 初始音量/静音同步完成前不显示OSD
+    property bool suppressMuteOsd: false   // 音量改变引发的解除静音，抑制静音OSD避免覆盖音量OSD
+
     // 初始化
     Component.onCompleted: {
         AZTooltip.mainWindow = mainWin // 全局提示工具
+
+        // OSD挂载到视频区域
+        AZOSD.parent = videoArea
+        AZOSD.anchors.fill = videoArea
 
         // 加载设置
         // 需要先设置音量再设置是否静音，因为设置音量时会强制解除静音
         MediaCtrl.setVolume(AZSettings.volume)
         MediaCtrl.setMuted(AZSettings.muted)
         MediaCtrl.setAutoLoadExtSub(AZSettings.autoLoadExtSub)
+        initDone = true
         console.log("mainWin 初始化完成")
     }
 
@@ -35,6 +44,25 @@ AZWindow {
         function onMutedChanged() { AZSettings.muted = MediaCtrl.muted }
         function onVolumeChanged() { AZSettings.volume = MediaCtrl.volume }
         function onAutoLoadExtSubChanged() { AZSettings.autoLoadExtSub = MediaCtrl.autoLoadExtSub }
+    }
+
+    // 音量/静音状态变化时在画面上提示
+    Connections {
+        target: MediaCtrl
+        function onVolumeChanged() {
+            if (!mainWin.initDone) return
+            mainWin.suppressMuteOsd = true // setVolume 会解除静音，让本次只显示音量
+            AZOSD.show("音量: %1%".arg(MediaCtrl.volume), 1000)
+        }
+        function onMutedChanged() {
+            if (!mainWin.initDone) return
+            if (MediaCtrl.muted) {
+                AZOSD.show("静音: 开启" , 1000)
+            } else if (!mainWin.suppressMuteOsd) {
+                AZOSD.show("静音: 关闭" , 1000)
+            }
+            mainWin.suppressMuteOsd = false
+        }
     }
 
     // 启动参数
