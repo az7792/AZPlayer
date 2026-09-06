@@ -28,39 +28,4 @@
         <file alias="check_box_checked.png">resource/icon/check_box_checked.png</file>
         <file alias="list_opened.png">resource/icon/list_opened.png</file>
     </qresource>
-    <qresource prefix="/qt/qml">
-        <file>qml/bottomBar/AZBottomBar.qml</file>
-        <file>qml/Main.qml</file>
-        <file>qml/topBar/AZPlayerAbout.qml</file>
-        <file>qml/topBar/AZTopBar.qml</file>
-        <file>qml/topBar/AZWindowControls.qml</file>
-        <file>qml/sideBar/AZStreamView.qml</file>
-        <file>qml/fileDialog/AZFileDialog.qml</file>
-        <file>qml/controls/AZButton.qml</file>
-        <file>qml/controls/AZDial.qml</file>
-        <file>qml/controls/AZListView.qml</file>
-        <file>qml/controls/AZSlider.qml</file>
-        <file>qml/controls/AZTabBar.qml</file>
-        <file>qml/controls/AZTextButton.qml</file>
-        <file>qml/controls/AZTextInput.qml</file>
-        <file>qml/controls/AZTooltip.qml</file>
-        <file>qml/bottomBar/AZPlayerCtrlBar.qml</file>
-        <file>qml/bottomBar/AZProgressBar.qml</file>
-        <file>qml/sideBar/AZSideBar.qml</file>
-        <file>qml/sideBar/AZFileTab.qml</file>
-        <file>qml/sideBar/AZSubtitleTab.qml</file>
-        <file>qml/sideBar/AZAudioTab.qml</file>
-        <file>qml/bottomBar/AZPlayerSetting.qml</file>
-        <file>qml/controls/AZCheckBox.qml</file>
-        <file>qml/controls/AZComboBox.qml</file>
-        <file>qml/controls/AZWindow.qml</file>
-        <file>qml/controls/AZEventBlocker.qml</file>
-        <file>qml/videoArea/AZVideoArea.qml</file>
-        <file>qml/playerState/AZPlayerState.qml</file>
-        <file>qml/videoArea/AZPlaybackStatsArea.qml</file>
-        <file>qml/videoArea/AZVideoAngleDialArea.qml</file>
-        <file>qml/settings/AZSettings.qml</file>
-        <file>qml/mediaDropPanel/AZMediaDropPanel.qml</file>
-        <file>qml/controls/AZOSD.qml</file>
-    </qresource>
 </RCC>
