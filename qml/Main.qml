@@ -65,6 +65,15 @@ AZWindow {
         }
     }
 
+    // 缩放比例变化时在画面上提示
+    Connections {
+        target: AZPlayerState
+        function onVideoScaleChanged() {
+            if (!mainWin.initDone) return
+            AZOSD.show("缩放: %1%".arg(AZPlayerState.videoScale), 1000)
+        }
+    }
+
     // 启动参数
     function onStartupFiles(files) {
         AZPlayerState.mediafileDialog.onStartupFiles(files)
