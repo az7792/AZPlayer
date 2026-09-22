@@ -31,9 +31,9 @@ AZWindow {
 
         // 加载设置
         // 需要先设置音量再设置是否静音，因为设置音量时会强制解除静音
-        MediaCtrl.setVolume(AZSettings.volume)
-        MediaCtrl.setMuted(AZSettings.muted)
-        MediaCtrl.setAutoLoadExtSub(AZSettings.autoLoadExtSub)
+        MediaCtrl.setVolume(Setting.intValue("volume", 100))
+        MediaCtrl.setMuted(Setting.boolValue("muted", false))
+        MediaCtrl.setAutoLoadExtSub(Setting.boolValue("autoLoadExtSub", true))
         initDone = true
         console.log("mainWin 初始化完成")
     }
@@ -41,9 +41,9 @@ AZWindow {
     // 同步设置
     Connections {
         target: MediaCtrl
-        function onMutedChanged() { AZSettings.muted = MediaCtrl.muted }
-        function onVolumeChanged() { AZSettings.volume = MediaCtrl.volume }
-        function onAutoLoadExtSubChanged() { AZSettings.autoLoadExtSub = MediaCtrl.autoLoadExtSub }
+        function onMutedChanged() { Setting.setValue("muted", MediaCtrl.muted) }
+        function onVolumeChanged() { Setting.setValue("volume", MediaCtrl.volume) }
+        function onAutoLoadExtSubChanged() { Setting.setValue("autoLoadExtSub", MediaCtrl.autoLoadExtSub) }
     }
 
     // 音量/静音状态变化时在画面上提示

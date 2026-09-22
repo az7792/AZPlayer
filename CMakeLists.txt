@@ -99,7 +99,6 @@ set_source_files_properties(
     qml/controls/AZTooltip.qml
     qml/controls/AZOSD.qml
     qml/playerState/AZPlayerState.qml
-    qml/settings/AZSettings.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
 
@@ -137,7 +136,6 @@ qt_add_qml_module(appAZPlayer
               qml/playerState/AZPlayerState.qml
               qml/videoArea/AZPlaybackStatsArea.qml
               qml/videoArea/AZVideoAngleDialArea.qml
-              qml/settings/AZSettings.qml
               qml/mediaDropPanel/AZMediaDropPanel.qml
     SOURCES include/demux/demux.h src/demux/demux.cpp
             include/decode/decodebase.h src/decode/decodebase.cpp
