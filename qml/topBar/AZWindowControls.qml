@@ -22,22 +22,22 @@ Rectangle{
 
             if(tmp === targetWindow.winMaximized){
                 fullScreenBtn.tooltipText = "全屏"
-                fullScreenBtn.iconSource = "qrc:/icon/fullscreen.png"
+                fullScreenBtn.iconSource = "qrc:/icon/fullscreen.svg"
 
                 maximizeBtn.tooltipText = "恢复"
-                maximizeBtn.iconSource = "qrc:/icon/restore.png"
+                maximizeBtn.iconSource = "qrc:/icon/restore.svg"
             }else if(tmp === targetWindow.winFullScreen){
                 fullScreenBtn.tooltipText = "退出全屏"
-                fullScreenBtn.iconSource = "qrc:/icon/fullscreen_exit.png"
+                fullScreenBtn.iconSource = "qrc:/icon/fullscreen_exit.svg"
 
                 maximizeBtn.tooltipText = "恢复"
-                maximizeBtn.iconSource = "qrc:/icon/restore.png"
+                maximizeBtn.iconSource = "qrc:/icon/restore.svg"
             }else if(tmp === targetWindow.winNormal){
                 maximizeBtn.tooltipText = "最大化"
-                maximizeBtn.iconSource = "qrc:/icon/maximize.png"
+                maximizeBtn.iconSource = "qrc:/icon/maximize.svg"
 
                 fullScreenBtn.tooltipText = "全屏"
-                fullScreenBtn.iconSource = "qrc:/icon/fullscreen.png"
+                fullScreenBtn.iconSource = "qrc:/icon/fullscreen.svg"
             }
         }
     }
@@ -71,7 +71,7 @@ Rectangle{
             Layout.fillHeight: true
             iconWidth: root.iconWidth
             iconHeight: root.iconHeight
-            iconSource: "qrc:/icon/minimize.png"
+            iconSource: "qrc:/icon/minimize.svg"
             tooltipText: "最小化"
             onLeftClicked: targetWindow.minimize()
         }
@@ -82,7 +82,9 @@ Rectangle{
             Layout.fillHeight: true
             iconWidth: root.iconWidth
             iconHeight: root.iconHeight
-            iconSource: "qrc:/icon/maximize.png"
+            iconSource: "qrc:/icon/maximize.svg"
+            iconRotation: iconSource === "qrc:/icon/restore.svg" ? 180 : 0
+            iconScale: iconSource === "qrc:/icon/restore.svg" ? 0.7 : 0.85
             tooltipText: "最大化"
             onLeftClicked: controlBar.toggleMaximized()
         }
@@ -93,7 +95,7 @@ Rectangle{
             Layout.fillHeight: true
             iconWidth: root.iconWidth
             iconHeight: root.iconHeight
-            iconSource: "qrc:/icon/fullscreen.png"
+            iconSource: "qrc:/icon/fullscreen.svg"
             tooltipText: "全屏"
             onLeftClicked: controlBar.toggleFullScreen()
         }
@@ -104,7 +106,7 @@ Rectangle{
             Layout.fillHeight: true
             iconWidth: root.iconWidth
             iconHeight: root.iconHeight
-            iconSource: "qrc:/icon/close.png"
+            iconSource: "qrc:/icon/close.svg"
             tooltipText: "关闭"
             onLeftClicked: targetWindow.close()
         }

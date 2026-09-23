@@ -13,6 +13,8 @@ Rectangle {
 
     property alias text: label.text            // 可选文字标签
     property string iconSource: ""             // 第一个图标
+    property real iconRotation: 0              // 图标旋转角度
+    property real iconScale: 1.0               // 图标缩放倍率
     property int iconWidth: width * 0.6         // 图片宽度
     property int iconHeight: height * 0.6       // 图片高度
     property color defaultColor: "#1c1c1c"      // 默认背景色
@@ -33,6 +35,8 @@ Rectangle {
         fillMode: Image.PreserveAspectFit
         width: iconWidth
         height: iconHeight
+        rotation: root.iconRotation
+        scale: root.iconScale
     }
 
     // 文字

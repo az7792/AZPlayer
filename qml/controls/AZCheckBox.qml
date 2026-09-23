@@ -36,7 +36,7 @@ Item {
                     width: 16
                     height: 16
                     visible: root.checked
-                    source: "qrc:/icon/check_box_checked.png"
+                    source: "qrc:/icon/check_box_checked.svg"
                 }
             }
 

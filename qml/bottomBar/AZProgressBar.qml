@@ -74,7 +74,7 @@ Rectangle{
         anchors.right: volumeSlider.left
         iconWidth: 16
         iconHeight: 16
-        iconSource: MediaCtrl.muted ? "qrc:/icon/volume_off.png" : "qrc:/icon/volume_on.png"
+        iconSource: MediaCtrl.muted ? "qrc:/icon/volume_off.svg" : "qrc:/icon/volume_on.svg"
         tooltipText: "静音 开/关"
         onLeftClicked: {
             MediaCtrl.toggleMuted();

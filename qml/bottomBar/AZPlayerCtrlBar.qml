@@ -31,7 +31,7 @@ Item{
             width: height
             iconWidth: 16
             iconHeight: 16
-            iconSource: MediaCtrl.paused ? "qrc:/icon/play.png" : "qrc:/icon/pause.png"
+            iconSource: MediaCtrl.paused ? "qrc:/icon/play.svg" : "qrc:/icon/pause.svg"
             tooltipText: MediaCtrl.paused ? "播放" : "暂停"
             onLeftClicked: MediaCtrl.togglePaused();
         }
@@ -41,7 +41,7 @@ Item{
             width: height
             iconWidth: 16
             iconHeight: 16
-            iconSource: "qrc:/icon/stop.png"
+            iconSource: "qrc:/icon/stop.svg"
             tooltipText: "停止"
             onLeftClicked: fileListView.stopActiveItem()
         }
@@ -51,7 +51,7 @@ Item{
             width: height
             iconWidth: 16
             iconHeight: 16
-            iconSource: "qrc:/icon/skip_previous.png"
+            iconSource: "qrc:/icon/skip_previous.svg"
             tooltipText: "L:快退，R:上一个"
             onLeftClicked: MediaCtrl.fastRewind()
             onRightClicked: playerCtrlBar.fileListView.openPrev()
@@ -62,7 +62,7 @@ Item{
             width: height
             iconWidth: 16
             iconHeight: 16
-            iconSource: "qrc:/icon/skip_next.png"
+            iconSource: "qrc:/icon/skip_next.svg"
             tooltipText: "L:快进，R:下一个"
             onLeftClicked: MediaCtrl.fastForward()
             onRightClicked: playerCtrlBar.fileListView.openNext()
@@ -73,7 +73,7 @@ Item{
             // 0播完重播 1列表顺序 2列表随机
             property int mode: 1
             // 图标路径 (对应 mode 0, 1, 2)
-            property var iconList: ["qrc:/icon/repeat_one.png", "qrc:/icon/repeat.png", "qrc:/icon/shuffle.png"]
+            property var iconList: ["qrc:/icon/repeat_one.svg", "qrc:/icon/repeat.svg", "qrc:/icon/shuffle.svg"]
             // 提示文本 (对应 mode 0, 1, 2)
             property var tooltipList: ["播完重播", "顺序播放", "随机播放"]
 
@@ -116,7 +116,7 @@ Item{
             width: height
             iconWidth: 16
             iconHeight: 16
-            iconSource: "qrc:/icon/open.png"
+            iconSource: "qrc:/icon/open.svg"
             tooltipText: "打开文件"
             onLeftClicked: AZPlayerState.mediafileDialog.openMediaFile()
         }
@@ -203,7 +203,7 @@ Item{
         iconHeight: 20
         iconWidth: 20
         onLeftClicked: requestOpenSetting()
-        iconSource: playerCtrlBar.playerSettingOpened ? "qrc:/icon/player_settings_opened.png" : "qrc:/icon/player_settings_closed.png"
+        iconSource: playerCtrlBar.playerSettingOpened ? "qrc:/icon/player_settings_opened.svg" : "qrc:/icon/player_settings_closed.svg"
         tooltipText: "打开播放设置"
 
         AZEventBlocker{
@@ -252,7 +252,7 @@ Item{
         }
         iconHeight: 20
         iconWidth: 20
-        iconSource: sideBarOpened ? "qrc:/icon/list_opened.png" : "qrc:/icon/list.png"
+        iconSource: sideBarOpened ? "qrc:/icon/list_opened.svg" : "qrc:/icon/list.svg"
         tooltipText: tooltipEnabled ? (sideBarOpened ? "关闭列表" : "打开列表") : ""
     }
 }
