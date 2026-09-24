@@ -9,7 +9,7 @@ Item {
     id: root
 
     // 根据画面大小计算的字号
-    readonly property int fontSize: Math.max(16, parent.width * 0.015)
+    readonly property int fontSize: parent ? Math.max(16, parent.width * 0.015) : 16
 
     visible: false
 
@@ -26,7 +26,7 @@ Item {
 
     Timer {
         id: hideTimer
-        interval: root.defaultDuration
+        interval: 1000
         repeat: false
         onTriggered: root.hide()
     }
