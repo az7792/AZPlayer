@@ -31,7 +31,7 @@ void PlaybackStats::reset() {
     subtitleFrameCount = 0;
 
     // ==== 视频/字幕尺寸 ====
-    videoSize = QSize{};
+    setVideoSize(QSize{});
     subtitleSize = QSize{};
     FBOSize = QSize{};
 
@@ -123,7 +123,7 @@ QString PlaybackStats::getPlaybackStatsStringHTML() const {
     str += "<br>";
 
     // ==== 尺寸 (Size) ====
-    str += item("尺寸: Video", QString("%1x%2").arg(videoSize.width()).arg(videoSize.height()), "white", "cyan");
+    str += item("尺寸: Video", QString("%1x%2").arg(m_videoSize.width()).arg(m_videoSize.height()), "white", "cyan");
     str += item("Subtitle", QString("%1x%2").arg(subtitleSize.width()).arg(subtitleSize.height()), "white", "magenta");
     str += item("Frame Buffer", QString("%1x%2").arg(FBOSize.width()).arg(FBOSize.height()), "white", "gray");
     str += "<br>";
@@ -173,4 +173,14 @@ QString PlaybackStats::getPlaybackStatsStringHTML() const {
     str += "<br>";
 
     return str;
+}
+
+QSize PlaybackStats::videoSize() const {
+    return m_videoSize;
+}
+
+void PlaybackStats::setVideoSize(const QSize &newVideoSize) {
+    if (m_videoSize == newVideoSize) return;
+    m_videoSize = newVideoSize;
+    emit videoSizeChanged();
 }

@@ -319,7 +319,7 @@ bool VideoRenderer::updateTex(VideoRenderData::PixFormat fmt) {
             uploadTexture(3, 3); // A
         }
     }
-    PlaybackStats::instance().videoSize = m_frameSize;
+    PlaybackStats::instance().setVideoSize(m_frameSize);
     return true;
 }
 

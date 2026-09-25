@@ -14,6 +14,7 @@
 class PlaybackStats : public QObject {
     Q_OBJECT
     Q_DISABLE_COPY_MOVE(PlaybackStats)
+    Q_PROPERTY(QSize videoSize READ videoSize WRITE setVideoSize NOTIFY videoSizeChanged FINAL)
 public:
     static PlaybackStats &instance();
 
@@ -28,6 +29,13 @@ public:
     // 获取拼接好的文本信息（HTML主要是为了带颜色）
     Q_INVOKABLE [[nodiscard]] QString getPlaybackStatsStringHTML() const;
 
+    // ==== 视频尺寸 ====
+    [[nodiscard]] QSize videoSize() const;
+    void setVideoSize(const QSize &newVideoSize);
+
+signals:
+    void videoSizeChanged();
+
 public:
     // ==== 队列长度 ====
     size_t audioPacketCount{};
@@ -39,7 +47,9 @@ public:
     size_t subtitleFrameCount{};
 
     // ==== 视频/字幕尺寸 ====
-    QSize videoSize{};
+private:
+    QSize m_videoSize{};
+public:
     QSize subtitleSize{};
     QSize FBOSize{};
 

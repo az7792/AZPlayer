@@ -175,6 +175,35 @@ AZWindow {
         //     border.width: 1
         //     color: "transparent"
         // }
+        function fitWindowToVideo() {
+            // HACK: 由于qt使用逻辑像素, 在某些系统缩放配合某些视频分辨率下可能导致最终视频区域与实际视频大小相差 ±1 px
+
+            // 仅在普通或最大化时有效
+            if (mainWin.windowState !== mainWin.winNormal && mainWin.windowState !== mainWin.winMaximized) return
+
+            const videoSize = PlaybackStats.videoSize
+            if (videoSize.width <= 0 || videoSize.height <= 0) return
+
+            // 非视频区域占用的尺寸（边距、标题栏、底栏、侧边栏等）
+            const chromeW = mainWin.width - videoArea.width
+            const chromeH = mainWin.height - videoArea.height
+
+            const dpr = Screen.devicePixelRatio
+            let targetW = Math.max(mainWin.minimumWidth, videoSize.width / dpr + chromeW)
+            let targetH = Math.max(mainWin.minimumHeight, videoSize.height / dpr + chromeH)
+
+            // 最大化时的窗口尺寸
+            const maxW = Screen.desktopAvailableWidth + 2 * mainWin.resizeBorderWidth
+            const maxH = Screen.desktopAvailableHeight + 2 * mainWin.resizeBorderWidth
+
+            if (targetW > maxW || targetH > maxH) {
+                mainWin.maximize()
+            } else {
+                mainWin.restore()
+                mainWin.width = targetW
+                mainWin.height = targetH
+            }
+        }
 
         id: videoArea
 
@@ -196,6 +225,11 @@ AZWindow {
             font.family: "Consolas"
             font.pixelSize: Math.max(12, parent.width * 0.025)
             anchors.fill: parent
+        }
+
+        Connections {
+            target: PlaybackStats
+            function onVideoSizeChanged() { videoArea.fitWindowToVideo() }
         }
     }
 
