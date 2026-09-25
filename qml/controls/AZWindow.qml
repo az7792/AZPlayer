@@ -53,15 +53,8 @@ Window {
         if (active && windowState === winMinimized) {
             // 恢复最小化前状态
             windowState = _lastWindowState
-            _lastWindowState = winMinimized
-            console.log("激活");
         }
-        if(!active && windowState !== winMinimized){
-            // 最小化
-            _lastWindowState = windowState
-            windowState = winMinimized
-            console.log("失活");
-        }
+        console.log(active ? "激活" : "失活")
     }
 
     // 最小化
