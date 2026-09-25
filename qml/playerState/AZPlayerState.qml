@@ -15,6 +15,9 @@ Item {
     property bool videoHorizontalMirror: false // 水平镜像
     property bool videoVerticalMirror: false   // 垂直镜像
 
+    // 持久化设置
+    property bool windowAutoFitVideo: true     // 窗口自适应视频分辨率
+
     property alias mediaListModel: fileDialog.mediaListModel
     property alias mediafileDialog: fileDialog
 

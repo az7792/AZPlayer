@@ -176,6 +176,19 @@ Popup{
                 onCheckedChanged: { AZPlayerState.videoVerticalMirror = checked }
             }
         }
+
+        Row {
+            spacing: 3
+            AZCheckBox {
+                id: autoFitCheckBox
+                height: 20
+                width: 110
+                text:"自适应视频尺寸"
+                textColor: "#ebebeb"
+                checked: AZPlayerState.windowAutoFitVideo
+                onCheckedChanged: { AZPlayerState.windowAutoFitVideo = checked }
+            }
+        }
     }
 
     component MySubtitleCtrl:Column{

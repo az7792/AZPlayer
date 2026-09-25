@@ -34,6 +34,7 @@ AZWindow {
         MediaCtrl.setVolume(Setting.intValue("volume", 100))
         MediaCtrl.setMuted(Setting.boolValue("muted", false))
         MediaCtrl.setAutoLoadExtSub(Setting.boolValue("autoLoadExtSub", true))
+        AZPlayerState.windowAutoFitVideo = Setting.boolValue("windowAutoFitVideo", true)
         initDone = true
         console.log("mainWin 初始化完成")
     }
@@ -71,6 +72,10 @@ AZWindow {
         function onVideoScaleChanged() {
             if (!mainWin.initDone) return
             AZOSD.show("缩放: %1%".arg(AZPlayerState.videoScale), 1000)
+        }
+        function onWindowAutoFitVideoChanged() {
+            Setting.setValue("windowAutoFitVideo", AZPlayerState.windowAutoFitVideo)
+            if (AZPlayerState.windowAutoFitVideo) videoArea.fitWindowToVideo()
         }
     }
 
@@ -229,7 +234,10 @@ AZWindow {
 
         Connections {
             target: PlaybackStats
-            function onVideoSizeChanged() { videoArea.fitWindowToVideo() }
+            function onVideoSizeChanged() {
+                if (!AZPlayerState.windowAutoFitVideo) return
+                videoArea.fitWindowToVideo()
+            }
         }
     }
 
