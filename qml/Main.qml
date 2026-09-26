@@ -193,9 +193,18 @@ AZWindow {
             const chromeW = mainWin.width - videoArea.width
             const chromeH = mainWin.height - videoArea.height
 
+            // 视频的逻辑像素尺寸
             const dpr = Screen.devicePixelRatio
-            let targetW = Math.max(mainWin.minimumWidth, videoSize.width / dpr + chromeW)
-            let targetH = Math.max(mainWin.minimumHeight, videoSize.height / dpr + chromeH)
+            const vw = videoSize.width / dpr
+            const vh = videoSize.height / dpr
+
+            // 视频小于最小窗口尺寸时优先保持比例
+            const scale = Math.max(1,
+                                   (mainWin.minimumWidth - chromeW) / vw,
+                                   (mainWin.minimumHeight - chromeH) / vh)
+
+            const targetW = scale * vw + chromeW
+            const targetH = scale * vh + chromeH
 
             // 最大化时的窗口尺寸
             const maxW = Screen.desktopAvailableWidth + 2 * mainWin.resizeBorderWidth
