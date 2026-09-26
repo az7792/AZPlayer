@@ -472,18 +472,20 @@ bool Demux::switchStream(MediaType type, int streamIdx, weakPktQueue wpq, weakFr
 
     int ret = 0;
     // seek 或启动线程
+    const double mainPts = GlobalClock::instance().getMainPts();
     if (m_stop.load(std::memory_order_relaxed)) {
-        double pts = GlobalClock::instance().getMainPts();
-        pts = std::isnan(pts) ? 0.0 : pts;
-        const int64_t target = pts / av_q2d(getStream(type)->time_base);
-        const int streamIndex = (*idxVec)[streamIdx];
-        const int flags = (m_usedVIdx.load(std::memory_order_relaxed) == -1) ? AVSEEK_FLAG_ANY : 0;
-        ret = avformat_seek_file(m_formatCtx, streamIndex, INT64_MIN, target, INT64_MAX, flags);
-        if (ret >= 0) {
-            start();
+        // 时钟未就绪(例如刚打开文件)时不 seek 也不启动，由 open() 在所有流切换完后再统一 start()
+        if (!std::isnan(mainPts)) {
+            const int64_t target = mainPts / av_q2d(getStream(type)->time_base);
+            const int streamIndex = (*idxVec)[streamIdx];
+            const int flags = (m_usedVIdx.load(std::memory_order_relaxed) == -1) ? AVSEEK_FLAG_ANY : 0;
+            ret = avformat_seek_file(m_formatCtx, streamIndex, INT64_MIN, target, INT64_MAX, flags);
+            if (ret >= 0) {
+                start();
+            }
         }
-    } else {
-        seekBySec(GlobalClock::instance().getMainPts(), 0);
+    } else if (!std::isnan(mainPts)) {
+        seekBySec(mainPts, 0);
     }
 
     return ret >= 0;
