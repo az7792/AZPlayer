@@ -310,10 +310,13 @@ void Demux::demuxLoop() {
         if (ret < 0) {
             if (ret == AVERROR_EOF && !m_isEOF) { // EOF
                 Q_ASSERT(pkt->data == NULL && pkt->size == 0);
+                pkt->stream_index = m_usedVIdx.load(std::memory_order_acquire);
                 pushVideoPkt(pkt);
                 pkt = av_packet_alloc();
+                pkt->stream_index = m_usedSIdx.load(std::memory_order_acquire);
                 pushSubtitlePkt(pkt);
                 pkt = av_packet_alloc();
+                pkt->stream_index = m_usedAIdx.load(std::memory_order_acquire);
                 pushAudioPkt(pkt);
                 pkt = nullptr;
                 qDebug() << "解复用EOF";

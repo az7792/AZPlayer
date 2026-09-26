@@ -30,6 +30,9 @@ void DecodeAudio::decodingLoop() {
     AVPktItem pktItem;
     AVFrmItem frmItem;
     bool needFlushBuffers = false;
+    constexpr int kMaxInvalidDataCount = 3;
+    int invalidDataCount = 0;
+
     while (!m_stop.load(std::memory_order_relaxed)) {
         bool ok = getPkt(pktItem, needFlushBuffers);
         if (!ok) {
@@ -56,8 +59,12 @@ void DecodeAudio::decodingLoop() {
             ;
         } else if (ret < 0) {
             av_strerror(ret, errBuf, sizeof(errBuf));
-            qDebug() << "Audio发送audiopkt错误:" << errBuf << pktItem.pkt->stream_index;
-            goto end;
+            qDebug() << "Audio发送audiopkt错误: ret =" << ret << " msg =" << errBuf;
+            av_packet_free(&pktItem.pkt);
+            if (ret != AVERROR_INVALIDDATA || ++invalidDataCount >= kMaxInvalidDataCount) {
+                goto end;
+            }
+            continue;
         }
 
         m_isEOF = false;
@@ -81,9 +88,15 @@ void DecodeAudio::decodingLoop() {
                     std::this_thread::sleep_for(std::chrono::milliseconds(5));
                 }
                 frmItem.frm = nullptr;
+                invalidDataCount = 0;
             } else {
-                qDebug() << "读取audiofrm错误:" << ret;
-                goto end;
+                av_strerror(ret, errBuf, sizeof(errBuf));
+                qDebug() << "读取audiofrm错误: ret =" << ret << " msg =" << errBuf;
+                av_frame_free(&frmItem.frm);
+                if (ret != AVERROR_INVALIDDATA || ++invalidDataCount >= kMaxInvalidDataCount) {
+                    goto end;
+                }
+                break;
             }
         }
     }
