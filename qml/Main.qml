@@ -276,6 +276,14 @@ AZWindow {
             }
         }
 
+        // 单击延迟执行，双击时如果定时器在运行则取消单击
+        Timer {
+            id: singleClickTimer
+            interval: 250
+            repeat: false
+            onTriggered: MediaCtrl.togglePaused()
+        }
+
         // 点击视频区域，角度转盘获取焦点
         function toggleVideoDialGetForce(x,y) {
             videoAngleDialArea.forceActiveFocus()
@@ -355,6 +363,22 @@ AZWindow {
 
         onReleased: function(mouse) {
             toggleBarContains(mouse.x, mouse.y)
+        }
+
+        // 单击：暂停/播放
+        onClicked: function(mouse) {
+            if (mouse.button !== Qt.LeftButton) return
+            singleClickTimer.restart()
+        }
+
+        // 双击：全屏/恢复
+        onDoubleClicked: function(mouse) {
+            if (mouse.button !== Qt.LeftButton) return
+            // onDoubleClicked 的双击检测间隔比较长，如果已经触发 开始/暂停 则取消切换窗口
+            if (!singleClickTimer.running) return
+            singleClickTimer.stop()
+            if (mainWin.windowState === mainWin.winFullScreen) mainWin.restore()
+            else mainWin.fullscreen()
         }
     }
 
