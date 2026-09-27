@@ -132,6 +132,27 @@ Window {
             restore()
     }
 
+    // 调整窗口尺寸，并保证窗口不超出当前最大化屏幕的可用区域，仅在 winNormal 下生效
+    function resizeWithinMaximizedArea(targetW, targetH) {
+        if (windowState !== winNormal) return
+
+        const availX = Screen.virtualX
+        const availY = Screen.virtualY
+        const availW = Screen.desktopAvailableWidth
+        const availH = Screen.desktopAvailableHeight
+
+        width  = Math.max(minimumWidth,  Math.min(availW, targetW))
+        height = Math.max(minimumHeight, Math.min(availH, targetH))
+
+        // 左/上越界时把窗口推回屏幕内
+        if (x < availX) x = availX
+        if (y < availY) y = availY
+
+        // 右/下越界时把窗口推回屏幕内
+        if (x + width  > availX + availW) x = Math.max(availX, availX + availW - width)
+        if (y + height > availY + availH) y = Math.max(availY, availY + availH - height)
+    }
+
 
 
     // 背景

@@ -214,8 +214,7 @@ AZWindow {
                 mainWin.maximize()
             } else {
                 mainWin.restore()
-                mainWin.width = targetW
-                mainWin.height = targetH
+                mainWin.resizeWithinMaximizedArea(targetW, targetH)
             }
         }
 
@@ -475,16 +474,8 @@ AZWindow {
         property bool canShow: false
         function toggleSidebar(){
             canShow = !canShow
-            if(mainWin.windowState === mainWin.winNormal){
-                let targetAddWidth = splitter.activeRightRectWidth - mainWin.resizeBorderWidth + splitter.width + 1 // +1是因为视频与splitter有1px的空隙
-                let tmpWidth = mainWin.width + (canShow ? targetAddWidth : -targetAddWidth)
-                tmpWidth = Math.max(mainWin.minimumWidth, Math.min(Screen.desktopAvailableWidth,tmpWidth))
-                let offset = tmpWidth + mainWin.x - Screen.desktopAvailableWidth
-                if(offset > 0){
-                    mainWin.x -= offset;
-                }
-                mainWin.width = tmpWidth
-            }
+            let targetAddWidth = splitter.activeRightRectWidth - mainWin.resizeBorderWidth + splitter.width + 1 // +1是因为视频与splitter有1px的空隙
+            mainWin.resizeWithinMaximizedArea(mainWin.width + (canShow ? targetAddWidth : -targetAddWidth), mainWin.height)
         }
 
         anchors.top: mainWin.videoFull ? parent.top : topBar.bottom
