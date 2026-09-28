@@ -47,7 +47,7 @@ AZWindow {
         function onAutoLoadExtSubChanged() { Setting.setValue("autoLoadExtSub", MediaCtrl.autoLoadExtSub) }
     }
 
-    // 音量/静音状态变化时在画面上提示
+    // 音量/静音/暂停状态变化时在画面上提示
     Connections {
         target: MediaCtrl
         function onVolumeChanged() {
@@ -63,6 +63,10 @@ AZWindow {
                 AZOSD.show("静音: 关闭" , 1000)
             }
             mainWin.suppressMuteOsd = false
+        }
+        function onPausedChanged() {
+            if (!mainWin.initDone) return
+            AZOSD.show(MediaCtrl.paused ? "暂停" : "播放", 1000)
         }
     }
 
