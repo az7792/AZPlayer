@@ -523,4 +523,15 @@ AZWindow {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
     }
+
+    /* popup 打开时拦截视频区域的左键点击事件（避免触发开始/暂停）
+     * HACK: 如果是快速点击两次会导致 videoArea 直接收到双击事件，
+     * 由于没有第一次单击启动定时器，导致第二次的点击也无事发生 */
+    MouseArea {
+        id: popupClickBlocker
+        anchors.fill: videoArea
+        visible: bottomBar.isActive
+        hoverEnabled: false
+        acceptedButtons: Qt.LeftButton
+    }
 }
