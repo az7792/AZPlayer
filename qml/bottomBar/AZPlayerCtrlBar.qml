@@ -14,7 +14,7 @@ Item{
     // 打开setting
     signal requestOpenSetting()
 
-    readonly property bool popupOpened: chapterComboBox.popupOpened
+    readonly property bool hasPopupOpened: chapterComboBox.popupOpened
 
     required property bool playerSettingOpened
     required property AZListView fileListView

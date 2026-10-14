@@ -11,7 +11,7 @@ Rectangle{
     // 开关侧边栏
     signal requestToggleSideBar()
 
-    property bool isActive: playerSetting.opened | playerCtrlBar.popupOpened
+    property bool hasPopupOpened: playerSetting.opened || playerCtrlBar.hasPopupOpened
 
     required property AZListView fileListView
 

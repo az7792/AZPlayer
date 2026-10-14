@@ -7,7 +7,7 @@ Rectangle{
     id: topBar
 
     required property AZWindow mainWindow
-    property bool isActive: false
+    property bool hasPopupOpened: false
 
     AZEventBlocker{anchors.fill: parent}
 

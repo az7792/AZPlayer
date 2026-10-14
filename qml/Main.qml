@@ -160,18 +160,18 @@ AZWindow {
     // ====topBar、 bottomBar、sideBar是否需要显示====
     property bool showTopBar: {
         if(!mainWin.videoFull) return true
-        return containsTopBar | topBar.isActive
+        return containsTopBar || topBar.hasPopupOpened
     }
 
     property bool showBottomBar: {
         if(!mainWin.videoFull) return true
-        return containsBottomBar | bottomBar.isActive
+        return containsBottomBar || bottomBar.hasPopupOpened
     }
 
     property bool showSideBar: {
         if(!sideBar.canShow) return false
         if(!mainWin.videoFull) return true
-        return containsSideBar | sideBar.isActive
+        return containsSideBar || sideBar.hasPopupOpened
     }
 
 
@@ -530,7 +530,7 @@ AZWindow {
     MouseArea {
         id: popupClickBlocker
         anchors.fill: videoArea
-        visible: bottomBar.isActive
+        visible: bottomBar.hasPopupOpened
         hoverEnabled: false
         acceptedButtons: Qt.LeftButton
     }
