@@ -204,22 +204,13 @@ Item{
         iconWidth: 20
         onLeftClicked: requestOpenSetting()
         iconSource: playerCtrlBar.playerSettingOpened ? "qrc:/icon/player_settings_opened.svg" : "qrc:/icon/player_settings_closed.svg"
-        tooltipText: "打开播放设置"
+        tooltipText: playerCtrlBar.playerSettingOpened ? "关闭播放设置" : "打开播放设置"
 
-        AZEventBlocker{
+        MouseArea {
             anchors.fill: parent
             visible: playerCtrlBar.playerSettingOpened
-
-            onPositionChanged: (mouse) => {
-                if (containsMouse) {
-                    let globalPos = playerSetting.mapToItem(playerCtrlBar.window, 0, 0)
-                    AZTooltip.show("关闭播放设置" ,mouse.x + globalPos.x, mouse.y + globalPos.y)
-                }
-            }
-
-            onExited: {
-                AZTooltip.hide()
-            }
+            hoverEnabled: false
+            acceptedButtons: Qt.AllButtons
         }
     }
 
