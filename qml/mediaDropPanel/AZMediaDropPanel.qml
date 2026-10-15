@@ -132,6 +132,7 @@ Item {
                 }
 
                 onDropped: function(drop) {
+                    AZPlayerState.mediafileDialog.closeAllDialogs()
                     modelData.handler(drop.urls)
                     drop.acceptProposedAction()
                     dragCount = 0

@@ -48,6 +48,14 @@ Rectangle {
         audioStreamDialog.open()
     }
 
+    // 关闭所有已打开的文件对话框
+    function closeAllDialogs(){
+        if (openMediafileDialog.visible) openMediafileDialog.close()
+        if (addMediafileDialog.visible) addMediafileDialog.close()
+        if (subtitleStreamDialog.visible) subtitleStreamDialog.close()
+        if (audioStreamDialog.visible) audioStreamDialog.close()
+    }
+
     // 已加载的媒体文件
     ListModel {
         id: medialist
