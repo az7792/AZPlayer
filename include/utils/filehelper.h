@@ -41,6 +41,9 @@ public:
     Q_INVOKABLE [[nodiscard]] QVariantList expandSubtitleFiles(const QList<QUrl> &urls, bool recursive) const;
     Q_INVOKABLE [[nodiscard]] QVariantList expandMediaFiles(const QList<QUrl> &urls, bool recursive) const;
 
+    // 扫描 fileUrl 所在目录下与它同后缀的文件（非递归）
+    Q_INVOKABLE [[nodiscard]] QVariantList expandSiblingFiles(const QUrl &fileUrl) const;
+
 signals:
 
 private:

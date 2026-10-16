@@ -4,7 +4,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import Qt.labs.folderlistmodel
 import QtQuick.Dialogs
 
 Rectangle {
@@ -15,8 +14,6 @@ Rectangle {
     property string currentPlayingFile: "" // 当前播放的文件 fileName ，由 AZPlayerState 创建时绑定到 AZPlayerState.currentFile
     property string activeFilePath: ""     // 当前选中的文件路径 file:///....
     property alias mediaListModel: medialist
-    // 是否允许加载
-    property bool allowFolderLoad: false
 
     function openMediaFile(){
         openMediafileDialog.open()
@@ -72,34 +69,6 @@ Rectangle {
     }
 
 
-    // 临时 FolderListModel 用于扫描某个文件夹里的文件（按后缀过滤）
-    FolderListModel {
-        id: folderModel
-        caseSensitive: false
-        showDirs:false
-        onStatusChanged: {
-            if (status === FolderListModel.Ready && root.allowFolderLoad) {
-                medialist.clear()
-
-                let i;
-                for (i = 0; i < count; ++i) {
-                    medialist.append({text: folderModel.get(i, "fileName").toString(),
-                                      fileUrl: folderModel.get(i, "fileUrl").toString()})
-                }
-                root.allowFolderLoad = false;
-
-                //更新播放索引
-                for(i = 0; i < medialist.count ;++i){
-                    if(medialist.get(i).fileUrl.toLowerCase() === root.activeFilePath.toLowerCase()){
-                        openMediaByIdx(i)
-                        break
-                    }
-                }
-            }
-        }
-    }
-
-
     // 打开一个媒体文件，并刷新媒体文件列表
     FileDialog {
         id: openMediafileDialog
@@ -112,19 +81,25 @@ Rectangle {
             if (!selectedFile) return
             root.activeFilePath = selectedFile.toString()
 
-            var parts = selectedFile.toString().split('.')
+            // 扫描所选文件所在目录下同后缀的文件，重建媒体文件列表
+            const files = FileHelper.expandSiblingFiles(selectedFile)
 
-            if(parts.length < 2){
-                console.log("无后缀")
+            if (files.length === 0) {
+                console.log("未找到同类型文件")
                 return
             }
 
-            var suffix = '.' + parts.pop()
+            medialist.clear()
+            for (let i = 0; i < files.length; ++i)
+                medialist.append(files[i])
 
-            root.allowFolderLoad = true;
-            folderModel.folder = ""//先清空地址防止加载两次
-            folderModel.nameFilters = ["*" + suffix]
-            folderModel.folder = currentFolder
+            // 更新播放索引
+            for (let i = 0; i < medialist.count; ++i) {
+                if (medialist.get(i).fileUrl.toLowerCase() === root.activeFilePath.toLowerCase()) {
+                    openMediaByIdx(i)
+                    break
+                }
+            }
         }
         onRejected: { console.log("[FileDialogSingle] 取消") }
     }

@@ -4,8 +4,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 
-import Qt.labs.folderlistmodel
-import QtQuick.Dialogs
 Window {
     id: mainWin
     width: 800

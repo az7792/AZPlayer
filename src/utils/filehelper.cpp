@@ -88,6 +88,16 @@ QVariantList FileHelper::expandMediaFiles(const QList<QUrl> &urls, bool recursiv
     return expandFiles(toLocalPaths(urls), MEDIA_FILTERS, recursive);
 }
 
+QVariantList FileHelper::expandSiblingFiles(const QUrl &fileUrl) const {
+    const QFileInfo fi(fileUrl.toLocalFile());
+    if (!fi.isFile()) return {};
+
+    const QString suffix = fi.suffix();
+    if (suffix.isEmpty()) return {};
+
+    return expandFiles({fi.absolutePath()}, {"*." + suffix}, false);
+}
+
 // ===== static =====
 
 bool FileHelper::matchesFilter(const QString &fileName, const QStringList &filters) const {
