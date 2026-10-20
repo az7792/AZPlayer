@@ -85,7 +85,7 @@ AZWindow {
 
     // 启动参数
     function onStartupFiles(files) {
-        AZPlayerState.mediafileDialog.onStartupFiles(files)
+        AZMediaList.replaceAndOpen(files)
         console.log("onStartupFiles 完成")
     }
 
@@ -419,8 +419,6 @@ AZWindow {
         anchors.left: parent.left
         anchors.leftMargin: mainWin.resizeBorderWidth
         anchors.right: videoArea.right
-
-        fileListView: sideBar.fileListView
 
         onRequestToggleSideBar: {
             sideBar.toggleSidebar()

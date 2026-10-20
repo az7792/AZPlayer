@@ -6,37 +6,31 @@ import QtQuick.Layouts
 import AZPlayer 1.0
 
 ColumnLayout{
-    property alias fileListView: fileTab
-
     AZListView{
         id: fileTab
         Layout.fillHeight: true
         Layout.fillWidth: true
         color: "#3b3b3b"
-        listModel: AZPlayerState.mediaListModel
+        listModel: AZMediaList
 
-        onDelActive:{
-            AZPlayerState.currentFile = ""
-            MediaCtrl.close()
-        }
-
-        onStopActive: {
-            AZPlayerState.currentFile = ""
-            MediaCtrl.close()
+        onRemoveIndex: function(index) {
+            AZMediaList.removeMedia(index)
         }
 
         Connections {
-            target: AZPlayerState.mediafileDialog
-            function onOpenMediaByIdx(index) {
+            target: AZMediaList
+            // 播放索引变化时只更新播放行（停止/删除时保留单击选中项）
+            function onCurrentIndexChanged() {
+                fileTab.setActiveIdx(AZMediaList.currentIndex)
+            }
+            // 主动打开媒体时同步高亮和选中项
+            function onMediaOpened(index) {
                 fileTab.setHighlightIdx(index)
-                AZPlayerState.currentFile = fileTab.listModel.get(index).text
-                MediaCtrl.open(AZPlayerState.mediafileDialog.activeFilePath)
             }
         }
 
         onOpenIndex:function(index){
-            AZPlayerState.currentFile = fileTab.listModel.get(index).text
-            MediaCtrl.open(fileTab.listModel.get(index).fileUrl)
+            AZMediaList.open(index)
         }
     }
 
@@ -55,7 +49,7 @@ ColumnLayout{
             anchors.bottomMargin: 3
             anchors.leftMargin: 3
             text: "添加文件"
-            onClicked: AZPlayerState.mediafileDialog.addMediaFile()
+            onClicked: AZFileDialog.addMediaFiles()
         }
     }
 }

@@ -26,7 +26,7 @@ ColumnLayout{
             anchors.bottomMargin: 3
             anchors.leftMargin: 3
             text: "添加音轨"
-            onClicked: AZPlayerState.mediafileDialog.openAudioStreamFile()
+            onClicked: AZFileDialog.openAudioStreamFile()
         }
     }
 }

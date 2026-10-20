@@ -99,6 +99,8 @@ set_source_files_properties(
     qml/controls/AZTooltip.qml
     qml/controls/AZOSD.qml
     qml/playerState/AZPlayerState.qml
+    qml/fileDialog/AZFileDialog.qml
+    qml/fileDialog/AZMediaList.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
 
@@ -120,6 +122,7 @@ qt_add_qml_module(appAZPlayer
               qml/controls/AZWindow.qml
               qml/controls/AZEventBlocker.qml
               qml/fileDialog/AZFileDialog.qml
+              qml/fileDialog/AZMediaList.qml
               qml/bottomBar/AZPlayerCtrlBar.qml
               qml/bottomBar/AZProgressBar.qml
               qml/bottomBar/AZBottomBar.qml

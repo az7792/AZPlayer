@@ -15,13 +15,7 @@ Item {
             handler: function(urls) {
                 const mediaFiles = FileHelper.expandMediaFiles(urls, true)
                 if (mediaFiles.length > 0) {
-                    AZPlayerState.mediaListModel.clear()
-                    for (let i = 0; i < mediaFiles.length; ++i) {
-                        AZPlayerState.mediaListModel.append(mediaFiles[i])
-                    }
-                    let dialog = AZPlayerState.mediafileDialog
-                    dialog.activeFilePath = mediaFiles[0].fileUrl
-                    dialog.openMediaByIdx(0)
+                    AZMediaList.replaceAndOpen(mediaFiles)
                 }
             }
         },
@@ -29,11 +23,7 @@ Item {
             title: "添加到列表",
             handler: function(urls) {
                 const mediaFiles = FileHelper.expandMediaFiles(urls, true)
-                for (let i = 0; i < mediaFiles.length; ++i) {
-                    if (!AZPlayerState.mediaListModel.existsInModel(mediaFiles[i].fileUrl.toString())) {
-                        AZPlayerState.mediaListModel.append(mediaFiles[i])
-                    }
-                }
+                AZMediaList.appendUnique(mediaFiles)
             }
         },
         {
@@ -132,7 +122,7 @@ Item {
                 }
 
                 onDropped: function(drop) {
-                    AZPlayerState.mediafileDialog.closeAllDialogs()
+                    AZFileDialog.closeAllDialogs()
                     modelData.handler(drop.urls)
                     drop.acceptProposedAction()
                     dragCount = 0

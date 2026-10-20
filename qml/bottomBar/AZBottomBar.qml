@@ -13,8 +13,6 @@ Rectangle{
 
     property bool hasPopupOpened: playerSetting.opened || playerCtrlBar.hasPopupOpened
 
-    required property AZListView fileListView
-
     color: "black"
 
     AZEventBlocker{
@@ -47,7 +45,6 @@ Rectangle{
         anchors.right: parent.right
         anchors.top: progressBar.bottom
         anchors.topMargin: 1
-        fileListView: bottomBar.fileListView
         onRequestToggleSideBar: bottomBar.requestToggleSideBar()
         playerSettingOpened: playerSetting.opened
         onRequestOpenSetting: playerSetting.open()

@@ -7,7 +7,6 @@ import VideoWindow 1.0
 import AZPlayer 1.0
 Rectangle {
     id: sideBar
-    property alias fileListView: fileTab.fileListView
     property bool hasPopupOpened: false
 
     AZEventBlocker{anchors.fill: parent}

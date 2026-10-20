@@ -27,7 +27,7 @@ ColumnLayout{
             anchors.bottomMargin: 3
             anchors.leftMargin: 3
             text: "添加字幕"
-            onClicked: AZPlayerState.mediafileDialog.openSubtitleStreamFile()
+            onClicked: AZFileDialog.openSubtitleStreamFile()
         }
     }
 }

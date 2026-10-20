@@ -65,7 +65,7 @@ Rectangle{
             anchors.rightMargin: 5
             wrapMode: Text.NoWrap
             elide: Text.ElideRight
-            text: AZPlayerState.currentFile
+            text: AZMediaList.currentFile
         }
     }
 

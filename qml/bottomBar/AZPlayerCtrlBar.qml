@@ -17,8 +17,6 @@ Item{
     readonly property bool hasPopupOpened: chapterComboBox.popupOpened
 
     required property bool playerSettingOpened
-    required property AZListView fileListView
-
     Row{
         id:btnRow
         anchors.left: parent.left
@@ -43,7 +41,7 @@ Item{
             iconHeight: 16
             iconSource: "qrc:/icon/stop.svg"
             tooltipText: "停止"
-            onLeftClicked: fileListView.stopActiveItem()
+            onLeftClicked: AZMediaList.close()
         }
         AZButton{
             id:skipPrevBtn
@@ -54,7 +52,7 @@ Item{
             iconSource: "qrc:/icon/skip_previous.svg"
             tooltipText: "L:快退，R:上一个"
             onLeftClicked: MediaCtrl.fastRewind()
-            onRightClicked: playerCtrlBar.fileListView.openPrev()
+            onRightClicked: AZMediaList.openPrev()
         }
         AZButton{
             id:skipNextBtn
@@ -65,7 +63,7 @@ Item{
             iconSource: "qrc:/icon/skip_next.svg"
             tooltipText: "L:快进，R:下一个"
             onLeftClicked: MediaCtrl.fastForward()
-            onRightClicked: playerCtrlBar.fileListView.openNext()
+            onRightClicked: AZMediaList.openNext()
         }
 
         AZButton{
@@ -99,9 +97,9 @@ Item{
                 target: MediaCtrl
                 function onPlayed() {
                     if(playbackModeBtn.mode === 1){
-                        playerCtrlBar.fileListView.openNext()
+                        AZMediaList.openNext()
                     } else if(playbackModeBtn.mode === 2){
-                        playerCtrlBar.fileListView.openRandom()
+                        AZMediaList.openRandom()
                     }
                 }
             }
@@ -118,7 +116,7 @@ Item{
             iconHeight: 16
             iconSource: "qrc:/icon/open.svg"
             tooltipText: "打开文件"
-            onLeftClicked: AZPlayerState.mediafileDialog.openMediaFile()
+            onLeftClicked: AZFileDialog.openMediaFile()
         }
     }
 

@@ -15,8 +15,7 @@ Rectangle {
     property ListModel listModel: null
     property bool readOnly: false
 
-    signal delActive()
-    signal stopActive()
+    signal removeIndex(int index)
     signal openIndex(int index)
 
     function setHighlightIdx(idx){
@@ -24,48 +23,10 @@ Rectangle {
         listView.currentIndex = idx
     }
 
-    function stopActiveItem(){
-        if(activeIndex === -1) return
-
-        activeIndex = -1
-        stopActive()
-
+    // 只更新正在播放的行，不改变用户的单击选中项
+    function setActiveIdx(idx){
+        activeIndex = idx
     }
-
-    // 播放列表下一个
-    function openNext(){
-        if(activeIndex === -1) return
-        if (listModel.count === 0) return
-
-        activeIndex = (activeIndex + 1) % listView.count
-        openIndex(activeIndex)
-        listView.currentIndex = activeIndex
-    }
-
-    // 播放列表上一个
-    function openPrev(){
-        if(activeIndex === -1) return
-        if (listModel.count === 0) return
-
-        activeIndex = (activeIndex - 1 + listView.count) % listView.count
-        openIndex(activeIndex)
-        listView.currentIndex = activeIndex
-    }
-
-    // 随机播放一个
-    function openRandom() {
-        if(activeIndex === -1) return
-        if (listModel.count === 0) return
-
-        if (listModel.count >= 2) {
-            var r = Math.floor(Math.random() * (listModel.count - 1))
-            activeIndex = r < activeIndex ? r : r + 1
-        }
-
-        openIndex(activeIndex)
-        listView.currentIndex = activeIndex
-    }
-
 
     ListView {
         id: listView
@@ -113,10 +74,8 @@ Rectangle {
                     listView.forceActiveFocus()
                 }
                 onDoubleClicked: {
-                    if(root.activeIndex !== index){
-                        root.activeIndex = index
-                        openIndex(root.activeIndex)
-                    }
+                    if(root.activeIndex !== index)
+                        openIndex(index)
                 }
             }
         }
@@ -127,16 +86,8 @@ Rectangle {
             }
 
             if (event.key === Qt.Key_Delete && listView.currentIndex >= 0) {
-                //更新播放索引
-                if(listView.currentIndex === root.activeIndex){
-                    delActive()
-                    root.activeIndex = -1
-                    // close
-                }else if(listView.currentIndex < root.activeIndex){
-                    root.activeIndex--
-                }
-
-                listModel.remove(listView.currentIndex)
+                const removedIndex = listView.currentIndex
+                removeIndex(removedIndex)
 
                 // 更新选中索引
                 if (listView.currentIndex >= listModel.count) {
