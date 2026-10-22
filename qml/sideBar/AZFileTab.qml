@@ -6,6 +6,8 @@ import QtQuick.Layouts
 import AZPlayer 1.0
 
 ColumnLayout{
+    property alias listView: fileTab
+
     AZListView{
         id: fileTab
         Layout.fillHeight: true

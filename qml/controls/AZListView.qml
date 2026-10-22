@@ -28,6 +28,17 @@ Rectangle {
         activeIndex = idx
     }
 
+    // 让列表直接获得焦点
+    function focusView() {
+        listView.forceActiveFocus()
+    }
+
+    // 播放当前选中项
+    function openSelection() {
+        const idx = listView.currentIndex
+        if (idx >= 0 && root.activeIndex !== idx) openIndex(idx)
+    }
+
     ListView {
         id: listView
         anchors.fill: parent
@@ -40,6 +51,14 @@ Rectangle {
             color: listView.focus ? "#2b2b2b" : "#444444"
         }
         model: listModel
+        keyNavigationEnabled: true
+        // 上下键导航后让选中行保持可见
+        onCurrentIndexChanged: {
+            if (currentIndex >= 0) positionViewAtIndex(currentIndex, ListView.Contain)
+        }
+
+        // 点击时让列表获得焦点
+        TapHandler { onTapped: focusView() }
 
         ScrollBar.vertical: ScrollBar {
             id:scrollBar
@@ -80,21 +99,25 @@ Rectangle {
             }
         }
 
-        Keys.onPressed:function(event) {
-            if(root.readOnly){
-                return
-            }
+        Keys.onShortcutOverride:function(event) {
+            // 列表有焦点时，上下键用于选择、左右键交给侧栏切页签，不触发快进快退/音量调节
+            const key = event.key
+            event.accepted = key === Qt.Key_Up || key === Qt.Key_Down ||
+                             key === Qt.Key_Left || key === Qt.Key_Right
+        }
 
-            if (event.key === Qt.Key_Delete && listView.currentIndex >= 0) {
-                const removedIndex = listView.currentIndex
-                removeIndex(removedIndex)
+        Keys.onPressed:function(event) {
+            const key = event.key
+            if (key === Qt.Key_Return || key === Qt.Key_Enter) {
+                openSelection()
+                event.accepted = true
+            } else if (!root.readOnly && key === Qt.Key_Delete && listView.currentIndex >= 0) {
+                removeIndex(listView.currentIndex)
 
                 // 更新选中索引
-                if (listView.currentIndex >= listModel.count) {
+                if (listView.currentIndex >= listModel.count)
                     listView.currentIndex = listModel.count - 1
-                }
 
-                // 防止事件继续传递
                 event.accepted = true
             }
         }

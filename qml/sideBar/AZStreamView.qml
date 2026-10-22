@@ -8,6 +8,7 @@ Item{
 
     property string streamType: "AUDIO" // 或 "SUBTITLE"
     property int currentIdx: -1
+    property alias listView: view
 
     ListModel{
         id:listModel

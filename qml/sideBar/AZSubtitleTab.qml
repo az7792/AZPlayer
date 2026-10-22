@@ -6,6 +6,8 @@ import QtQuick.Layouts
 import AZPlayer 1.0
 
 ColumnLayout{
+    property alias listView: subtitleTab.listView
+
     AZStreamView {
         id: subtitleTab
         streamType: "SUBTITLE"

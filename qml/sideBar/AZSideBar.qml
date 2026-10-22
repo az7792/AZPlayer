@@ -9,6 +9,27 @@ Rectangle {
     id: sideBar
     property bool hasPopupOpened: false
 
+    function switchTab(delta) {
+        if (tabBar.count <= 0) return
+        const n = tabBar.count
+        tabBar.currentIndex = ((tabBar.currentIndex + delta) % n + n) % n
+    }
+
+    // 聚焦当前页签对应的列表
+    function focusCurrentView() {
+        const page = stackView.children[tabBar.currentIndex]
+        if (page) page.listView.focusView()
+    }
+
+    // 侧栏内列表的左右键冒泡到这里，由侧栏统一切换页签
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+            event.accepted = true
+            if (!event.isAutoRepeat)
+                switchTab(event.key === Qt.Key_Left ? -1 : 1)
+        }
+    }
+
     AZEventBlocker{anchors.fill: parent}
 
     ColumnLayout {
@@ -29,6 +50,9 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: tabBar.currentIndex
+
+            // 切换页签后让对应列表直接获得焦点
+            onCurrentIndexChanged: focusCurrentView()
 
             AZFileTab{
                 id: fileTab

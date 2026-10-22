@@ -497,6 +497,16 @@ AZWindow {
         visible: showSideBar
         color: "black"
 
+        // 侧栏显示时聚焦当前列表，关闭时焦点回到视频区域
+        onVisibleChanged: {
+            if (mainWin.videoFull) return
+
+            if (visible)
+                focusCurrentView()
+            else
+                videoAngleDialArea.forceActiveFocus()
+        }
+
         property bool canShow: false
         function toggleSidebar(){
             canShow = !canShow

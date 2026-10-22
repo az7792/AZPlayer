@@ -5,6 +5,8 @@ import QtQuick
 import QtQuick.Layouts
 import AZPlayer 1.0
 ColumnLayout{
+    property alias listView: audioTab.listView
+
     AZStreamView {
         id: audioTab
         streamType: "AUDIO"
