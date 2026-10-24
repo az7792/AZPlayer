@@ -367,7 +367,7 @@ AZWindow {
         // 控制鼠标在视频区域内是否隐藏
         function toggleVideoMouseHidden(x,y){
             hideCursor = false
-            if(mainWin.containsTopBar || mainWin.containsBottomBar || mainWin.containsSideBar){
+            if(pressed || mainWin.containsTopBar || mainWin.containsBottomBar || mainWin.containsSideBar){
                 hideTimer.stop()
                 return
             }
@@ -389,10 +389,13 @@ AZWindow {
 
             videoInteractionArea.lastMouseX = mouse.x
             videoInteractionArea.lastMouseY = mouse.y
+
+            toggleVideoMouseHidden(mouse.x, mouse.y)
         }
 
         onReleased: function(mouse) {
             toggleBarContains(mouse.x, mouse.y)
+            toggleVideoMouseHidden(mouse.x, mouse.y)
         }
 
         // 单击：暂停/播放
