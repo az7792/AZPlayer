@@ -89,6 +89,27 @@ AZWindow {
         console.log("onStartupFiles 完成")
     }
 
+    // 当前焦点项是否位于 item 或它的子项中
+    function hasFocusWithin(item) {
+        let it = activeFocusItem
+        while (it) {
+            if (it === item) return true
+            it = it.parent
+        }
+        return false
+    }
+
+    // 视频区域是否持有键盘焦点（窗口里没有焦点项时按视频区域处理，即点击算正常点击）
+    function videoHasFocus() {
+        return activeFocusItem === null || hasFocusWithin(videoAngleDialArea)
+    }
+
+    // 侧栏列表持有焦点时，点击栏位先把焦点收回视频区域
+    function clearSideBarFocus() {
+        if (sideBar.visible && hasFocusWithin(sideBar))
+            videoAngleDialArea.forceActiveFocus()
+    }
+
     // 鼠标滚轮控制旋转角度或音量
     WheelHandler {
         target: videoArea
@@ -269,6 +290,8 @@ AZWindow {
         property bool hideCursor: false
         property real lastMouseX: 0
         property real lastMouseY: 0
+        // 本次左键点击只是为了把焦点收回视频区域，不触发播放切换
+        property bool focusReturnClick: false
 
         // 定时器，隐藏鼠标
         Timer {
@@ -359,6 +382,9 @@ AZWindow {
         }
 
         onPressed: function(mouse) {
+            // 回收焦点，不切换播放
+            focusReturnClick = mouse.button === Qt.LeftButton && !mainWin.videoHasFocus()
+
             toggleVideoDialGetForce(mouse.x, mouse.y)
 
             videoInteractionArea.lastMouseX = mouse.x
@@ -372,6 +398,12 @@ AZWindow {
         // 单击：暂停/播放
         onClicked: function(mouse) {
             if (mouse.button !== Qt.LeftButton) return
+
+            if (focusReturnClick) {
+                focusReturnClick = false
+                return
+            }
+
             singleClickTimer.restart()
         }
 
@@ -497,14 +529,13 @@ AZWindow {
         visible: showSideBar
         color: "black"
 
-        // 侧栏显示时聚焦当前列表，关闭时焦点回到视频区域
+        // 侧栏显示时聚焦当前列表（全屏下不抢焦点），关闭时焦点回到视频区域
         onVisibleChanged: {
-            if (mainWin.videoFull) return
-
-            if (visible)
-                focusCurrentView()
-            else
+            if (visible) {
+                if (!mainWin.videoFull) focusCurrentView()
+            } else {
                 videoAngleDialArea.forceActiveFocus()
+            }
         }
 
         property bool canShow: false
@@ -541,5 +572,31 @@ AZWindow {
         visible: bottomBar.hasPopupOpened
         hoverEnabled: false
         acceptedButtons: Qt.LeftButton
+    }
+
+    // 用于清除侧边栏的焦点
+    MouseArea {
+        anchors.fill: topBar
+        visible: topBar.visible
+        hoverEnabled: false
+        acceptedButtons: Qt.LeftButton
+
+        onPressed: (mouse) => {
+            mouse.accepted = false
+            mainWin.clearSideBarFocus()
+        }
+    }
+
+    // 用于清除侧边栏的焦点
+    MouseArea {
+        anchors.fill: bottomBar
+        visible: bottomBar.visible
+        hoverEnabled: false
+        acceptedButtons: Qt.LeftButton
+
+        onPressed: (mouse) => {
+            mouse.accepted = false
+            mainWin.clearSideBarFocus()
+        }
     }
 }
