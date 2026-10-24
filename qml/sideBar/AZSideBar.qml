@@ -9,6 +9,9 @@ Rectangle {
     id: sideBar
     property bool hasPopupOpened: false
 
+    // 请求把焦点从侧栏收回视频区域（Esc）
+    signal requestClearFocus()
+
     function switchTab(delta) {
         if (tabBar.count <= 0) return
         const n = tabBar.count
@@ -21,8 +24,16 @@ Rectangle {
         if (page) page.listView.focusView()
     }
 
-    // 侧栏内列表的左右键冒泡到这里，由侧栏统一切换页签
+    // 侧栏内列表的按键冒泡到这里统一处理
     Keys.onPressed: function(event) {
+        // ESC 回收焦点
+        if (event.key === Qt.Key_Escape) {
+            event.accepted = true
+            requestClearFocus()
+            return
+        }
+
+        // 左右方向键切换列表
         if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
             event.accepted = true
             if (!event.isAutoRepeat)

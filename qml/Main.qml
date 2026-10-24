@@ -104,10 +104,15 @@ AZWindow {
         return activeFocusItem === null || hasFocusWithin(videoAngleDialArea)
     }
 
+    // 把焦点收回视频区域
+    function returnFocusToVideo() {
+        videoAngleDialArea.forceActiveFocus()
+    }
+
     // 侧栏列表持有焦点时，点击栏位先把焦点收回视频区域
     function clearSideBarFocus() {
         if (sideBar.visible && hasFocusWithin(sideBar))
-            videoAngleDialArea.forceActiveFocus()
+            returnFocusToVideo()
     }
 
     // 鼠标滚轮控制旋转角度或音量
@@ -537,9 +542,12 @@ AZWindow {
             if (visible) {
                 if (!mainWin.videoFull) focusCurrentView()
             } else {
-                videoAngleDialArea.forceActiveFocus()
+                mainWin.returnFocusToVideo()
             }
         }
+
+        // Esc：把焦点收回视频区域
+        onRequestClearFocus: returnFocusToVideo()
 
         property bool canShow: false
         function toggleSidebar(){

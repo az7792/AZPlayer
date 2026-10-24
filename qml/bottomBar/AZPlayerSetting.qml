@@ -8,6 +8,9 @@ import VideoWindow 1.0
 import AZPlayer 1.0
 Popup{
     id:root
+
+    focus: true
+
     background: Rectangle{
         color: "#1c1c1c"
         border.color: "#a1cafe"
