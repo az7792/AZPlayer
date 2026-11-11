@@ -133,9 +133,13 @@ AZWindow {
     Item {
         id: keyboardController
 
+        /* 使用 ApplicationShortcut：Win+D 切回后 Window.active 可能一直为 false，
+         * 默认的 WindowShortcut 依赖快捷键所在窗口处于活动窗口时生效，因此可能导致
+         * Win+D 切到桌面再 Win+D 切回后出现快捷键无法使用的问题。*/
         // 播放/暂停（空格）
         Shortcut {
             sequence: "Space"
+            context: Qt.ApplicationShortcut
             autoRepeat: false
             onActivated: MediaCtrl.togglePaused()
         }
@@ -143,6 +147,7 @@ AZWindow {
         // 后退 (左方向键)
         Shortcut {
             sequence: "Left"
+            context: Qt.ApplicationShortcut
             autoRepeat: false
             onActivated: MediaCtrl.fastRewind()
         }
@@ -150,6 +155,7 @@ AZWindow {
         // 前进 (右方向键)
         Shortcut {
             sequence: "Right"
+            context: Qt.ApplicationShortcut
             autoRepeat: false
             onActivated: MediaCtrl.fastForward()
         }
@@ -157,18 +163,21 @@ AZWindow {
         // 音量加 (上方向键)
         Shortcut {
             sequence: "Up"
+            context: Qt.ApplicationShortcut
             onActivated: MediaCtrl.addVolume()
         }
 
         // 音量减 (下方向键)
         Shortcut {
             sequence: "Down"
+            context: Qt.ApplicationShortcut
             onActivated: MediaCtrl.subVolume()
         }
 
         // 播放信息（Tab键）
         Shortcut {
             sequence: "Tab"
+            context: Qt.ApplicationShortcut
             onActivated: {
                 if(playbackStatsArea.visible) playbackStatsArea.hideStats()
                 else playbackStatsArea.showStats()
