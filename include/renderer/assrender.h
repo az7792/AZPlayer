@@ -56,7 +56,7 @@ public:
     [[nodiscard]] const ASS_Image *getASSImage(size_t &size, const QSize &videoSize, double pts);
 
     /**
-     * 渲染一帧到dataArr里
+     * 渲染一帧到dataArr里（RGBA，已预乘 alpha）
      * @warning 请确保assImg是最后一次通过getASSImage()获取的
      */
     void renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vector<QRect> &rects, const ASS_Image *assImg);
@@ -71,7 +71,6 @@ private:
 
 private:
     [[nodiscard]] bool initFromDemux(AVFormatContext *fmt, int subStreamIdx);
-    void unpremultiplyAlpha(std::vector<uint8_t> &buffer);
     void blendSingleOnly(std::vector<std::vector<uint8_t>> &dataArr, const ASS_Image *img);
 };
 

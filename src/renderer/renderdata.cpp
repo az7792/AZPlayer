@@ -41,6 +41,18 @@ namespace {
         }
         return 1; // fallback
     }
+
+    // 直通 alpha 转预乘 alpha
+    void premultiplyAlpha(uint8_t *data, size_t pixelCount) {
+        for (size_t i = 0; i < pixelCount; ++i, data += 4) {
+            const unsigned a = data[3];
+            if (a == 255)
+                continue;
+            data[0] = static_cast<uint8_t>((data[0] * a + 127) / 255);
+            data[1] = static_cast<uint8_t>((data[1] * a + 127) / 255);
+            data[2] = static_cast<uint8_t>((data[2] * a + 127) / 255);
+        }
+    }
 }
 
 bool VideoRenderData::isEachComponentInSeparatePlane(const AVPixFmtDescriptor *desc) {
@@ -305,6 +317,7 @@ void SubRenderData::updateBitmapImage(AVFrmItem *newItem, int videoWidth, int vi
         const int dstStride[1] = {linesizeArr[i] * 4};
         uint8_t *const dst[1] = {dataArr[i].data()};
         sws_scale(subSwsCtx, (const uint8_t *const *)subRect->data, subRect->linesize, 0, subRect->h, dst, dstStride);
+        premultiplyAlpha(dst[0], static_cast<size_t>(subRect->w) * subRect->h);
     }
 }
 

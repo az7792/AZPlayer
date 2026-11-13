@@ -70,7 +70,10 @@ void main()
     }
 
     if(haveSubTex && showSub) {
+        /* 字幕纹理是预乘 alpha 的，直接做 source-over 合成，
+         * 以避免 GL_LINEAR 放大时，透明像素的 RGB=0 在插值时导致文字边缘出现黑边。*/
         vec4 subColor = texture(subTex, TexCoord);
-        FragColor = mix(FragColor, subColor, subColor.a);
+        FragColor = vec4(subColor.rgb + FragColor.rgb * (1.0 - subColor.a),
+                         subColor.a + FragColor.a * (1.0 - subColor.a));
     }
 }

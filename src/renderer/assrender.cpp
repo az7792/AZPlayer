@@ -160,10 +160,7 @@ void ASSRender::renderFrame(std::vector<std::vector<uint8_t>> &dataArr, std::vec
         blendSingleOnly(dataArr, assImg);
         assImg = assImg->next;
     }
-
-    for (auto &buffer : dataArr) {
-        unpremultiplyAlpha(buffer); // 反预乘
-    }
+    // 保留预乘 alpha, 以避免缩放时在文字边缘产生黑边
 }
 
 bool ASSRender::initFromDemux(AVFormatContext *fmt, int subStreamIdx) {
@@ -235,26 +232,6 @@ fail:
 }
 
 // from https://github.com/libass/libass/blob/master/test/test.c
-
-void ASSRender::unpremultiplyAlpha(std::vector<uint8_t> &buffer) {
-    unsigned char *data = buffer.data();
-    const size_t pixelCount = buffer.size() / 4;
-    Q_ASSERT(buffer.size() % 4 == 0);
-    for (size_t i = 0; i < pixelCount; ++i) {
-        const size_t idx = i * 4;
-        const unsigned char alpha = data[idx + 3];
-        if (alpha && alpha < 255) {
-            // For each color channel c:
-            //   c = c / (255.0 / alpha)
-            // but only using integers and a biased rounding offset
-            const uint32_t offs = (uint32_t)1 << 15;
-            const uint32_t inv = ((uint32_t)255 << 16) / alpha + 1;
-            data[idx + 0] = (data[idx + 0] * inv + offs) >> 16;
-            data[idx + 1] = (data[idx + 1] * inv + offs) >> 16;
-            data[idx + 2] = (data[idx + 2] * inv + offs) >> 16;
-        }
-    }
-}
 
 void ASSRender::blendSingleOnly(std::vector<std::vector<uint8_t>> &dataArr, const ASS_Image *img) {
     const QRect rect(img->dst_x, img->dst_y, img->w, img->h);
