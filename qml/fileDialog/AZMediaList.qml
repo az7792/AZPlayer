@@ -3,6 +3,7 @@
 
 pragma Singleton
 import QtQuick
+import AZPlayer 1.0
 
 // 集中管理播放列表的数据规范化及常用操作。
 ListModel {
@@ -74,8 +75,14 @@ ListModel {
         const media = get(index)
         currentIndex = index
         currentFile = media.text
-        MediaCtrl.open(media.fileUrl)
-        mediaOpened(index)
+        let ok = MediaCtrl.open(media.fileUrl)
+        if (ok) {
+            AZOSD.hidePersistent()
+            mediaOpened(index)
+        } else {
+            close()
+            AZOSD.showPersistent("加载失败!", '#fb2d2d')
+        }
     }
 
     // 替换列表并打开指定文件
