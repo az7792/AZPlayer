@@ -442,6 +442,8 @@ void MediaController::setLoopOnEnd(bool newLoopOnEnd) { m_loopOnEnd = newLoopOnE
 
 bool MediaController::opened() const { return m_opened; }
 
+bool MediaController::hasVideo() const { return m_streams[MediaType::Video].streamIdx != -1; }
+
 void MediaController::setOpened(bool newOpened) {
     if (m_opened == newOpened)
         return;

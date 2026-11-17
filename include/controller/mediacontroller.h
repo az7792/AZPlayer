@@ -36,6 +36,7 @@ public:
     [[nodiscard]] bool opened() const;
     void setOpened(bool newOpened); // 仅用于修改数值产生信号
 
+    Q_INVOKABLE [[nodiscard]] bool hasVideo() const;                // 当前是否加载了视频流
     Q_INVOKABLE [[nodiscard]] int getCurrentTime() const;           // 获取当前播放时间（秒）
     Q_INVOKABLE [[nodiscard]] QVariantList getSubtitleInfo() const; // 获取字幕流信息
     Q_INVOKABLE [[nodiscard]] QVariantList getAudioInfo() const;    // 获取音频流信息

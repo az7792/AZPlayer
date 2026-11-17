@@ -40,9 +40,22 @@ Rectangle {
         acceptLabel:"打开"
         rejectLabel:"取消"
         fileMode: FileDialog.OpenFile
-        nameFilters: ["媒体文件 (*.mp4 *.mkv *.avi *.mp3 *.aac *.mka)", "所有文件 (*)"]
+        nameFilters: [
+            "媒体文件 (*.mp4 *.mkv *.avi *.mp3 *.aac *.mka)",
+            "字幕文件 (*.srt *.ass *.ssa *.vtt *.sub *.pgs)",
+            "所有文件 (*)"
+        ]
         onAccepted: {
             if (!selectedFile) return
+            // 非音视频文件（如字幕）：若当前有视频在播放，则作为外部字幕加载；否则拒绝
+            if (FileHelper.expandMediaFiles([selectedFile], false).length === 0) {
+                if (MediaCtrl.hasVideo()) {
+                    MediaCtrl.loadExternalSubtitle(selectedFile)
+                } else {
+                    console.log("选择的不是音视频文件，且当前无视频在播放")
+                }
+                return
+            }
             // 扫描所选文件所在目录下同后缀的文件，重建媒体文件列表
             const files = FileHelper.expandSiblingFiles(selectedFile)
 
