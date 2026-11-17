@@ -47,6 +47,9 @@ ListModel {
 
     // 去重并添加到列表
     function appendUnique(files) {
+        if (!files || files.length === 0)
+            return
+
         const knownUrls = Object.create(null)
         for (let i = 0; i < count; ++i)
             knownUrls[normalizedUrl(get(i).fileUrl)] = true

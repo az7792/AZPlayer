@@ -64,7 +64,7 @@ Rectangle {
         rejectLabel:"取消"
         fileMode: FileDialog.OpenFiles
         onAccepted: {
-            AZMediaList.appendUnique(selectedFiles)
+            AZMediaList.appendUnique(FileHelper.expandMediaFiles(selectedFiles, false))
         }
         onRejected: { console.log("[FileDialogMulti] 取消") }
     }
