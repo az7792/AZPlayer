@@ -15,6 +15,21 @@ AZ_EXTERN_C_BEGIN
 #include <libavutil/frame.h>
 AZ_EXTERN_C_END
 
+// 缩放策略
+enum class ScaleMode : int {
+    Fit = 0,     // 保持比例，完整显示
+    Stretch = 1, // 拉伸填满
+    Cover = 2    // 保持比例，裁剪填满
+};
+
+// 显示比例
+enum class AspectMode : int {
+    Auto = 0,      // 视频自身比例
+    Ratio1x1 = 1,  // 1:1
+    Ratio4x3 = 2,  // 4:3
+    Ratio16x9 = 3  // 16:9
+};
+
 class VideoRenderer : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions_3_3_Core {
 public:
     VideoRenderer();
@@ -55,6 +70,8 @@ private:
     float m_angle{0.f};         // 顺时针旋转(角度)
     float m_scaleX{1.f};        // 缩放(1为不缩放)
     float m_scaleY{1.f};        // 缩放(1为不缩放)
+    ScaleMode m_scaleMode{ScaleMode::Fit};     // 缩放策略
+    AspectMode m_aspectMode{AspectMode::Auto}; // 显示比例
 
     /**
      * 是否需要重新初始化纹理
@@ -173,6 +190,24 @@ public:
     Q_INVOKABLE void addScale() { setScale(m_scale + 2); }
     Q_INVOKABLE void subScale() { setScale(m_scale - 2); }
 
+    // 缩放策略
+    Q_INVOKABLE void setScaleMode(int mode) {
+        ScaleMode newMode = static_cast<ScaleMode>(mode);
+        if (newMode != m_scaleMode) {
+            m_scaleMode = newMode;
+            update();
+        }
+    }
+
+    // 显示比例
+    Q_INVOKABLE void setAspectMode(int mode) {
+        AspectMode newMode = static_cast<AspectMode>(mode);
+        if (newMode != m_aspectMode) {
+            m_aspectMode = newMode;
+            update();
+        }
+    }
+
     // 镜像
     Q_INVOKABLE void setHorizontalMirror(bool val) {
         m_horizontalMirror = val;
@@ -219,6 +254,8 @@ private:
     float m_tx{0.f}, m_ty{0.f}; // 移动(像素)
     float m_angle{0.f};         // 顺时针旋转(角度)
     int m_scale{100};           // 缩放(100为不缩放)
+    ScaleMode m_scaleMode{ScaleMode::Fit};     // 缩放策略
+    AspectMode m_aspectMode{AspectMode::Auto}; // 显示比例
     bool m_showSubtitle = true; // 是否显示字幕
     bool m_horizontalMirror{false};
     bool m_verticalMirror{false};

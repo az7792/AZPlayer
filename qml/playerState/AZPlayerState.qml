@@ -9,6 +9,8 @@ Item {
     property real videoY: 0                    // 视频y
     property real videoAngle:0.0               // 视频顺时针旋转(角度)
     property int  videoScale:100               // 缩放(100为不缩放)
+    property int  videoScaleMode:0             // 缩放策略(0适应 1拉伸 2裁剪)
+    property int  videoAspectMode:0            // 显示比例(0默认 1:1 2:4:3 3:16:9)
     property bool videoShowSubtitle: true      // 是否显示字幕
     property bool videoHorizontalMirror: false // 水平镜像
     property bool videoVerticalMirror: false   // 垂直镜像

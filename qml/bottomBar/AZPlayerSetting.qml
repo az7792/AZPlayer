@@ -155,6 +155,46 @@ Popup{
                     verticalMirrorCheckBox.checked = false
                     AZPlayerState.videoAngle = 0
                     AZPlayerState.videoScale = 100
+                    AZPlayerState.videoScaleMode = 0
+                    AZPlayerState.videoAspectMode = 0
+                }
+            }
+        }
+
+        Row {
+            spacing: 10
+            AZComboBox {
+                id: scaleModeCombo
+                width: 110
+                popupWidth: 100
+                height: 20
+                textRole: "text"
+                model: [ {text:"适应画面"}, {text:"拉伸填满"}, {text:"裁剪填满"} ]
+                anchors.verticalCenter: parent.verticalCenter
+                onActivated: function(index) { AZPlayerState.videoScaleMode = index }
+                Connections {
+                    target: AZPlayerState
+                    function onVideoScaleModeChanged() {
+                        scaleModeCombo.currentIndex = AZPlayerState.videoScaleMode
+                    }
+                }
+            }
+
+            AZComboBox {
+                id: aspectCombo
+                width: 90
+                popupWidth: 80
+                height: 20
+                textRole: "text"
+                model: [ {text:"默认"}, {text:"1:1"}, {text:"4:3"}, {text:"16:9"} ]
+                enabled: AZPlayerState.videoScaleMode !== 1
+                anchors.verticalCenter: parent.verticalCenter
+                onActivated: function(index) { AZPlayerState.videoAspectMode = index }
+                Connections {
+                    target: AZPlayerState
+                    function onVideoAspectModeChanged() {
+                        aspectCombo.currentIndex = AZPlayerState.videoAspectMode
+                    }
                 }
             }
         }

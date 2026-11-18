@@ -283,6 +283,9 @@ void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
     m_scaleX *= videoWindow->m_horizontalMirror ? -1.f : 1.f;
     m_scaleY *= videoWindow->m_verticalMirror ? -1.f : 1.f;
 
+    m_scaleMode = videoWindow->m_scaleMode;
+    m_aspectMode = videoWindow->m_aspectMode;
+
     m_showSubtitle = videoWindow->m_showSubtitle;
 
     m_forceClearSubtitle = &videoWindow->m_forceClearSubtitle;
@@ -413,23 +416,47 @@ QMatrix4x4 VideoRenderer::getTransformMat() const {
 
     mat.translate(m_tx, m_ty, 0.0f); // 移动 #step5
 
-    // 视频等比例缩放到[-1,1]的正方形里时视频右上角的坐标
-    float scaleX0 = 1.0f, scaleY0 = 1.0f;
-    if (m_frameSize.width() > m_frameSize.height()) {
-        scaleY0 = 1.f * m_frameSize.height() / m_frameSize.width();
-    } else {
-        scaleX0 = 1.f * m_frameSize.width() / m_frameSize.height();
+    // 生效的显示比例：默认取视频自身比例，可被比例选项覆盖
+    float videoAspect = 1.f * m_frameSize.width() / m_frameSize.height();
+    switch (m_aspectMode) {
+    case AspectMode::Ratio1x1: videoAspect = 1.f; break;
+    case AspectMode::Ratio4x3: videoAspect = 4.f / 3.f; break;
+    case AspectMode::Ratio16x9: videoAspect = 16.f / 9.f; break;
+    default: break; // Auto：使用视频自身比例
     }
 
-    // 将视频等比例填充满FBO并将FBO缩放到[-1,1]时视频右上角的坐标
-    float scaleX = 1.0f, scaleY = 1.0f;
-    const float videoAspect = 1.f * m_frameSize.width() / m_frameSize.height(), fboAspect = 1.f * m_FBOSize.width() / m_FBOSize.height();
-    if (videoAspect > fboAspect) {
-        // 视频比FBO宽，宽撑满，高缩放
-        scaleY = fboAspect / videoAspect;
+    // 视频等比例缩放到[-1,1]的正方形里时视频右上角的坐标
+    float scaleX0 = 1.0f, scaleY0 = 1.0f;
+    if (videoAspect > 1.0f) {
+        scaleY0 = 1.f / videoAspect;
     } else {
-        // 视频比FBO高，高撑满，宽缩放
-        scaleX = videoAspect / fboAspect;
+        scaleX0 = videoAspect;
+    }
+
+    // 按缩放策略将画面适配到 FBO
+    float scaleX = 1.0f, scaleY = 1.0f;
+    const float fboAspect = 1.f * m_FBOSize.width() / m_FBOSize.height();
+    switch (m_scaleMode) {
+    case ScaleMode::Stretch: // 直接拉伸填满，忽略比例
+        scaleX = scaleY = 1.0f;
+        break;
+    case ScaleMode::Cover: // 保持比例并填满 FBO
+        if (videoAspect > fboAspect) {
+            scaleX = videoAspect / fboAspect;
+        } else {
+            scaleY = fboAspect / videoAspect;
+        }
+        break;
+    case ScaleMode::Fit: // 保持比例并完整显示
+    default:
+        if (videoAspect > fboAspect) {
+            // 视频比FBO宽，宽撑满，高缩放
+            scaleY = fboAspect / videoAspect;
+        } else {
+            // 视频比FBO高，高撑满，宽缩放
+            scaleX = videoAspect / fboAspect;
+        }
+        break;
     }
     mat.scale(scaleX / scaleX0, scaleY / scaleY0, 1.0f); // 调整画面比例，将step1的原始比例映射到新的比例 #step4
 

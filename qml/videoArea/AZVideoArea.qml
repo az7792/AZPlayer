@@ -18,6 +18,8 @@ Item {
             function onVideoYChanged() {videoWindow.setY(AZPlayerState.videoY)}
             function onVideoAngleChanged() {videoWindow.setAngle(AZPlayerState.videoAngle)}
             function onVideoScaleChanged() {videoWindow.setScale(AZPlayerState.videoScale)}
+            function onVideoScaleModeChanged() {videoWindow.setScaleMode(AZPlayerState.videoScaleMode)}
+            function onVideoAspectModeChanged() {videoWindow.setAspectMode(AZPlayerState.videoAspectMode)}
             function onVideoShowSubtitleChanged() {videoWindow.setShowSubtitle(AZPlayerState.videoShowSubtitle) }
             function onVideoHorizontalMirrorChanged() {videoWindow.setHorizontalMirror(AZPlayerState.videoHorizontalMirror) }
             function onVideoVerticalMirrorChanged() {videoWindow.setVerticalMirror(AZPlayerState.videoVerticalMirror) }
