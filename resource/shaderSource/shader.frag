@@ -24,6 +24,8 @@ uniform sampler2D aTex;// A
 uniform sampler2D subTex;// 字幕RGBA
 uniform bool haveSubTex = false; // 是否有字幕纹理
 uniform bool showSub = true;    // 是否渲染字幕
+uniform bool invert = false;    // 反色
+uniform bool grayscale = false; // 黑白
 
 
 out vec4 FragColor;
@@ -76,4 +78,10 @@ void main()
         FragColor = vec4(subColor.rgb + FragColor.rgb * (1.0 - subColor.a),
                          subColor.a + FragColor.a * (1.0 - subColor.a));
     }
+
+    // 颜色滤镜
+    if (grayscale)
+        FragColor.rgb = vec3(dot(FragColor.rgb, vec3(0.2126, 0.7152, 0.0722)));
+    if (invert)
+        FragColor.rgb = vec3(1.0) - FragColor.rgb;
 }

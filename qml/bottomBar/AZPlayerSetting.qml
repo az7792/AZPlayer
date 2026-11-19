@@ -157,6 +157,8 @@ Popup{
                     AZPlayerState.videoScale = 100
                     AZPlayerState.videoScaleMode = 0
                     AZPlayerState.videoAspectMode = 0
+                    invertCheckBox.checked = false
+                    grayscaleCheckBox.checked = false
                 }
             }
         }
@@ -217,6 +219,27 @@ Popup{
                 text:"垂直镜像"
                 textColor: "#ebebeb"
                 onCheckedChanged: { AZPlayerState.videoVerticalMirror = checked }
+            }
+        }
+
+        Row {
+            spacing: 3
+            AZCheckBox {
+                id: invertCheckBox
+                height: 20
+                width: 80
+                text:"反色"
+                textColor: "#ebebeb"
+                onCheckedChanged: { AZPlayerState.videoInvert = checked }
+            }
+
+            AZCheckBox {
+                id: grayscaleCheckBox
+                height: 20
+                width: 80
+                text:"黑白"
+                textColor: "#ebebeb"
+                onCheckedChanged: { AZPlayerState.videoGrayscale = checked }
             }
         }
 

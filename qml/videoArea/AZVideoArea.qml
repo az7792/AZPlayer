@@ -23,6 +23,8 @@ Item {
             function onVideoShowSubtitleChanged() {videoWindow.setShowSubtitle(AZPlayerState.videoShowSubtitle) }
             function onVideoHorizontalMirrorChanged() {videoWindow.setHorizontalMirror(AZPlayerState.videoHorizontalMirror) }
             function onVideoVerticalMirrorChanged() {videoWindow.setVerticalMirror(AZPlayerState.videoVerticalMirror) }
+            function onVideoInvertChanged() {videoWindow.setInvert(AZPlayerState.videoInvert) }
+            function onVideoGrayscaleChanged() {videoWindow.setGrayscale(AZPlayerState.videoGrayscale) }
         }
     }
 }

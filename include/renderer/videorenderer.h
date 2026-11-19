@@ -82,6 +82,10 @@ private:
 
     bool m_lastShowSubtitle = true;      // 上一次是否显示字幕，主要是为了防止频繁更新 shader的showSub变量
     bool m_showSubtitle = true;          // 是否显示字幕
+    bool m_invert = false;               // 反色
+    bool m_grayscale = false;            // 黑白
+    bool m_lastInvert = false;           // 上一次反色状态
+    bool m_lastGrayscale = false;        // 上一次黑白状态
     bool *m_forceClearSubtitle{nullptr}; // 是否强制清空字幕
 
     VideoDoubleBuf *m_vidData = nullptr;    // 渲染需要的视频数据
@@ -218,6 +222,22 @@ public:
         update();
     }
 
+    // 反色
+    Q_INVOKABLE void setInvert(bool val) {
+        if (val != m_invert) {
+            m_invert = val;
+            update();
+        }
+    }
+
+    // 黑白
+    Q_INVOKABLE void setGrayscale(bool val) {
+        if (val != m_grayscale) {
+            m_grayscale = val;
+            update();
+        }
+    }
+
     // 角度
     Q_INVOKABLE void setAngle(float angle) {
         float tmpAngle = std::fmod(angle, 360.0f);
@@ -259,6 +279,8 @@ private:
     bool m_showSubtitle = true; // 是否显示字幕
     bool m_horizontalMirror{false};
     bool m_verticalMirror{false};
+    bool m_invert{false};    // 反色
+    bool m_grayscale{false}; // 黑白
     bool m_forceClearSubtitle{false}; // 强制清空字幕
     friend VideoRenderer;
 };

@@ -14,6 +14,8 @@ Item {
     property bool videoShowSubtitle: true      // 是否显示字幕
     property bool videoHorizontalMirror: false // 水平镜像
     property bool videoVerticalMirror: false   // 垂直镜像
+    property bool videoInvert: false           // 反色
+    property bool videoGrayscale: false        // 黑白
 
     // 持久化设置
     property bool windowAutoFitVideo: true     // 窗口自适应视频分辨率

@@ -251,8 +251,18 @@ void VideoRenderer::render() {
 
     if (m_showSubtitle != m_lastShowSubtitle) {
         m_lastShowSubtitle = m_showSubtitle;
-        int loc = m_program.uniformLocation("showSub"); // 是否显示字幕
+        const int loc = m_program.uniformLocation("showSub"); // 是否显示字幕
         m_program.setUniformValue(loc, m_showSubtitle);
+    }
+    if (m_invert != m_lastInvert) {
+        m_lastInvert = m_invert;
+        const int loc = m_program.uniformLocation("invert"); // 反色
+        m_program.setUniformValue(loc, m_invert);
+    }
+    if (m_grayscale != m_lastGrayscale) {
+        m_lastGrayscale = m_grayscale;
+        const int loc = m_program.uniformLocation("grayscale"); // 黑白
+        m_program.setUniformValue(loc, m_grayscale);
     }
 
     m_program.setUniformValue(m_program.uniformLocation("transform"), getTransformMat());
@@ -287,6 +297,8 @@ void VideoRenderer::synchronize(QQuickFramebufferObject *item) {
     m_aspectMode = videoWindow->m_aspectMode;
 
     m_showSubtitle = videoWindow->m_showSubtitle;
+    m_invert = videoWindow->m_invert;
+    m_grayscale = videoWindow->m_grayscale;
 
     m_forceClearSubtitle = &videoWindow->m_forceClearSubtitle;
 }
